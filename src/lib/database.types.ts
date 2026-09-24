@@ -435,6 +435,30 @@ export type Database = {
           },
         ]
       }
+      job_photos: {
+        Row: {
+          id: string
+          job_id: string
+          storage_path: string
+          uploaded_by: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          storage_path: string
+          uploaded_by?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          job_id?: string
+          storage_path?: string
+          uploaded_by?: string | null
+          created_at?: string
+        }
+        Relationships: []
+      }
       job_notes: {
         Row: {
           author_id: string | null
@@ -633,6 +657,7 @@ export type Database = {
           full_name: string
           id: string
           role: string
+          hourly_rate: number | null
         }
         Insert: {
           created_at?: string
@@ -640,6 +665,7 @@ export type Database = {
           full_name: string
           id: string
           role: string
+          hourly_rate?: number | null
         }
         Update: {
           created_at?: string
@@ -647,6 +673,7 @@ export type Database = {
           full_name?: string
           id?: string
           role?: string
+          hourly_rate?: number | null
         }
         Relationships: []
       }

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
+import { toast } from 'sonner'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,7 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useInvoicesStore } from '@/lib/store/invoices-store'
 import { useCustomersStore } from '@/lib/store/customers-store'
 import { useJobsStore } from '@/lib/store/jobs-store'
-import type { LineItem } from '@/lib/demo-data'
+import { useTeamStore } from '@/lib/store/team-store'
+import type { Job, LineItem } from '@/lib/demo-data'
 import { formatCurrency, toDateKey } from '@/lib/utils'
 
 let liSeq = 0
@@ -20,12 +22,35 @@ function defaultDueDate() {
   return toDateKey(d)
 }
 
+/** Sums each employee's closed on-site sessions for a job into billable labour line items,
+ * rounded to the nearest quarter hour — the standard trade-invoicing rounding convention. */
+function labourLineItemsFromJob(job: Job, team: { id: string; fullName: string; hourlyRate: number | null }[]) {
+  const msByEmployee = new Map<string, number>()
+  for (const ci of job.checkIns) {
+    if (!ci.checkOut) continue
+    const ms = new Date(ci.checkOut).getTime() - new Date(ci.checkIn).getTime()
+    msByEmployee.set(ci.employeeId, (msByEmployee.get(ci.employeeId) ?? 0) + ms)
+  }
+  const items: LineItem[] = []
+  const missingRateFor: string[] = []
+  for (const [employeeId, ms] of msByEmployee) {
+    const member = team.find((m) => m.id === employeeId)
+    const hours = Math.round((ms / 3_600_000) * 4) / 4
+    if (hours <= 0) continue
+    const name = member?.fullName ?? 'Unknown employee'
+    if (!member?.hourlyRate) missingRateFor.push(name)
+    items.push({ id: `labour-${employeeId}`, description: `Labour — ${name}`, qty: hours, unitPrice: member?.hourlyRate ?? 0 })
+  }
+  return { items, missingRateFor }
+}
+
 export default function InvoiceNew() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { addInvoice, markSent } = useInvoicesStore()
   const { customers } = useCustomersStore()
   const { getJob } = useJobsStore()
+  const { team } = useTeamStore()
 
   const linkedJob = getJob(searchParams.get('jobId') ?? '')
 
@@ -34,7 +59,14 @@ export default function InvoiceNew() {
   const [dueDate, setDueDate] = useState(defaultDueDate())
   const [notes, setNotes] = useState('')
   const [paymentTerms, setPaymentTerms] = useState('Payment due within 14 days.')
-  const [lineItems, setLineItems] = useState<LineItem[]>(linkedJob ? linkedJob.lineItems.map((li) => ({ ...li })) : [newLineItem()])
+  const [lineItems, setLineItems] = useState<LineItem[]>(() => {
+    if (!linkedJob) return [newLineItem()]
+    const { items: labourItems, missingRateFor } = labourLineItemsFromJob(linkedJob, team)
+    if (missingRateFor.length > 0) {
+      toast.warning(`No hourly rate set for ${missingRateFor.join(', ')} — set it in Settings so labour bills correctly.`)
+    }
+    return [...linkedJob.lineItems.map((li) => ({ ...li })), ...labourItems]
+  })
 
   const customer = customers.find((c) => c.id === customerId)
   const subtotal = lineItems.reduce((sum, li) => sum + li.qty * li.unitPrice, 0)

@@ -7,6 +7,7 @@ import { StatusBadge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { JobPhotosCard } from '@/components/jobs/JobPhotosCard'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { useFieldJobsStore } from '@/lib/store/field-jobs-store'
 import { formatDate } from '@/lib/utils'
@@ -160,6 +161,10 @@ export default function FieldJobDetail() {
           </div>
         </div>
       )}
+
+      <div className="mx-5">
+        <JobPhotosCard jobId={job.id} />
+      </div>
 
       <div className="mx-5 space-y-2">
         <p className="text-sm font-semibold">Notes</p>

@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { useTeamStore } from '@/lib/store/team-store'
+import { useTeamStore, type TeamMember } from '@/lib/store/team-store'
 import { useBusinessSettings } from '@/lib/store/business-settings-store'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { createUser } from '@/lib/api/createUser'
@@ -115,6 +115,51 @@ function BusinessCard() {
   )
 }
 
+function RateInput({ member }: { member: TeamMember }) {
+  const { updateRate } = useTeamStore()
+  const [value, setValue] = useState(member.hourlyRate?.toString() ?? '')
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setValue(member.hourlyRate?.toString() ?? '')
+  }, [member.hourlyRate])
+
+  const save = async () => {
+    const parsed = value.trim() === '' ? null : Number(value)
+    if (parsed !== null && (Number.isNaN(parsed) || parsed < 0)) {
+      setValue(member.hourlyRate?.toString() ?? '')
+      return
+    }
+    if (parsed === member.hourlyRate) return
+    setSaving(true)
+    try {
+      await updateRate(member.id, parsed)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to save rate')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-1 text-xs text-muted-foreground">
+      <span>$</span>
+      <Input
+        type="number"
+        min="0"
+        step="0.01"
+        value={value}
+        placeholder="0.00"
+        disabled={saving}
+        onChange={(e) => setValue(e.target.value)}
+        onBlur={save}
+        className="h-7 w-20 px-1.5 text-xs"
+      />
+      <span>/hr</span>
+    </div>
+  )
+}
+
 export default function Settings() {
   const { team, loading, refresh } = useTeamStore()
   const { session } = useAuth()
@@ -195,6 +240,7 @@ export default function Settings() {
                     <p className="truncate text-xs text-muted-foreground">{m.email}</p>
                   </div>
                   <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium capitalize text-secondary-foreground">{m.role}</span>
+                  {m.role === 'employee' && <RateInput member={m} />}
                   {m.role === 'employee' && m.id !== session?.user.id && (
                     <Button
                       variant="ghost"

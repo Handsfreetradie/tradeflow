@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Camera, Image as ImageIcon, MapPin, CalendarDays, Phone, Mail, Send } from 'lucide-react'
+import { ArrowLeft, MapPin, CalendarDays, Phone, Mail, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StatusBadge } from '@/components/ui/badge'
@@ -15,6 +15,7 @@ import {
 import { ChevronDown } from 'lucide-react'
 import { LineItemsTable } from '@/components/shared/LineItemsTable'
 import { JobCostingCard } from '@/components/jobs/JobCostingCard'
+import { JobPhotosCard } from '@/components/jobs/JobPhotosCard'
 import { JobCheckInCard } from '@/components/jobs/JobCheckInCard'
 import { JobWorkflow } from '@/components/jobs/JobWorkflow'
 import { useJobsStore } from '@/lib/store/jobs-store'
@@ -94,30 +95,7 @@ export default function JobDetail() {
 
           <JobCostingCard job={job} />
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Photos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {job.photos > 0 ? (
-                <div className="grid grid-cols-4 gap-2">
-                  {Array.from({ length: job.photos }).map((_, i) => (
-                    <div key={i} className="flex aspect-square items-center justify-center rounded-lg bg-secondary">
-                      <ImageIcon className="size-5 text-muted-foreground" />
-                    </div>
-                  ))}
-                  <button className="flex aspect-square items-center justify-center rounded-lg border border-dashed border-border text-muted-foreground transition-colors hover:bg-secondary">
-                    <Camera className="size-5" />
-                  </button>
-                </div>
-              ) : (
-                <button className="flex w-full flex-col items-center gap-2 rounded-lg border border-dashed border-border py-8 text-muted-foreground transition-colors hover:bg-secondary">
-                  <Camera className="size-6" />
-                  <span className="text-sm">Add job photos</span>
-                </button>
-              )}
-            </CardContent>
-          </Card>
+          <JobPhotosCard jobId={job.id} />
 
           <Card>
             <CardHeader>
