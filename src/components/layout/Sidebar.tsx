@@ -10,19 +10,21 @@ import {
   Calendar,
   Settings,
   ChevronsUpDown,
-  Zap,
 } from 'lucide-react'
 import { NavItem } from '@/components/ui/nav-item'
+import { LogoMark } from '@/components/shared/Logo'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { businessName, ownerFirstName } from '@/lib/demo-data'
+import { businessName } from '@/lib/demo-data'
 import { useJobsStore } from '@/lib/store/jobs-store'
 import { useQuotesStore } from '@/lib/store/quotes-store'
 import { useInvoicesStore } from '@/lib/store/invoices-store'
+import { useAuth } from '@/lib/auth/AuthProvider'
 
 export function Sidebar() {
   const { jobs } = useJobsStore()
   const { quotes } = useQuotesStore()
   const { invoices } = useInvoicesStore()
+  const { fullName, signOut } = useAuth()
 
   const openJobs = jobs.filter((j) => j.status === 'In Progress' || j.status === 'Scheduled').length
   const unpaidInvoices = invoices.filter((i) => i.status === 'Sent' || i.status === 'Partial' || i.status === 'Overdue').length
@@ -40,7 +42,8 @@ export function Sidebar() {
     { to: '/calendar', icon: Calendar, label: 'Calendar' },
   ]
 
-  const initials = ownerFirstName
+  const displayName = fullName ?? 'Owner'
+  const initials = displayName
     .split(' ')
     .map((p) => p[0])
     .join('')
@@ -49,9 +52,7 @@ export function Sidebar() {
   return (
     <aside className="hidden w-64 shrink-0 flex-col bg-sidebar lg:flex">
       <div className="flex items-center gap-2.5 px-5 py-6">
-        <div className="flex size-8 items-center justify-center rounded-lg bg-primary">
-          <Zap className="size-4 text-white" fill="currentColor" />
-        </div>
+        <LogoMark className="size-8" />
         <div>
           <p className="text-sm font-semibold leading-none text-white">TradeFlow</p>
           <p className="mt-1 text-[11px] leading-none text-sidebar-muted">Jobs · Invoices · Growth</p>
@@ -68,12 +69,16 @@ export function Sidebar() {
         <NavItem to="/settings" icon={Settings} label="Settings" />
       </div>
 
-      <button className="flex items-center gap-2.5 border-t border-sidebar-border px-4 py-3.5 text-left transition-colors hover:bg-white/5">
+      <button
+        onClick={() => signOut()}
+        title="Sign out"
+        className="flex items-center gap-2.5 border-t border-sidebar-border px-4 py-3.5 text-left transition-colors hover:bg-white/5"
+      >
         <Avatar className="size-8">
           <AvatarFallback className="bg-primary/20 text-white">{initials}</AvatarFallback>
         </Avatar>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-medium leading-none text-white">{ownerFirstName} Dixon</p>
+          <p className="truncate text-sm font-medium leading-none text-white">{displayName}</p>
           <p className="mt-1 truncate text-[11px] leading-none text-sidebar-muted">{businessName}</p>
         </div>
         <ChevronsUpDown className="size-3.5 shrink-0 text-sidebar-muted" />

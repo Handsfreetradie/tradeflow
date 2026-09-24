@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowLeft, Navigation, Phone, MapPin, Play, Square, Send } from 'lucide-react'
+import { ArrowLeft, Navigation, Phone, MapPin, Play, Square, Send, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { useFieldJobsStore } from '@/lib/store/field-jobs-store'
@@ -26,6 +27,7 @@ export default function FieldJobDetail() {
   const [noteText, setNoteText] = useState('')
   const [finishOpen, setFinishOpen] = useState(false)
   const [finishNote, setFinishNote] = useState('')
+  const [cantComplete, setCantComplete] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const [busy, setBusy] = useState(false)
 
@@ -63,9 +65,10 @@ export default function FieldJobDetail() {
   const handleFinish = async () => {
     setBusy(true)
     try {
-      await finishJob(job.id, finishNote.trim() || undefined)
-      toast.success('Job finished for now')
+      await finishJob(job.id, finishNote.trim() || undefined, cantComplete)
+      toast.success(cantComplete ? "Office has been notified you couldn't complete this job" : 'Job finished for now')
       setFinishNote('')
+      setCantComplete(false)
       setFinishOpen(false)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Could not finish job')
@@ -190,9 +193,21 @@ export default function FieldJobDetail() {
           <DialogHeader>
             <DialogTitle>Finish on site</DialogTitle>
           </DialogHeader>
-          <div>
-            <label className="text-xs font-medium text-muted-foreground">Note (optional)</label>
-            <Input value={finishNote} onChange={(e) => setFinishNote(e.target.value)} placeholder="e.g. Waiting on parts, back tomorrow" className="mt-1" />
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Note (optional)</label>
+              <Input value={finishNote} onChange={(e) => setFinishNote(e.target.value)} placeholder="e.g. Waiting on parts, back tomorrow" className="mt-1" />
+            </div>
+            <label className="flex items-start gap-2 rounded-lg border border-border p-3 text-sm">
+              <Checkbox checked={cantComplete} onCheckedChange={(v) => setCantComplete(v === true)} className="mt-0.5" />
+              <span>
+                <span className="flex items-center gap-1.5 font-medium text-warning">
+                  <AlertTriangle className="size-3.5" />
+                  Can't complete this job
+                </span>
+                <span className="text-xs text-muted-foreground">Notifies the office to follow up and reschedule.</span>
+              </span>
+            </label>
           </div>
           <DialogFooter>
             <Button variant="secondary" onClick={() => setFinishOpen(false)}>

@@ -1,4 +1,5 @@
-import { Search, Bell, HelpCircle, ChevronDown } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Search, Bell, HelpCircle, ChevronDown, AlertTriangle } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -9,9 +10,23 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { businessName } from '@/lib/demo-data'
 import { useAuth } from '@/lib/auth/AuthProvider'
+import { useNotifications } from '@/lib/store/notifications-store'
+import { cn } from '@/lib/utils'
+
+function formatRelativeTime(iso: string) {
+  const diffMs = Date.now() - new Date(iso).getTime()
+  const mins = Math.round(diffMs / 60000)
+  if (mins < 1) return 'Just now'
+  if (mins < 60) return `${mins}m ago`
+  const hours = Math.round(mins / 60)
+  if (hours < 24) return `${hours}h ago`
+  return `${Math.round(hours / 24)}d ago`
+}
 
 export function Header() {
   const { fullName, signOut } = useAuth()
+  const navigate = useNavigate()
+  const { notifications, unreadCount, markRead, markAllRead } = useNotifications()
   const displayName = fullName ?? 'Owner'
   const initials = displayName
     .split(' ')
@@ -34,15 +49,54 @@ export function Header() {
       </div>
 
       <div className="ml-auto flex items-center gap-1">
-        <Tooltip>
-          <TooltipTrigger asChild>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
             <button className="relative flex size-9 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground">
               <Bell className="size-[18px]" />
-              <span className="absolute right-2 top-2 size-1.5 rounded-full bg-destructive" />
+              {unreadCount > 0 && (
+                <span className="absolute right-1.5 top-1.5 flex size-4 items-center justify-center rounded-full bg-destructive text-[9px] font-semibold text-white">
+                  {unreadCount > 9 ? '9+' : unreadCount}
+                </span>
+              )}
             </button>
-          </TooltipTrigger>
-          <TooltipContent>Notifications</TooltipContent>
-        </Tooltip>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-80">
+            <div className="flex items-center justify-between px-2 py-1.5">
+              <p className="text-sm font-semibold">Notifications</p>
+              {unreadCount > 0 && (
+                <button onClick={() => markAllRead()} className="text-xs text-primary hover:underline">
+                  Mark all read
+                </button>
+              )}
+            </div>
+            {notifications.length === 0 ? (
+              <p className="px-2 py-3 text-center text-xs text-muted-foreground">No notifications yet</p>
+            ) : (
+              <div className="max-h-80 overflow-y-auto">
+                {notifications.map((n) => (
+                  <DropdownMenuItem
+                    key={n.id}
+                    className={cn('flex items-start gap-2 whitespace-normal py-2', !n.readAt && 'bg-warning/5')}
+                    onClick={() => {
+                      if (!n.readAt) markRead(n.id)
+                      navigate(`/jobs/${n.jobId}`)
+                    }}
+                  >
+                    <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warning" />
+                    <span className="min-w-0">
+                      <span className="block text-xs font-medium">
+                        {n.jobNumber} — {n.jobTitle}
+                      </span>
+                      <span className="block text-xs text-muted-foreground">{n.message}</span>
+                      <span className="mt-0.5 block text-[10px] text-muted-foreground">{formatRelativeTime(n.createdAt)}</span>
+                    </span>
+                    {!n.readAt && <span className="mt-1 size-1.5 shrink-0 rounded-full bg-primary" />}
+                  </DropdownMenuItem>
+                ))}
+              </div>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
 
         <Tooltip>
           <TooltipTrigger asChild>

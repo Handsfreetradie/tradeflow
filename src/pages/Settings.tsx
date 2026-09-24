@@ -1,21 +1,142 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { UserPlus, Users as UsersIcon } from 'lucide-react'
+import { UserPlus, Users as UsersIcon, Building2, Upload, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useTeamStore } from '@/lib/store/team-store'
+import { useBusinessSettings } from '@/lib/store/business-settings-store'
+import { useAuth } from '@/lib/auth/AuthProvider'
 import { createUser } from '@/lib/api/createUser'
+import { deleteUser } from '@/lib/api/deleteUser'
+
+function BusinessCard() {
+  const { settings, loading, updateSettings, uploadLogo } = useBusinessSettings()
+  const [name, setName] = useState(settings.businessName)
+  const [abn, setAbn] = useState(settings.abn)
+  const [savingName, setSavingName] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    setName(settings.businessName)
+    setAbn(settings.abn)
+  }, [settings.businessName, settings.abn])
+
+  const dirty = name !== settings.businessName || abn !== settings.abn
+
+  const saveDetails = async () => {
+    setSavingName(true)
+    try {
+      await updateSettings({ businessName: name, abn })
+      toast.success('Business details updated')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to save')
+    } finally {
+      setSavingName(false)
+    }
+  }
+
+  const handleFile = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please choose an image file')
+      return
+    }
+    setUploading(true)
+    try {
+      await uploadLogo(file)
+      toast.success('Logo updated — it will now show on your quotes and invoices')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to upload logo')
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  if (loading) return null
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Building2 className="size-4 text-muted-foreground" />
+          Business
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center gap-4">
+          <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-secondary/40">
+            {settings.logoUrl ? (
+              <img src={settings.logoUrl} alt="Business logo" className="size-full object-contain" />
+            ) : (
+              <span className="text-xs text-muted-foreground">No logo</span>
+            )}
+          </div>
+          <div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) handleFile(file)
+                e.target.value = ''
+              }}
+            />
+            <Button variant="secondary" size="sm" disabled={uploading} onClick={() => fileInputRef.current?.click()}>
+              <Upload />
+              {uploading ? 'Uploading…' : 'Upload logo'}
+            </Button>
+            <p className="mt-1.5 text-xs text-muted-foreground">Shows on your quotes and invoices automatically.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Business name</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} className="mt-1" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">ABN (optional)</label>
+            <Input value={abn} onChange={(e) => setAbn(e.target.value)} className="mt-1" />
+          </div>
+        </div>
+        {dirty && (
+          <Button size="sm" disabled={savingName} onClick={saveDetails}>
+            {savingName ? 'Saving…' : 'Save details'}
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
 
 export default function Settings() {
   const { team, loading, refresh } = useTeamStore()
+  const { session } = useAuth()
   const [open, setOpen] = useState(false)
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [removeTarget, setRemoveTarget] = useState<{ id: string; fullName: string } | null>(null)
+  const [removing, setRemoving] = useState(false)
+
+  const removeEmployee = async (id: string) => {
+    setRemoving(true)
+    const { error } = await deleteUser(id)
+    setRemoving(false)
+    if (error) {
+      toast.error(error)
+      return
+    }
+    toast.success('Employee removed')
+    refresh()
+  }
 
   const submit = async () => {
     if (!fullName.trim() || !email.trim()) return
@@ -43,8 +164,10 @@ export default function Settings() {
     <div className="mx-auto max-w-3xl space-y-6 p-6">
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Manage your team and their access.</p>
+        <p className="mt-1 text-sm text-muted-foreground">Manage your business, team and their access.</p>
       </div>
+
+      <BusinessCard />
 
       <Card>
         <CardHeader className="flex-row items-center justify-between gap-4 space-y-0">
@@ -72,6 +195,15 @@ export default function Settings() {
                     <p className="truncate text-xs text-muted-foreground">{m.email}</p>
                   </div>
                   <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium capitalize text-secondary-foreground">{m.role}</span>
+                  {m.role === 'employee' && m.id !== session?.user.id && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setRemoveTarget({ id: m.id, fullName: m.fullName })}
+                    >
+                      <Trash2 className="text-muted-foreground" />
+                    </Button>
+                  )}
                 </div>
               ))}
             </div>
@@ -106,6 +238,16 @@ export default function Settings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!removeTarget}
+        onOpenChange={(o) => !o && setRemoveTarget(null)}
+        title={`Remove ${removeTarget?.fullName}?`}
+        description="They'll immediately lose access to TradeFlow. Any jobs they were assigned to stay as they are."
+        confirmLabel={removing ? 'Removing…' : 'Remove'}
+        variant="danger"
+        onConfirm={() => removeTarget && removeEmployee(removeTarget.id)}
+      />
     </div>
   )
 }

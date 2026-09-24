@@ -7,6 +7,7 @@ import { Card, CardContent } from '@/components/ui/card'
 import { StatusBadge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useJobsStore } from '@/lib/store/jobs-store'
 import { useTeamStore } from '@/lib/store/team-store'
 import type { Job, JobStatus } from '@/lib/demo-data'
@@ -31,7 +32,7 @@ function startOfMonthGrid(monthDate: Date) {
 
 export default function CalendarPage() {
   const navigate = useNavigate()
-  const { jobs, updateDueDate, updateAssignee } = useJobsStore()
+  const { jobs, updateDueDate, setAssignees } = useJobsStore()
   const { team } = useTeamStore()
   const teamMembers = team.map((m) => m.fullName)
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1))
@@ -41,7 +42,7 @@ export default function CalendarPage() {
   const [draggingJobId, setDraggingJobId] = useState<string | null>(null)
 
   const visibleJobs = useMemo(
-    () => (assigneeFilter === 'all' ? jobs : jobs.filter((j) => j.assignedTo === assigneeFilter)),
+    () => (assigneeFilter === 'all' ? jobs : jobs.filter((j) => j.assignees.some((a) => a.fullName === assigneeFilter))),
     [jobs, assigneeFilter]
   )
 
@@ -178,7 +179,8 @@ export default function CalendarPage() {
                     </span>
                     <div className="flex w-full flex-col gap-0.5">
                       {dayJobs.slice(0, 3).map((job) => {
-                        const color = assigneeColor(job.assignedTo)
+                        const color = assigneeColor(job.assignees[0]?.fullName ?? '')
+                        const assigneeNames = job.assignees.map((a) => a.fullName).join(', ') || 'Unassigned'
                         return (
                           <span
                             key={job.id}
@@ -198,7 +200,7 @@ export default function CalendarPage() {
                               color.bg,
                               color.text
                             )}
-                            title={`${job.title} — ${job.assignedTo}`}
+                            title={`${job.title} — ${assigneeNames}`}
                           >
                             <span className={cn('size-1.5 shrink-0 rounded-full', statusDot[job.status])} />
                             <span className="truncate">{job.title}</span>
@@ -261,7 +263,7 @@ export default function CalendarPage() {
               ) : (
                 <div className="space-y-2 p-1">
                   {selectedJobs.map((job) => {
-                    const color = assigneeColor(job.assignedTo)
+                    const color = assigneeColor(job.assignees[0]?.fullName ?? '')
                     return (
                       <div
                         key={job.id}
@@ -279,37 +281,52 @@ export default function CalendarPage() {
                         {job.scheduledTime && <p className="text-xs text-muted-foreground">{job.scheduledTime}</p>}
                         <div className="flex items-center justify-between gap-2">
                           <div onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
-                            <Select
-                              value={job.assignedToId ?? 'unassigned'}
-                              onValueChange={(v) => {
-                                if (v === 'unassigned') return updateAssignee(job.id, null, '')
-                                const member = team.find((m) => m.id === v)
-                                if (member) updateAssignee(job.id, member.id, member.fullName)
-                              }}
-                            >
-                              <SelectTrigger
-                                className={cn(
-                                  'h-auto w-auto gap-1 rounded-full border-none px-1.5 py-0.5 text-[11px] font-medium shadow-none',
-                                  color.bg,
-                                  color.text
-                                )}
-                              >
-                                <span className="flex items-center gap-1.5">
-                                  <span className="flex size-4 items-center justify-center rounded-full bg-white/60 text-[9px]">
-                                    {job.assignedTo ? initials(job.assignedTo) : '–'}
-                                  </span>
-                                  {job.assignedTo || 'Unassigned'}
-                                </span>
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="unassigned">Unassigned</SelectItem>
-                                {team.map((m) => (
-                                  <SelectItem key={m.id} value={m.id}>
-                                    {m.fullName}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  className={cn(
+                                    'flex items-center gap-1.5 rounded-full px-1.5 py-0.5 text-[11px] font-medium',
+                                    job.assignees.length > 0 ? [color.bg, color.text] : 'bg-secondary text-muted-foreground'
+                                  )}
+                                >
+                                  {job.assignees.length > 0 ? (
+                                    <span className="flex -space-x-1">
+                                      {job.assignees.map((a) => (
+                                        <span
+                                          key={a.id}
+                                          title={a.fullName}
+                                          className="flex size-4 items-center justify-center rounded-full border border-white/60 bg-white/60 text-[9px]"
+                                        >
+                                          {initials(a.fullName)}
+                                        </span>
+                                      ))}
+                                    </span>
+                                  ) : null}
+                                  {job.assignees.length > 0 ? job.assignees.map((a) => a.fullName).join(', ') : 'Unassigned'}
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="start">
+                                {team.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">No team members yet</p>}
+                                {team.map((m) => {
+                                  const checked = job.assignees.some((a) => a.id === m.id)
+                                  return (
+                                    <DropdownMenuCheckboxItem
+                                      key={m.id}
+                                      checked={checked}
+                                      onSelect={(e) => e.preventDefault()}
+                                      onCheckedChange={(next) => {
+                                        const ids = next
+                                          ? [...job.assignees.map((a) => a.id), m.id]
+                                          : job.assignees.filter((a) => a.id !== m.id).map((a) => a.id)
+                                        setAssignees(job.id, ids)
+                                      }}
+                                    >
+                                      {m.fullName}
+                                    </DropdownMenuCheckboxItem>
+                                  )
+                                })}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
                           <p className="text-xs font-medium">{formatCurrency(job.value)}</p>
                         </div>

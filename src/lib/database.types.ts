@@ -36,6 +36,30 @@ export type Database = {
         }
         Relationships: []
       }
+      business_settings: {
+        Row: {
+          id: boolean
+          business_name: string
+          abn: string
+          logo_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          id?: boolean
+          business_name?: string
+          abn?: string
+          logo_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: boolean
+          business_name?: string
+          abn?: string
+          logo_url?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           address: string
@@ -225,6 +249,39 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_field_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_assignees: {
+        Row: {
+          assigned_at: string
+          employee_id: string
+          job_id: string
+        }
+        Insert: {
+          assigned_at?: string
+          employee_id: string
+          job_id: string
+        }
+        Update: {
+          assigned_at?: string
+          employee_id?: string
+          job_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_assignees_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_assignees_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
             referencedColumns: ["id"]
           },
         ]
@@ -440,7 +497,6 @@ export type Database = {
       jobs: {
         Row: {
           address: string | null
-          assigned_to: string | null
           created_at: string
           customer_id: string
           due_date: string
@@ -456,7 +512,6 @@ export type Database = {
         }
         Insert: {
           address?: string | null
-          assigned_to?: string | null
           created_at?: string
           customer_id: string
           due_date: string
@@ -472,7 +527,6 @@ export type Database = {
         }
         Update: {
           address?: string | null
-          assigned_to?: string | null
           created_at?: string
           customer_id?: string
           due_date?: string
@@ -487,20 +541,6 @@ export type Database = {
           value?: number
         }
         Relationships: [
-          {
-            foreignKeyName: "jobs_assigned_to_fkey"
-            columns: ["assigned_to"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "jobs_assigned_to_fkey"
-            columns: ["assigned_to"]
-            isOneToOne: false
-            referencedRelation: "team_directory"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "jobs_customer_id_fkey"
             columns: ["customer_id"]
@@ -523,6 +563,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      notifications: {
+        Row: {
+          id: string
+          job_id: string
+          type: string
+          message: string
+          created_by: string | null
+          created_at: string
+          read_at: string | null
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          type: string
+          message: string
+          created_by?: string | null
+          created_at?: string
+          read_at?: string | null
+        }
+        Update: {
+          id?: string
+          job_id?: string
+          type?: string
+          message?: string
+          created_by?: string | null
+          created_at?: string
+          read_at?: string | null
+        }
+        Relationships: []
       }
       payments: {
         Row: {
@@ -729,7 +799,6 @@ export type Database = {
       jobs_field_view: {
         Row: {
           address: string | null
-          assigned_to: string | null
           customer_id: string | null
           due_date: string | null
           id: string | null
@@ -740,20 +809,6 @@ export type Database = {
           title: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "jobs_assigned_to_fkey"
-            columns: ["assigned_to"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "jobs_assigned_to_fkey"
-            columns: ["assigned_to"]
-            isOneToOne: false
-            referencedRelation: "team_directory"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "jobs_customer_id_fkey"
             columns: ["customer_id"]
@@ -780,7 +835,7 @@ export type Database = {
     }
     Functions: {
       employee_finish_job: {
-        Args: { p_job_id: string; p_note?: string }
+        Args: { p_job_id: string; p_note?: string; p_blocked?: boolean }
         Returns: {
           check_in: string
           check_out: string | null

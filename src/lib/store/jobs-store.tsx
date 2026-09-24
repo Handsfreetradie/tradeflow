@@ -13,8 +13,8 @@ export interface NewJobInput {
   pricingType?: PricingType
   lineItems?: LineItem[]
   quoteId?: string
-  /** Profile id of the employee to assign, or omit for unassigned. */
-  assignedTo?: string
+  /** Profile ids of the employees to assign, or omit/empty for unassigned. */
+  assigneeIds?: string[]
 }
 
 interface JobsContextValue {
@@ -24,7 +24,7 @@ interface JobsContextValue {
   addJob: (input: NewJobInput) => Promise<Job>
   updateJobStatus: (id: string, status: JobStatus) => Promise<void>
   updateDueDate: (id: string, dueDate: string) => Promise<void>
-  updateAssignee: (id: string, assignedToId: string | null, assignedToName: string) => Promise<void>
+  setAssignees: (id: string, employeeIds: string[]) => Promise<void>
   addNote: (id: string, text: string) => Promise<void>
   addCost: (id: string, cost: Omit<JobCost, 'id'>) => Promise<void>
   startJob: (id: string) => Promise<void>
@@ -47,12 +47,10 @@ type JobRow = {
   value: number
   due_date: string
   scheduled_time: string | null
-  assigned_to: string | null
   quote_id: string | null
   pricing_type: string
   photos: number
   customer: { name: string; address: string } | null
-  assignee: { full_name: string } | null
 }
 
 function assembleJob(
@@ -60,7 +58,8 @@ function assembleJob(
   lineItems: LineItem[],
   costs: JobCost[],
   notes: JobNote[],
-  checkIns: JobCheckIn[]
+  checkIns: JobCheckIn[],
+  assignees: { id: string; fullName: string }[]
 ): Job {
   return {
     id: row.id,
@@ -74,8 +73,7 @@ function assembleJob(
     dueDate: row.due_date,
     scheduledTime: row.scheduled_time ?? undefined,
     thumbnail: 'fitout',
-    assignedTo: row.assignee?.full_name ?? '',
-    assignedToId: row.assigned_to,
+    assignees,
     quoteId: row.quote_id ?? undefined,
     lineItems,
     pricingType: row.pricing_type as PricingType,
@@ -86,7 +84,20 @@ function assembleJob(
   }
 }
 
-const JOB_SELECT = '*, customer:customers(name,address), assignee:profiles(full_name)'
+const JOB_SELECT = '*, customer:customers(name,address)'
+
+async function fetchAssigneesByJob(jobIds: string[]): Promise<Map<string, { id: string; fullName: string }[]>> {
+  const map = new Map<string, { id: string; fullName: string }[]>()
+  if (jobIds.length === 0) return map
+  const { data } = await supabase.from('job_assignees').select('job_id, employee:profiles(id, full_name)').in('job_id', jobIds)
+  for (const row of (data ?? []) as Array<{ job_id: string; employee: { id: string; full_name: string } | null }>) {
+    if (!row.employee) continue
+    const arr = map.get(row.job_id) ?? []
+    arr.push({ id: row.employee.id, fullName: row.employee.full_name })
+    map.set(row.job_id, arr)
+  }
+  return map
+}
 
 async function fetchJobs(): Promise<Job[]> {
   const { data: jobRows, error } = await supabase.from('jobs').select(JOB_SELECT).order('due_date')
@@ -95,11 +106,12 @@ async function fetchJobs(): Promise<Job[]> {
   const jobIds = rows.map((r) => r.id)
   if (jobIds.length === 0) return []
 
-  const [{ data: lineItemRows }, { data: costRows }, { data: noteRows }, { data: checkinRows }] = await Promise.all([
+  const [{ data: lineItemRows }, { data: costRows }, { data: noteRows }, { data: checkinRows }, assigneesByJob] = await Promise.all([
     supabase.from('job_line_items').select('*').in('job_id', jobIds).order('sort_order'),
     supabase.from('job_costs').select('*').in('job_id', jobIds).order('date'),
     supabase.from('job_notes').select('*').in('job_id', jobIds).order('created_at'),
     supabase.from('job_checkins').select('*, employee:profiles(full_name)').in('job_id', jobIds).order('check_in'),
+    fetchAssigneesByJob(jobIds),
   ])
 
   const lineItemsByJob = new Map<string, LineItem[]>()
@@ -156,7 +168,8 @@ async function fetchJobs(): Promise<Job[]> {
       lineItemsByJob.get(row.id) ?? [],
       costsByJob.get(row.id) ?? [],
       notesByJob.get(row.id) ?? [],
-      checkinsByJob.get(row.id) ?? []
+      checkinsByJob.get(row.id) ?? [],
+      assigneesByJob.get(row.id) ?? []
     )
   )
 }
@@ -185,11 +198,12 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   const refreshJob = useCallback(async (id: string) => {
     const { data: row, error } = await supabase.from('jobs').select(JOB_SELECT).eq('id', id).single()
     if (error || !row) return
-    const [{ data: lineItemRows }, { data: costRows }, { data: noteRows }, { data: checkinRows }] = await Promise.all([
+    const [{ data: lineItemRows }, { data: costRows }, { data: noteRows }, { data: checkinRows }, assigneesByJob] = await Promise.all([
       supabase.from('job_line_items').select('*').eq('job_id', id).order('sort_order'),
       supabase.from('job_costs').select('*').eq('job_id', id).order('date'),
       supabase.from('job_notes').select('*').eq('job_id', id).order('created_at'),
       supabase.from('job_checkins').select('*, employee:profiles(full_name)').eq('job_id', id).order('check_in'),
+      fetchAssigneesByJob([id]),
     ])
     const lineItems = (lineItemRows ?? []).map((li) => ({ id: li.id, description: li.description, qty: li.qty, unitPrice: li.unit_price }))
     const costs = (costRows ?? []).map((c) => ({
@@ -224,7 +238,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       checkOut: ci.check_out,
       note: ci.note ?? undefined,
     }))
-    const updated = assembleJob(row as unknown as JobRow, lineItems, costs, notes, checkIns)
+    const updated = assembleJob(row as unknown as JobRow, lineItems, costs, notes, checkIns, assigneesByJob.get(id) ?? [])
     setJobs((prev) => prev.map((j) => (j.id === id ? updated : j)))
   }, [])
 
@@ -249,7 +263,6 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           pricing_type: pricingType,
           value,
           quote_id: input.quoteId ?? null,
-          assigned_to: input.assignedTo ?? null,
         })
         .select(JOB_SELECT)
         .single()
@@ -262,6 +275,15 @@ export function JobsProvider({ children }: { children: ReactNode }) {
         if (liError) throw new Error(liError.message)
       }
 
+      const assigneeIds = input.assigneeIds ?? []
+      let assignees: { id: string; fullName: string }[] = []
+      if (assigneeIds.length > 0) {
+        const { error: assigneeError } = await supabase.from('job_assignees').insert(assigneeIds.map((employee_id) => ({ job_id: jobRow.id, employee_id })))
+        if (assigneeError) throw new Error(assigneeError.message)
+        const map = await fetchAssigneesByJob([jobRow.id])
+        assignees = map.get(jobRow.id) ?? []
+      }
+
       await supabase.from('job_notes').insert({
         job_id: jobRow.id,
         type: 'status_change',
@@ -271,7 +293,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
 
       const created = assembleJob(jobRow as unknown as JobRow, items, [], [
         { id: 'temp', type: 'status_change', author: fullName ?? 'Owner', text: 'Job created and scheduled', timestamp: formatTimestamp(new Date().toISOString()) },
-      ], [])
+      ], [], assignees)
       setJobs((prev) => [created, ...prev])
       return created
     },
@@ -294,10 +316,16 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     setJobs((prev) => prev.map((j) => (j.id === id ? { ...j, dueDate } : j)))
   }, [])
 
-  const updateAssignee = useCallback(async (id: string, assignedToId: string | null, assignedToName: string) => {
-    const { error } = await supabase.from('jobs').update({ assigned_to: assignedToId }).eq('id', id)
-    if (error) throw new Error(error.message)
-    setJobs((prev) => prev.map((j) => (j.id === id ? { ...j, assignedToId, assignedTo: assignedToName } : j)))
+  const setAssignees = useCallback(async (id: string, employeeIds: string[]) => {
+    const { error: deleteError } = await supabase.from('job_assignees').delete().eq('job_id', id)
+    if (deleteError) throw new Error(deleteError.message)
+    if (employeeIds.length > 0) {
+      const { error: insertError } = await supabase.from('job_assignees').insert(employeeIds.map((employee_id) => ({ job_id: id, employee_id })))
+      if (insertError) throw new Error(insertError.message)
+    }
+    const map = await fetchAssigneesByJob([id])
+    const assignees = map.get(id) ?? []
+    setJobs((prev) => prev.map((j) => (j.id === id ? { ...j, assignees } : j)))
   }, [])
 
   const addNote = useCallback(
@@ -373,8 +401,8 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   )
 
   const value = useMemo(
-    () => ({ jobs, loading, getJob, addJob, updateJobStatus, updateDueDate, updateAssignee, addNote, addCost, startJob, finishJob }),
-    [jobs, loading, getJob, addJob, updateJobStatus, updateDueDate, updateAssignee, addNote, addCost, startJob, finishJob]
+    () => ({ jobs, loading, getJob, addJob, updateJobStatus, updateDueDate, setAssignees, addNote, addCost, startJob, finishJob }),
+    [jobs, loading, getJob, addJob, updateJobStatus, updateDueDate, setAssignees, addNote, addCost, startJob, finishJob]
   )
 
   return <JobsContext.Provider value={value}>{children}</JobsContext.Provider>

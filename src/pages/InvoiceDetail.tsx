@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowLeft, Send, DollarSign, Zap, Briefcase } from 'lucide-react'
+import { ArrowLeft, Send, DollarSign, Briefcase } from 'lucide-react'
+import { LogoMark } from '@/components/shared/Logo'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { StatusBadge } from '@/components/ui/badge'
@@ -17,7 +18,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { LineItemsTable } from '@/components/shared/LineItemsTable'
 import { useInvoicesStore, invoiceTotal } from '@/lib/store/invoices-store'
 import { useCustomersStore } from '@/lib/store/customers-store'
-import { businessName, type PaymentMethod } from '@/lib/demo-data'
+import { useBusinessSettings } from '@/lib/store/business-settings-store'
+import type { PaymentMethod } from '@/lib/demo-data'
 import { formatCurrency, formatDate } from '@/lib/utils'
 
 export default function InvoiceDetail() {
@@ -25,6 +27,7 @@ export default function InvoiceDetail() {
   const navigate = useNavigate()
   const { loading, getInvoice, markSent, recordPayment } = useInvoicesStore()
   const { getCustomer } = useCustomersStore()
+  const { settings: business } = useBusinessSettings()
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [amount, setAmount] = useState('')
   const [method, setMethod] = useState<PaymentMethod>('Bank Transfer')
@@ -88,12 +91,14 @@ export default function InvoiceDetail() {
         <CardContent className="space-y-8 p-8">
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="flex size-9 items-center justify-center rounded-lg bg-primary">
-                <Zap className="size-4 text-white" fill="currentColor" />
-              </div>
+              {business.logoUrl ? (
+                <img src={business.logoUrl} alt={business.businessName} className="size-9 rounded-lg object-contain" />
+              ) : (
+                <LogoMark className="size-9" />
+              )}
               <div>
-                <p className="text-sm font-semibold leading-none">{businessName}</p>
-                <p className="mt-1 text-xs text-muted-foreground">ABN 00 000 000 000</p>
+                <p className="text-sm font-semibold leading-none">{business.businessName}</p>
+                {business.abn && <p className="mt-1 text-xs text-muted-foreground">ABN {business.abn}</p>}
               </div>
             </div>
             <div className="text-right">

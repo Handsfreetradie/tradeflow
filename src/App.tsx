@@ -11,6 +11,8 @@ import { InvoicesProvider } from '@/lib/store/invoices-store'
 import { ExpensesProvider } from '@/lib/store/expenses-store'
 import { TeamProvider } from '@/lib/store/team-store'
 import { FieldJobsProvider } from '@/lib/store/field-jobs-store'
+import { BusinessSettingsProvider } from '@/lib/store/business-settings-store'
+import { NotificationsProvider } from '@/lib/store/notifications-store'
 import Login from '@/pages/auth/Login'
 import Setup from '@/pages/auth/Setup'
 import AcceptInvite from '@/pages/auth/AcceptInvite'
@@ -39,39 +41,43 @@ import FieldJobDetail from '@/pages/field/FieldJobDetail'
 
 function OwnerApp() {
   return (
-    <CustomersProvider>
-      <JobsProvider>
-        <QuotesProvider>
-          <InvoicesProvider>
-            <ExpensesProvider>
-              <Routes>
-                <Route element={<AppShell />}>
-                  <Route index element={<Dashboard />} />
-                  <Route path="jobs" element={<JobsList />} />
-                  <Route path="jobs/new" element={<JobNew />} />
-                  <Route path="jobs/:id" element={<JobDetail />} />
-                  <Route path="invoices" element={<InvoicesList />} />
-                  <Route path="invoices/new" element={<InvoiceNew />} />
-                  <Route path="invoices/:id" element={<InvoiceDetail />} />
-                  <Route path="quotes" element={<QuotesList />} />
-                  <Route path="quotes/new" element={<QuoteNew />} />
-                  <Route path="quotes/:id" element={<QuoteDetail />} />
-                  <Route path="customers" element={<CustomersList />} />
-                  <Route path="customers/new" element={<CustomerNew />} />
-                  <Route path="customers/:id" element={<CustomerDetail />} />
-                  <Route path="expenses" element={<ExpensesList />} />
-                  <Route path="expenses/new" element={<ExpenseNew />} />
-                  <Route path="products" element={<PlaceholderPage title="Products & Services" icon={Package} />} />
-                  <Route path="reports" element={<Reports />} />
-                  <Route path="calendar" element={<CalendarPage />} />
-                  <Route path="settings" element={<Settings />} />
-                </Route>
-              </Routes>
-            </ExpensesProvider>
-          </InvoicesProvider>
-        </QuotesProvider>
-      </JobsProvider>
-    </CustomersProvider>
+    <BusinessSettingsProvider>
+      <NotificationsProvider>
+      <CustomersProvider>
+        <JobsProvider>
+          <QuotesProvider>
+            <InvoicesProvider>
+              <ExpensesProvider>
+                <Routes>
+                  <Route element={<AppShell />}>
+                    <Route index element={<Dashboard />} />
+                    <Route path="jobs" element={<JobsList />} />
+                    <Route path="jobs/new" element={<JobNew />} />
+                    <Route path="jobs/:id" element={<JobDetail />} />
+                    <Route path="invoices" element={<InvoicesList />} />
+                    <Route path="invoices/new" element={<InvoiceNew />} />
+                    <Route path="invoices/:id" element={<InvoiceDetail />} />
+                    <Route path="quotes" element={<QuotesList />} />
+                    <Route path="quotes/new" element={<QuoteNew />} />
+                    <Route path="quotes/:id" element={<QuoteDetail />} />
+                    <Route path="customers" element={<CustomersList />} />
+                    <Route path="customers/new" element={<CustomerNew />} />
+                    <Route path="customers/:id" element={<CustomerDetail />} />
+                    <Route path="expenses" element={<ExpensesList />} />
+                    <Route path="expenses/new" element={<ExpenseNew />} />
+                    <Route path="products" element={<PlaceholderPage title="Products & Services" icon={Package} />} />
+                    <Route path="reports" element={<Reports />} />
+                    <Route path="calendar" element={<CalendarPage />} />
+                    <Route path="settings" element={<Settings />} />
+                  </Route>
+                </Routes>
+              </ExpensesProvider>
+            </InvoicesProvider>
+          </QuotesProvider>
+        </JobsProvider>
+      </CustomersProvider>
+      </NotificationsProvider>
+    </BusinessSettingsProvider>
   )
 }
 

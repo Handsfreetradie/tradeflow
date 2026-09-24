@@ -7,12 +7,12 @@ import { StatusBadge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ChevronDown } from 'lucide-react'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { LineItemsTable } from '@/components/shared/LineItemsTable'
 import { JobCostingCard } from '@/components/jobs/JobCostingCard'
 import { JobCheckInCard } from '@/components/jobs/JobCheckInCard'
@@ -29,7 +29,7 @@ const allStatuses: JobStatus[] = ['Scheduled', 'In Progress', 'Completed', 'On H
 export default function JobDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { loading, getJob, updateJobStatus, updateDueDate, updateAssignee, addNote } = useJobsStore()
+  const { loading, getJob, updateJobStatus, updateDueDate, setAssignees, addNote } = useJobsStore()
   const { getCustomer } = useCustomersStore()
   const { team } = useTeamStore()
   const [noteText, setNoteText] = useState('')
@@ -207,39 +207,55 @@ export default function JobDetail() {
               <CardTitle>Job Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-muted-foreground">Assigned to</span>
-                <Select
-                  value={job.assignedToId ?? 'unassigned'}
-                  onValueChange={(v) => {
-                    if (v === 'unassigned') return updateAssignee(job.id, null, '')
-                    const member = team.find((m) => m.id === v)
-                    if (member) updateAssignee(job.id, member.id, member.fullName)
-                  }}
-                >
-                  <SelectTrigger className="h-8 w-40 text-xs">
-                    <SelectValue>
-                      {job.assignedTo ? (
-                        <span className="flex items-center gap-1.5">
-                          <span className={cn('flex size-4 items-center justify-center rounded-full text-[9px] font-semibold', assigneeColor(job.assignedTo).bg, assigneeColor(job.assignedTo).text)}>
-                            {initials(job.assignedTo)}
-                          </span>
-                          {job.assignedTo}
+              <div className="flex items-center justify-between gap-3">
+                <span className="shrink-0 text-muted-foreground">Assigned to</span>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <button className="flex min-w-0 items-center gap-1 rounded-md px-1.5 py-1 hover:bg-secondary">
+                      {job.assignees.length > 0 ? (
+                        <span className="flex -space-x-1.5">
+                          {job.assignees.map((a) => (
+                            <span
+                              key={a.id}
+                              title={a.fullName}
+                              className={cn(
+                                'flex size-5 items-center justify-center rounded-full border-2 border-white text-[9px] font-semibold',
+                                assigneeColor(a.fullName).bg,
+                                assigneeColor(a.fullName).text
+                              )}
+                            >
+                              {initials(a.fullName)}
+                            </span>
+                          ))}
                         </span>
                       ) : (
                         <span className="text-muted-foreground">Unassigned</span>
                       )}
-                    </SelectValue>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="unassigned">Unassigned</SelectItem>
-                    {team.map((m) => (
-                      <SelectItem key={m.id} value={m.id}>
-                        {m.fullName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                      <ChevronDown className="size-3.5 shrink-0 text-muted-foreground" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {team.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">No team members yet</p>}
+                    {team.map((m) => {
+                      const checked = job.assignees.some((a) => a.id === m.id)
+                      return (
+                        <DropdownMenuCheckboxItem
+                          key={m.id}
+                          checked={checked}
+                          onSelect={(e) => e.preventDefault()}
+                          onCheckedChange={(next) => {
+                            const ids = next
+                              ? [...job.assignees.map((a) => a.id), m.id]
+                              : job.assignees.filter((a) => a.id !== m.id).map((a) => a.id)
+                            setAssignees(job.id, ids)
+                          }}
+                        >
+                          {m.fullName}
+                        </DropdownMenuCheckboxItem>
+                      )
+                    })}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               </div>
               <div className="flex items-center justify-between">
                 <span className="flex items-center gap-2 text-muted-foreground">

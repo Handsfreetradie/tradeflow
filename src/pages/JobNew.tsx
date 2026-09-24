@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, ChevronDown, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useJobsStore } from '@/lib/store/jobs-store'
 import { useCustomersStore } from '@/lib/store/customers-store'
 import { useTeamStore } from '@/lib/store/team-store'
@@ -30,7 +31,7 @@ export default function JobNew() {
   const [newCustomerName, setNewCustomerName] = useState('')
   const [address, setAddress] = useState(prefilledCustomer?.address ?? '')
   const [dueDate, setDueDate] = useState(searchParams.get('dueDate') ?? '')
-  const [assignedTo, setAssignedTo] = useState('unassigned')
+  const [assigneeIds, setAssigneeIds] = useState<string[]>([])
   const [pricingType, setPricingType] = useState<PricingType>('Time & Materials')
   const [lineItems, setLineItems] = useState<LineItem[]>([])
   const [submitting, setSubmitting] = useState(false)
@@ -64,7 +65,7 @@ export default function JobNew() {
         dueDate,
         pricingType,
         lineItems: lineItems.filter((li) => li.description.trim() && li.unitPrice > 0),
-        assignedTo: assignedTo === 'unassigned' ? undefined : assignedTo,
+        assigneeIds,
       })
       navigate(`/jobs/${job.id}`)
     } finally {
@@ -143,19 +144,36 @@ export default function JobNew() {
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Assign to (optional)</label>
-              <Select value={assignedTo} onValueChange={setAssignedTo}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="unassigned">Unassigned</SelectItem>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="secondary" className="mt-1 w-full justify-between font-normal">
+                    <span className="truncate">
+                      {assigneeIds.length === 0
+                        ? 'Unassigned'
+                        : team
+                            .filter((m) => assigneeIds.includes(m.id))
+                            .map((m) => m.fullName)
+                            .join(', ')}
+                    </span>
+                    <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]" align="start">
+                  {team.length === 0 && <p className="px-2 py-1.5 text-xs text-muted-foreground">No team members yet</p>}
                   {team.map((m) => (
-                    <SelectItem key={m.id} value={m.id}>
+                    <DropdownMenuCheckboxItem
+                      key={m.id}
+                      checked={assigneeIds.includes(m.id)}
+                      onSelect={(e) => e.preventDefault()}
+                      onCheckedChange={(next) =>
+                        setAssigneeIds((prev) => (next ? [...prev, m.id] : prev.filter((id) => id !== m.id)))
+                      }
+                    >
                       {m.fullName}
-                    </SelectItem>
+                    </DropdownMenuCheckboxItem>
                   ))}
-                </SelectContent>
-              </Select>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
 

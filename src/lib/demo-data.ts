@@ -75,10 +75,8 @@ export interface Job {
   /** Optional appointment window for the calendar/upcoming-jobs view, e.g. "9:00 AM – 11:00 AM". */
   scheduledTime?: string
   thumbnail: string
-  /** Display name of the assigned team member, '' if unassigned. */
-  assignedTo: string
-  /** Profile id of the assigned team member, null if unassigned. */
-  assignedToId: string | null
+  /** Everyone assigned to this job — can be more than one person. */
+  assignees: { id: string; fullName: string }[]
   quoteId?: string
   invoiceId?: string
   lineItems: LineItem[]

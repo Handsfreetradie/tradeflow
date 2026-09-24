@@ -1,8 +1,8 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { LogoMark } from '@/components/shared/Logo'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { createUser } from '@/lib/api/createUser'
 
@@ -38,9 +38,7 @@ export default function Setup() {
     <div className="flex min-h-screen items-center justify-center bg-background p-6">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-2 text-center">
-          <div className="flex size-11 items-center justify-center rounded-xl bg-primary text-primary-foreground">
-            <Zap className="size-6" />
-          </div>
+          <LogoMark className="size-11" />
           <h1 className="text-xl font-semibold tracking-tight">Create your owner account</h1>
           <p className="text-sm text-muted-foreground">One-time setup — this becomes your TradeFlow login.</p>
         </div>

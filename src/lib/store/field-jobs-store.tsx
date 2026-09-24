@@ -32,7 +32,7 @@ interface FieldJobsContextValue {
   getJob: (id: string) => FieldJob | undefined
   addNote: (id: string, text: string) => Promise<void>
   startJob: (id: string) => Promise<void>
-  finishJob: (id: string, note?: string) => Promise<void>
+  finishJob: (id: string, note?: string, blocked?: boolean) => Promise<void>
   refresh: () => void
 }
 
@@ -158,8 +158,8 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
   )
 
   const finishJob = useCallback(
-    async (id: string, note?: string) => {
-      const { error } = await supabase.rpc('employee_finish_job', { p_job_id: id, p_note: note ?? undefined })
+    async (id: string, note?: string, blocked?: boolean) => {
+      const { error } = await supabase.rpc('employee_finish_job', { p_job_id: id, p_note: note ?? undefined, p_blocked: blocked ?? false })
       if (error) throw new Error(error.message)
       refresh()
     },
