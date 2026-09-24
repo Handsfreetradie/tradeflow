@@ -1,0 +1,387 @@
+import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth/AuthProvider'
+import type { Job, JobCheckIn, JobCost, JobNote, JobStatus, LineItem, PricingType } from '@/lib/demo-data'
+
+export interface NewJobInput {
+  title: string
+  customerId: string
+  customer: string
+  address?: string
+  dueDate: string
+  scheduledTime?: string
+  pricingType?: PricingType
+  lineItems?: LineItem[]
+  quoteId?: string
+  /** Profile id of the employee to assign, or omit for unassigned. */
+  assignedTo?: string
+}
+
+interface JobsContextValue {
+  jobs: Job[]
+  loading: boolean
+  getJob: (id: string) => Job | undefined
+  addJob: (input: NewJobInput) => Promise<Job>
+  updateJobStatus: (id: string, status: JobStatus) => Promise<void>
+  updateDueDate: (id: string, dueDate: string) => Promise<void>
+  updateAssignee: (id: string, assignedToId: string | null, assignedToName: string) => Promise<void>
+  addNote: (id: string, text: string) => Promise<void>
+  addCost: (id: string, cost: Omit<JobCost, 'id'>) => Promise<void>
+  startJob: (id: string) => Promise<void>
+  finishJob: (id: string, note?: string) => Promise<void>
+}
+
+const JobsContext = createContext<JobsContextValue | null>(null)
+
+function formatTimestamp(iso: string) {
+  return new Intl.DateTimeFormat('en-AU', { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }).format(new Date(iso))
+}
+
+type JobRow = {
+  id: string
+  number: string
+  title: string
+  customer_id: string
+  address: string | null
+  status: string
+  value: number
+  due_date: string
+  scheduled_time: string | null
+  assigned_to: string | null
+  quote_id: string | null
+  pricing_type: string
+  photos: number
+  customer: { name: string; address: string } | null
+  assignee: { full_name: string } | null
+}
+
+function assembleJob(
+  row: JobRow,
+  lineItems: LineItem[],
+  costs: JobCost[],
+  notes: JobNote[],
+  checkIns: JobCheckIn[]
+): Job {
+  return {
+    id: row.id,
+    number: row.number,
+    title: row.title,
+    customerId: row.customer_id,
+    customer: row.customer?.name ?? '',
+    address: row.address ?? row.customer?.address ?? '',
+    status: row.status as JobStatus,
+    value: row.value,
+    dueDate: row.due_date,
+    scheduledTime: row.scheduled_time ?? undefined,
+    thumbnail: 'fitout',
+    assignedTo: row.assignee?.full_name ?? '',
+    assignedToId: row.assigned_to,
+    quoteId: row.quote_id ?? undefined,
+    lineItems,
+    pricingType: row.pricing_type as PricingType,
+    costs,
+    photos: row.photos,
+    notes,
+    checkIns,
+  }
+}
+
+const JOB_SELECT = '*, customer:customers(name,address), assignee:profiles(full_name)'
+
+async function fetchJobs(): Promise<Job[]> {
+  const { data: jobRows, error } = await supabase.from('jobs').select(JOB_SELECT).order('due_date')
+  if (error) throw new Error(error.message)
+  const rows = (jobRows ?? []) as unknown as JobRow[]
+  const jobIds = rows.map((r) => r.id)
+  if (jobIds.length === 0) return []
+
+  const [{ data: lineItemRows }, { data: costRows }, { data: noteRows }, { data: checkinRows }] = await Promise.all([
+    supabase.from('job_line_items').select('*').in('job_id', jobIds).order('sort_order'),
+    supabase.from('job_costs').select('*').in('job_id', jobIds).order('date'),
+    supabase.from('job_notes').select('*').in('job_id', jobIds).order('created_at'),
+    supabase.from('job_checkins').select('*, employee:profiles(full_name)').in('job_id', jobIds).order('check_in'),
+  ])
+
+  const lineItemsByJob = new Map<string, LineItem[]>()
+  for (const li of lineItemRows ?? []) {
+    const arr = lineItemsByJob.get(li.job_id) ?? []
+    arr.push({ id: li.id, description: li.description, qty: li.qty, unitPrice: li.unit_price })
+    lineItemsByJob.set(li.job_id, arr)
+  }
+  const costsByJob = new Map<string, JobCost[]>()
+  for (const c of costRows ?? []) {
+    const arr = costsByJob.get(c.job_id) ?? []
+    arr.push({
+      id: c.id,
+      description: c.description,
+      category: c.category as JobCost['category'],
+      amount: c.amount,
+      date: c.date,
+      supplier: c.supplier ?? undefined,
+      poNumber: c.po_number ?? undefined,
+    })
+    costsByJob.set(c.job_id, arr)
+  }
+  const notesByJob = new Map<string, JobNote[]>()
+  for (const n of noteRows ?? []) {
+    const arr = notesByJob.get(n.job_id) ?? []
+    arr.push({ id: n.id, type: n.type as JobNote['type'], author: n.author_name, text: n.text, timestamp: formatTimestamp(n.created_at) })
+    notesByJob.set(n.job_id, arr)
+  }
+  const checkinsByJob = new Map<string, JobCheckIn[]>()
+  for (const ci of (checkinRows ?? []) as Array<{
+    id: string
+    job_id: string
+    employee_id: string
+    check_in: string
+    check_out: string | null
+    note: string | null
+    employee: { full_name: string } | null
+  }>) {
+    const arr = checkinsByJob.get(ci.job_id) ?? []
+    arr.push({
+      id: ci.id,
+      employeeId: ci.employee_id,
+      employeeName: ci.employee?.full_name ?? 'Unknown',
+      checkIn: ci.check_in,
+      checkOut: ci.check_out,
+      note: ci.note ?? undefined,
+    })
+    checkinsByJob.set(ci.job_id, arr)
+  }
+
+  return rows.map((row) =>
+    assembleJob(
+      row,
+      lineItemsByJob.get(row.id) ?? [],
+      costsByJob.get(row.id) ?? [],
+      notesByJob.get(row.id) ?? [],
+      checkinsByJob.get(row.id) ?? []
+    )
+  )
+}
+
+export function JobsProvider({ children }: { children: ReactNode }) {
+  const { fullName } = useAuth()
+  const [jobs, setJobs] = useState<Job[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchJobs()
+      .then((data) => {
+        if (!cancelled) setJobs(data)
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const getJob = useCallback((id: string) => jobs.find((j) => j.id === id), [jobs])
+
+  const refreshJob = useCallback(async (id: string) => {
+    const { data: row, error } = await supabase.from('jobs').select(JOB_SELECT).eq('id', id).single()
+    if (error || !row) return
+    const [{ data: lineItemRows }, { data: costRows }, { data: noteRows }, { data: checkinRows }] = await Promise.all([
+      supabase.from('job_line_items').select('*').eq('job_id', id).order('sort_order'),
+      supabase.from('job_costs').select('*').eq('job_id', id).order('date'),
+      supabase.from('job_notes').select('*').eq('job_id', id).order('created_at'),
+      supabase.from('job_checkins').select('*, employee:profiles(full_name)').eq('job_id', id).order('check_in'),
+    ])
+    const lineItems = (lineItemRows ?? []).map((li) => ({ id: li.id, description: li.description, qty: li.qty, unitPrice: li.unit_price }))
+    const costs = (costRows ?? []).map((c) => ({
+      id: c.id,
+      description: c.description,
+      category: c.category as JobCost['category'],
+      amount: c.amount,
+      date: c.date,
+      supplier: c.supplier ?? undefined,
+      poNumber: c.po_number ?? undefined,
+    }))
+    const notes = (noteRows ?? []).map((n) => ({
+      id: n.id,
+      type: n.type as JobNote['type'],
+      author: n.author_name,
+      text: n.text,
+      timestamp: formatTimestamp(n.created_at),
+    }))
+    const checkIns = ((checkinRows ?? []) as Array<{
+      id: string
+      job_id: string
+      employee_id: string
+      check_in: string
+      check_out: string | null
+      note: string | null
+      employee: { full_name: string } | null
+    }>).map((ci) => ({
+      id: ci.id,
+      employeeId: ci.employee_id,
+      employeeName: ci.employee?.full_name ?? 'Unknown',
+      checkIn: ci.check_in,
+      checkOut: ci.check_out,
+      note: ci.note ?? undefined,
+    }))
+    const updated = assembleJob(row as unknown as JobRow, lineItems, costs, notes, checkIns)
+    setJobs((prev) => prev.map((j) => (j.id === id ? updated : j)))
+  }, [])
+
+  const addJob = useCallback(
+    async (input: NewJobInput) => {
+      const { data: number, error: numberError } = await supabase.rpc('next_job_number')
+      if (numberError || !number) throw new Error(numberError?.message ?? 'Failed to allocate job number')
+
+      const items = input.lineItems ?? []
+      const value = items.reduce((sum, li) => sum + li.qty * li.unitPrice, 0)
+      const pricingType: PricingType = input.pricingType ?? (items.length > 0 ? 'Fixed Price' : 'Time & Materials')
+
+      const { data: jobRow, error } = await supabase
+        .from('jobs')
+        .insert({
+          number,
+          title: input.title,
+          customer_id: input.customerId,
+          address: input.address ?? '',
+          due_date: input.dueDate,
+          scheduled_time: input.scheduledTime ?? null,
+          pricing_type: pricingType,
+          value,
+          quote_id: input.quoteId ?? null,
+          assigned_to: input.assignedTo ?? null,
+        })
+        .select(JOB_SELECT)
+        .single()
+      if (error || !jobRow) throw new Error(error?.message ?? 'Failed to create job')
+
+      if (items.length > 0) {
+        const { error: liError } = await supabase.from('job_line_items').insert(
+          items.map((li, i) => ({ job_id: jobRow.id, description: li.description, qty: li.qty, unit_price: li.unitPrice, sort_order: i }))
+        )
+        if (liError) throw new Error(liError.message)
+      }
+
+      await supabase.from('job_notes').insert({
+        job_id: jobRow.id,
+        type: 'status_change',
+        author_name: fullName ?? 'Owner',
+        text: 'Job created and scheduled',
+      })
+
+      const created = assembleJob(jobRow as unknown as JobRow, items, [], [
+        { id: 'temp', type: 'status_change', author: fullName ?? 'Owner', text: 'Job created and scheduled', timestamp: formatTimestamp(new Date().toISOString()) },
+      ], [])
+      setJobs((prev) => [created, ...prev])
+      return created
+    },
+    [fullName]
+  )
+
+  const updateJobStatus = useCallback(
+    async (id: string, status: JobStatus) => {
+      const { error } = await supabase.from('jobs').update({ status }).eq('id', id)
+      if (error) throw new Error(error.message)
+      await supabase.from('job_notes').insert({ job_id: id, type: 'status_change', author_name: fullName ?? 'Owner', text: `Moved to ${status}` })
+      await refreshJob(id)
+    },
+    [fullName, refreshJob]
+  )
+
+  const updateDueDate = useCallback(async (id: string, dueDate: string) => {
+    const { error } = await supabase.from('jobs').update({ due_date: dueDate }).eq('id', id)
+    if (error) throw new Error(error.message)
+    setJobs((prev) => prev.map((j) => (j.id === id ? { ...j, dueDate } : j)))
+  }, [])
+
+  const updateAssignee = useCallback(async (id: string, assignedToId: string | null, assignedToName: string) => {
+    const { error } = await supabase.from('jobs').update({ assigned_to: assignedToId }).eq('id', id)
+    if (error) throw new Error(error.message)
+    setJobs((prev) => prev.map((j) => (j.id === id ? { ...j, assignedToId, assignedTo: assignedToName } : j)))
+  }, [])
+
+  const addNote = useCallback(
+    async (id: string, text: string) => {
+      if (!text.trim()) return
+      const { error } = await supabase.from('job_notes').insert({ job_id: id, type: 'note', author_name: fullName ?? 'Owner', text })
+      if (error) throw new Error(error.message)
+      await refreshJob(id)
+    },
+    [fullName, refreshJob]
+  )
+
+  const addCost = useCallback(
+    async (id: string, cost: Omit<JobCost, 'id'>) => {
+      const { error } = await supabase.from('job_costs').insert({
+        job_id: id,
+        description: cost.description,
+        category: cost.category,
+        amount: cost.amount,
+        date: cost.date,
+        supplier: cost.supplier ?? null,
+        po_number: cost.poNumber ?? null,
+      })
+      if (error) throw new Error(error.message)
+      await refreshJob(id)
+    },
+    [refreshJob]
+  )
+
+  const startJob = useCallback(
+    async (id: string) => {
+      const { data: session } = await supabase.auth.getSession()
+      const userId = session.session?.user.id
+      if (!userId) throw new Error('Not signed in')
+      const { error: ciError } = await supabase.from('job_checkins').insert({ job_id: id, employee_id: userId, check_in: new Date().toISOString() })
+      if (ciError) throw new Error(ciError.message)
+      const job = jobs.find((j) => j.id === id)
+      const startingStatus = job?.status === 'Scheduled'
+      if (startingStatus) await supabase.from('jobs').update({ status: 'In Progress' }).eq('id', id)
+      await supabase.from('job_notes').insert({
+        job_id: id,
+        type: 'status_change',
+        author_name: fullName ?? 'Employee',
+        text: startingStatus ? `${fullName} started the job — moved to In Progress` : `${fullName} started the job`,
+      })
+      await refreshJob(id)
+    },
+    [jobs, fullName, refreshJob]
+  )
+
+  const finishJob = useCallback(
+    async (id: string, note?: string) => {
+      const { data: session } = await supabase.auth.getSession()
+      const userId = session.session?.user.id
+      if (!userId) throw new Error('Not signed in')
+      const job = jobs.find((j) => j.id === id)
+      const openCheckIn = [...(job?.checkIns ?? [])].reverse().find((c) => c.employeeId === userId && c.checkOut === null)
+      if (!openCheckIn) throw new Error('No open check-in to finish')
+      const { error } = await supabase
+        .from('job_checkins')
+        .update({ check_out: new Date().toISOString(), note: note ?? null })
+        .eq('id', openCheckIn.id)
+      if (error) throw new Error(error.message)
+      await supabase.from('job_notes').insert({
+        job_id: id,
+        type: 'note',
+        author_name: fullName ?? 'Employee',
+        text: note ? `${fullName} finished on site: ${note}` : `${fullName} finished on site`,
+      })
+      await refreshJob(id)
+    },
+    [jobs, fullName, refreshJob]
+  )
+
+  const value = useMemo(
+    () => ({ jobs, loading, getJob, addJob, updateJobStatus, updateDueDate, updateAssignee, addNote, addCost, startJob, finishJob }),
+    [jobs, loading, getJob, addJob, updateJobStatus, updateDueDate, updateAssignee, addNote, addCost, startJob, finishJob]
+  )
+
+  return <JobsContext.Provider value={value}>{children}</JobsContext.Provider>
+}
+
+export function useJobsStore() {
+  const ctx = useContext(JobsContext)
+  if (!ctx) throw new Error('useJobsStore must be used within JobsProvider')
+  return ctx
+}
