@@ -18,6 +18,7 @@ import { JobCostingCard } from '@/components/jobs/JobCostingCard'
 import { JobPhotosCard } from '@/components/jobs/JobPhotosCard'
 import { JobCheckInCard } from '@/components/jobs/JobCheckInCard'
 import { JobWorkflow } from '@/components/jobs/JobWorkflow'
+import { ProgressClaimsCard } from '@/components/jobs/ProgressClaimsCard'
 import { useJobsStore } from '@/lib/store/jobs-store'
 import { useCustomersStore } from '@/lib/store/customers-store'
 import { useTeamStore } from '@/lib/store/team-store'
@@ -94,6 +95,8 @@ export default function JobDetail() {
           </Card>
 
           <JobCostingCard job={job} />
+
+          <ProgressClaimsCard job={job} />
 
           <JobPhotosCard jobId={job.id} />
 

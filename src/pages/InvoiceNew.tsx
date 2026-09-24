@@ -47,7 +47,7 @@ function labourLineItemsFromJob(job: Job, team: { id: string; fullName: string; 
 export default function InvoiceNew() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { addInvoice, markSent } = useInvoicesStore()
+  const { invoices, addInvoice, markSent } = useInvoicesStore()
   const { customers } = useCustomersStore()
   const { getJob } = useJobsStore()
   const { team } = useTeamStore()
@@ -61,6 +61,11 @@ export default function InvoiceNew() {
   const [paymentTerms, setPaymentTerms] = useState('Payment due within 14 days.')
   const [lineItems, setLineItems] = useState<LineItem[]>(() => {
     if (!linkedJob) return [newLineItem()]
+    // Only auto-fill scope/labour on the *first* invoice for a job — a second invoice is a
+    // progress claim or follow-up bill, and re-seeding the same scope items or re-summing
+    // every check-in session ever logged would double-bill what an earlier invoice already covered.
+    const isFirstInvoiceForJob = !invoices.some((i) => i.jobId === linkedJob.id)
+    if (!isFirstInvoiceForJob) return [newLineItem()]
     const { items: labourItems, missingRateFor } = labourLineItemsFromJob(linkedJob, team)
     if (missingRateFor.length > 0) {
       toast.warning(`No hourly rate set for ${missingRateFor.join(', ')} — set it in Settings so labour bills correctly.`)
@@ -68,9 +73,24 @@ export default function InvoiceNew() {
     return [...linkedJob.lineItems.map((li) => ({ ...li })), ...labourItems]
   })
 
+  const [claimPercent, setClaimPercent] = useState('')
+
   const customer = customers.find((c) => c.id === customerId)
   const subtotal = lineItems.reduce((sum, li) => sum + li.qty * li.unitPrice, 0)
   const total = includeGst ? subtotal * 1.1 : subtotal
+
+  const isProgressClaimEligible = !!linkedJob && linkedJob.pricingType === 'Fixed Price' && linkedJob.value > 0
+  const priorClaims = linkedJob ? invoices.filter((i) => i.jobId === linkedJob.id).reduce((sum, i) => sum + i.amount, 0) : 0
+  const remainingToClaim = linkedJob ? Math.max(linkedJob.value - priorClaims, 0) : 0
+  const claimAmount = linkedJob ? Math.round(linkedJob.value * ((Number(claimPercent) || 0) / 100) * 100) / 100 : 0
+
+  const applyProgressClaim = () => {
+    if (!linkedJob || !claimAmount) return
+    setLineItems((prev) => [
+      ...prev.filter((li) => li.id !== 'progress-claim'),
+      { id: 'progress-claim', description: `Progress claim — ${claimPercent}% of ${linkedJob.number}`, qty: 1, unitPrice: claimAmount },
+    ])
+  }
 
   const updateLine = (id: string, patch: Partial<LineItem>) =>
     setLineItems((prev) => prev.map((li) => (li.id === id ? { ...li, ...patch } : li)))
@@ -148,6 +168,48 @@ export default function InvoiceNew() {
           </div>
         </CardContent>
       </Card>
+
+      {isProgressClaimEligible && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Progress claim</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="grid grid-cols-3 gap-3 text-sm">
+              <div>
+                <p className="text-xs text-muted-foreground">Contract value</p>
+                <p className="mt-0.5 font-semibold">{formatCurrency(linkedJob!.value)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Already claimed</p>
+                <p className="mt-0.5 font-semibold">{formatCurrency(priorClaims)}</p>
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Remaining</p>
+                <p className="mt-0.5 font-semibold">{formatCurrency(remainingToClaim)}</p>
+              </div>
+            </div>
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
+                <label className="text-xs font-medium text-muted-foreground">Claim this invoice (%)</label>
+                <Input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={claimPercent}
+                  onChange={(e) => setClaimPercent(e.target.value)}
+                  placeholder="e.g. 40"
+                  className="mt-1"
+                />
+              </div>
+              <p className="pb-2.5 text-sm text-muted-foreground">= {formatCurrency(claimAmount)}</p>
+              <Button variant="secondary" onClick={applyProgressClaim} disabled={!claimAmount}>
+                Add as line item
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
