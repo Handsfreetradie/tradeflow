@@ -51,9 +51,9 @@ export default function QuoteNew() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
-      <Button variant="ghost" size="sm" onClick={() => navigate('/quotes')} className="-ml-2">
+      <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="-ml-2">
         <ArrowLeft />
-        Back to quotes
+        Back
       </Button>
 
       <div>

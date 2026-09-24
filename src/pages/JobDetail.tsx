@@ -22,14 +22,14 @@ import { useCustomersStore } from '@/lib/store/customers-store'
 import { useTeamStore } from '@/lib/store/team-store'
 import type { JobStatus } from '@/lib/demo-data'
 import { assigneeColor, initials } from '@/lib/assigneeColors'
-import { cn, formatCurrency, formatDate } from '@/lib/utils'
+import { cn, formatCurrency } from '@/lib/utils'
 
 const allStatuses: JobStatus[] = ['Scheduled', 'In Progress', 'Completed', 'On Hold', 'Cancelled']
 
 export default function JobDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { loading, getJob, updateJobStatus, updateAssignee, addNote } = useJobsStore()
+  const { loading, getJob, updateJobStatus, updateDueDate, updateAssignee, addNote } = useJobsStore()
   const { getCustomer } = useCustomersStore()
   const { team } = useTeamStore()
   const [noteText, setNoteText] = useState('')
@@ -42,9 +42,9 @@ export default function JobDetail() {
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6">
-      <Button variant="ghost" size="sm" onClick={() => navigate('/jobs')} className="-ml-2">
+      <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="-ml-2">
         <ArrowLeft />
-        Back to jobs
+        Back
       </Button>
 
       <div className="flex flex-wrap items-start justify-between gap-4">
@@ -246,7 +246,12 @@ export default function JobDetail() {
                   <CalendarDays className="size-3.5" />
                   Due date
                 </span>
-                <span className="font-medium">{formatDate(job.dueDate, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                <input
+                  type="date"
+                  value={job.dueDate}
+                  onChange={(e) => e.target.value && updateDueDate(job.id, e.target.value)}
+                  className="rounded-md border border-transparent bg-transparent px-1.5 py-0.5 text-right text-sm font-medium hover:border-input hover:bg-white focus:outline-none focus:ring-2 focus:ring-ring"
+                />
               </div>
               {job.scheduledTime && (
                 <div className="flex items-center justify-between">

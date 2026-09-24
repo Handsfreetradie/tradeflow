@@ -13,6 +13,7 @@ import { TeamProvider } from '@/lib/store/team-store'
 import { FieldJobsProvider } from '@/lib/store/field-jobs-store'
 import Login from '@/pages/auth/Login'
 import Setup from '@/pages/auth/Setup'
+import AcceptInvite from '@/pages/auth/AcceptInvite'
 import Dashboard from '@/pages/Dashboard'
 import JobsList from '@/pages/JobsList'
 import JobDetail from '@/pages/JobDetail'
@@ -95,6 +96,7 @@ function App() {
         <Routes>
           <Route path="/auth/login" element={<Login />} />
           <Route path="/auth/setup" element={<Setup />} />
+          <Route path="/auth/accept-invite" element={<AcceptInvite />} />
           <Route
             path="/field/*"
             element={

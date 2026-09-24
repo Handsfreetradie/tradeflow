@@ -31,7 +31,7 @@ function startOfMonthGrid(monthDate: Date) {
 
 export default function CalendarPage() {
   const navigate = useNavigate()
-  const { jobs, updateDueDate } = useJobsStore()
+  const { jobs, updateDueDate, updateAssignee } = useJobsStore()
   const { team } = useTeamStore()
   const teamMembers = team.map((m) => m.fullName)
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1))
@@ -277,13 +277,40 @@ export default function CalendarPage() {
                         </div>
                         <p className="text-xs text-muted-foreground">{job.customer}</p>
                         {job.scheduledTime && <p className="text-xs text-muted-foreground">{job.scheduledTime}</p>}
-                        <div className="flex items-center justify-between">
-                          <span className={cn('flex items-center gap-1.5 rounded-full px-1.5 py-0.5 text-[11px] font-medium', color.bg, color.text)}>
-                            <span className="flex size-4 items-center justify-center rounded-full bg-white/60 text-[9px]">
-                              {initials(job.assignedTo)}
-                            </span>
-                            {job.assignedTo}
-                          </span>
+                        <div className="flex items-center justify-between gap-2">
+                          <div onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+                            <Select
+                              value={job.assignedToId ?? 'unassigned'}
+                              onValueChange={(v) => {
+                                if (v === 'unassigned') return updateAssignee(job.id, null, '')
+                                const member = team.find((m) => m.id === v)
+                                if (member) updateAssignee(job.id, member.id, member.fullName)
+                              }}
+                            >
+                              <SelectTrigger
+                                className={cn(
+                                  'h-auto w-auto gap-1 rounded-full border-none px-1.5 py-0.5 text-[11px] font-medium shadow-none',
+                                  color.bg,
+                                  color.text
+                                )}
+                              >
+                                <span className="flex items-center gap-1.5">
+                                  <span className="flex size-4 items-center justify-center rounded-full bg-white/60 text-[9px]">
+                                    {job.assignedTo ? initials(job.assignedTo) : '–'}
+                                  </span>
+                                  {job.assignedTo || 'Unassigned'}
+                                </span>
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="unassigned">Unassigned</SelectItem>
+                                {team.map((m) => (
+                                  <SelectItem key={m.id} value={m.id}>
+                                    {m.fullName}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                           <p className="text-xs font-medium">{formatCurrency(job.value)}</p>
                         </div>
                       </div>

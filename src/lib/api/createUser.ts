@@ -3,16 +3,25 @@ import { supabase } from '@/lib/supabase'
 const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-user`
 const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
 
-interface CreateUserInput {
+interface CreateOwnerInput {
   email: string
   password: string
   full_name: string
-  role: 'owner' | 'employee'
+  role: 'owner'
 }
 
-/** Calls the `create-user` edge function. Owner bootstrap needs no session; employee
- * creation is authorized server-side by the caller's own JWT (must be role='owner'). */
-export async function createUser(input: CreateUserInput): Promise<{ error: string | null }> {
+interface InviteEmployeeInput {
+  email: string
+  full_name: string
+  role: 'employee'
+  redirectTo: string
+}
+
+/** Calls the `create-user` edge function. Owner bootstrap sets their own password directly
+ * and needs no session. Employee invites send a real email (the employee sets their own
+ * password by clicking the link) and are authorized server-side by the caller's own JWT
+ * (must be role='owner'). */
+export async function createUser(input: CreateOwnerInput | InviteEmployeeInput): Promise<{ error: string | null }> {
   const { data: sessionData } = await supabase.auth.getSession()
   const accessToken = sessionData.session?.access_token
 

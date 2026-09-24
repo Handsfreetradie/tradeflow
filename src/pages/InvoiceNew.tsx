@@ -63,9 +63,9 @@ export default function InvoiceNew() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
-      <Button variant="ghost" size="sm" onClick={() => navigate('/invoices')} className="-ml-2">
+      <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="-ml-2">
         <ArrowLeft />
-        Back to invoices
+        Back
       </Button>
 
       <div>

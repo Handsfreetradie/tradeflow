@@ -32,9 +32,9 @@ export default function CustomerNew() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 p-6">
-      <Button variant="ghost" size="sm" onClick={() => navigate('/customers')} className="-ml-2">
+      <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="-ml-2">
         <ArrowLeft />
-        Back to customers
+        Back
       </Button>
 
       <div>

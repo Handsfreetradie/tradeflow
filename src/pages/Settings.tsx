@@ -14,24 +14,27 @@ export default function Settings() {
   const [open, setOpen] = useState(false)
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const submit = async () => {
-    if (!fullName.trim() || !email.trim() || password.length < 8) return
+    if (!fullName.trim() || !email.trim()) return
     setSubmitting(true)
     setError(null)
-    const { error } = await createUser({ email: email.trim(), password, full_name: fullName.trim(), role: 'employee' })
+    const { error } = await createUser({
+      email: email.trim(),
+      full_name: fullName.trim(),
+      role: 'employee',
+      redirectTo: `${window.location.origin}/auth/accept-invite`,
+    })
     setSubmitting(false)
     if (error) {
       setError(error)
       return
     }
-    toast.success(`${fullName.trim()} can now sign in`)
+    toast.success(`Invite sent to ${email.trim()}`)
     setFullName('')
     setEmail('')
-    setPassword('')
     setOpen(false)
     refresh()
   }
@@ -89,11 +92,7 @@ export default function Settings() {
             <div>
               <label className="text-xs font-medium text-muted-foreground">Email</label>
               <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1" />
-            </div>
-            <div>
-              <label className="text-xs font-medium text-muted-foreground">Password</label>
-              <Input type="password" minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className="mt-1" />
-              <p className="mt-1 text-xs text-muted-foreground">At least 8 characters. Share this with them directly.</p>
+              <p className="mt-1 text-xs text-muted-foreground">They'll get an email with a link to set their own password.</p>
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
@@ -102,7 +101,7 @@ export default function Settings() {
               Cancel
             </Button>
             <Button disabled={submitting} onClick={submit}>
-              {submitting ? 'Creating…' : 'Create login'}
+              {submitting ? 'Sending…' : 'Send invite'}
             </Button>
           </DialogFooter>
         </DialogContent>

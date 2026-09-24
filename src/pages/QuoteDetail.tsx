@@ -46,9 +46,9 @@ export default function QuoteDetail() {
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button variant="ghost" size="sm" onClick={() => navigate('/quotes')} className="-ml-2">
+        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="-ml-2">
           <ArrowLeft />
-          Back to quotes
+          Back
         </Button>
 
         <div className="flex flex-wrap items-center gap-2">
