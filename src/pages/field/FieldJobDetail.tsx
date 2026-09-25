@@ -193,7 +193,7 @@ export default function FieldJobDetail() {
       )}
 
       <div className="mx-5">
-        <JobPhotosCard jobId={job.id} />
+        <JobPhotosCard jobId={job.id} offlineCapable />
       </div>
 
       <div className="mx-5 space-y-2">

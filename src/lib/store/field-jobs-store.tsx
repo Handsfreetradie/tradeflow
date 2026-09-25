@@ -1,6 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth/AuthProvider'
+import { useOnline } from '@/lib/offline/online'
+import { getCachedJobs, setCachedJobs } from '@/lib/offline/db'
+import { enqueue, usePendingSyncCount } from '@/lib/offline/queue'
+import { flushQueue } from '@/lib/offline/flush'
 import type { JobCheckIn, JobNote, JobStatus } from '@/lib/demo-data'
 
 export interface FieldLineItem {
@@ -38,6 +42,8 @@ export interface FieldJob {
 interface FieldJobsContextValue {
   jobs: FieldJob[]
   loading: boolean
+  offline: boolean
+  pendingSyncCount: number
   getJob: (id: string) => FieldJob | undefined
   addNote: (id: string, text: string) => Promise<void>
   startJob: (id: string) => Promise<void>
@@ -53,107 +59,135 @@ function formatTimestamp(iso: string) {
 
 export function FieldJobsProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth()
+  const online = useOnline()
+  const pendingSyncCount = usePendingSyncCount()
   const [jobs, setJobs] = useState<FieldJob[]>([])
   const [loading, setLoading] = useState(true)
   const [tick, setTick] = useState(0)
 
   const load = useCallback(async () => {
     setLoading(true)
-    const { data: jobRows, error } = await supabase.from('jobs_field_view').select('*').order('due_date')
-    if (error || !jobRows) {
-      setJobs([])
-      setLoading(false)
-      return
-    }
-    const jobIds = jobRows.map((j) => j.id).filter((id): id is string => !!id)
-    if (jobIds.length === 0) {
-      setJobs([])
-      setLoading(false)
-      return
-    }
+    try {
+      if (!navigator.onLine) throw new Error('offline')
 
-    const [{ data: customerRows }, { data: lineItemRows }, { data: noteRows }, { data: checkinRows }, { data: crewRows }] = await Promise.all([
-      supabase.from('customers_field_view').select('*'),
-      supabase.from('job_line_items_field_view').select('*').in('job_id', jobIds).order('sort_order'),
-      supabase.from('job_notes').select('*').in('job_id', jobIds).order('created_at'),
-      supabase.from('job_checkins').select('*').in('job_id', jobIds).order('check_in'),
-      supabase.rpc('get_job_crew', { p_job_ids: jobIds }),
-    ])
-
-    const crewByJob = new Map<string, FieldCrewMember[]>()
-    const crewNameById = new Map<string, string>()
-    for (const c of crewRows ?? []) {
-      crewNameById.set(c.employee_id, c.full_name)
-      const arr = crewByJob.get(c.job_id) ?? []
-      arr.push({ employeeId: c.employee_id, fullName: c.full_name, tradeRole: c.trade_role ?? '', onSite: c.on_site ?? false, checkInAt: c.check_in ?? undefined })
-      crewByJob.set(c.job_id, arr)
-    }
-
-    const customersById = new Map((customerRows ?? []).map((c) => [c.id as string, c]))
-    const lineItemsByJob = new Map<string, FieldLineItem[]>()
-    for (const li of lineItemRows ?? []) {
-      if (!li.job_id) continue
-      const arr = lineItemsByJob.get(li.job_id) ?? []
-      arr.push({ id: li.id!, description: li.description ?? '', qty: li.qty ?? 1 })
-      lineItemsByJob.set(li.job_id, arr)
-    }
-    const notesByJob = new Map<string, JobNote[]>()
-    for (const n of noteRows ?? []) {
-      const arr = notesByJob.get(n.job_id) ?? []
-      arr.push({ id: n.id, type: n.type as JobNote['type'], author: n.author_name, text: n.text, timestamp: formatTimestamp(n.created_at) })
-      notesByJob.set(n.job_id, arr)
-    }
-    const checkinsByJob = new Map<string, JobCheckIn[]>()
-    for (const ci of checkinRows ?? []) {
-      const arr = checkinsByJob.get(ci.job_id) ?? []
-      arr.push({
-        id: ci.id,
-        employeeId: ci.employee_id,
-        employeeName: crewNameById.get(ci.employee_id) ?? 'Employee',
-        checkIn: ci.check_in,
-        checkOut: ci.check_out,
-        note: ci.note ?? undefined,
-      })
-      checkinsByJob.set(ci.job_id, arr)
-    }
-
-    const assembled: FieldJob[] = jobRows.map((row) => {
-      const customer = row.customer_id ? customersById.get(row.customer_id) : undefined
-      return {
-        id: row.id!,
-        number: row.number ?? '',
-        title: row.title ?? '',
-        customerId: row.customer_id ?? '',
-        customerName: customer?.name ?? '',
-        customerContact: customer?.contact ?? '',
-        customerPhone: customer?.phone ?? '',
-        address: row.address ?? customer?.address ?? '',
-        status: (row.status as JobStatus) ?? 'Scheduled',
-        dueDate: row.due_date ?? '',
-        scheduledTime: row.scheduled_time ?? undefined,
-        lineItems: lineItemsByJob.get(row.id!) ?? [],
-        notes: notesByJob.get(row.id!) ?? [],
-        checkIns: checkinsByJob.get(row.id!) ?? [],
-        crew: crewByJob.get(row.id!) ?? [],
+      const { data: jobRows, error } = await supabase.from('jobs_field_view').select('*').order('due_date')
+      if (error) throw new Error(error.message)
+      const jobIds = (jobRows ?? []).map((j) => j.id).filter((id): id is string => !!id)
+      if (jobIds.length === 0) {
+        setJobs([])
+        await setCachedJobs([])
+        setLoading(false)
+        return
       }
-    })
-    setJobs(assembled)
-    setLoading(false)
+
+      const [{ data: customerRows }, { data: lineItemRows }, { data: noteRows }, { data: checkinRows }, { data: crewRows }] = await Promise.all([
+        supabase.from('customers_field_view').select('*'),
+        supabase.from('job_line_items_field_view').select('*').in('job_id', jobIds).order('sort_order'),
+        supabase.from('job_notes').select('*').in('job_id', jobIds).order('created_at'),
+        supabase.from('job_checkins').select('*').in('job_id', jobIds).order('check_in'),
+        supabase.rpc('get_job_crew', { p_job_ids: jobIds }),
+      ])
+
+      const crewByJob = new Map<string, FieldCrewMember[]>()
+      const crewNameById = new Map<string, string>()
+      for (const c of crewRows ?? []) {
+        crewNameById.set(c.employee_id, c.full_name)
+        const arr = crewByJob.get(c.job_id) ?? []
+        arr.push({ employeeId: c.employee_id, fullName: c.full_name, tradeRole: c.trade_role ?? '', onSite: c.on_site ?? false, checkInAt: c.check_in ?? undefined })
+        crewByJob.set(c.job_id, arr)
+      }
+
+      const customersById = new Map((customerRows ?? []).map((c) => [c.id as string, c]))
+      const lineItemsByJob = new Map<string, FieldLineItem[]>()
+      for (const li of lineItemRows ?? []) {
+        if (!li.job_id) continue
+        const arr = lineItemsByJob.get(li.job_id) ?? []
+        arr.push({ id: li.id!, description: li.description ?? '', qty: li.qty ?? 1 })
+        lineItemsByJob.set(li.job_id, arr)
+      }
+      const notesByJob = new Map<string, JobNote[]>()
+      for (const n of noteRows ?? []) {
+        const arr = notesByJob.get(n.job_id) ?? []
+        arr.push({ id: n.id, type: n.type as JobNote['type'], author: n.author_name, text: n.text, timestamp: formatTimestamp(n.created_at) })
+        notesByJob.set(n.job_id, arr)
+      }
+      const checkinsByJob = new Map<string, JobCheckIn[]>()
+      for (const ci of checkinRows ?? []) {
+        const arr = checkinsByJob.get(ci.job_id) ?? []
+        arr.push({
+          id: ci.id,
+          employeeId: ci.employee_id,
+          employeeName: crewNameById.get(ci.employee_id) ?? 'Employee',
+          checkIn: ci.check_in,
+          checkOut: ci.check_out,
+          note: ci.note ?? undefined,
+        })
+        checkinsByJob.set(ci.job_id, arr)
+      }
+
+      const assembled: FieldJob[] = (jobRows ?? []).map((row) => {
+        const customer = row.customer_id ? customersById.get(row.customer_id) : undefined
+        return {
+          id: row.id!,
+          number: row.number ?? '',
+          title: row.title ?? '',
+          customerId: row.customer_id ?? '',
+          customerName: customer?.name ?? '',
+          customerContact: customer?.contact ?? '',
+          customerPhone: customer?.phone ?? '',
+          address: row.address ?? customer?.address ?? '',
+          status: (row.status as JobStatus) ?? 'Scheduled',
+          dueDate: row.due_date ?? '',
+          scheduledTime: row.scheduled_time ?? undefined,
+          lineItems: lineItemsByJob.get(row.id!) ?? [],
+          notes: notesByJob.get(row.id!) ?? [],
+          checkIns: checkinsByJob.get(row.id!) ?? [],
+          crew: crewByJob.get(row.id!) ?? [],
+        }
+      })
+      setJobs(assembled)
+      await setCachedJobs(assembled)
+    } catch {
+      const cached = await getCachedJobs()
+      setJobs(cached ?? [])
+    } finally {
+      setLoading(false)
+    }
   }, [])
 
   useEffect(() => {
     if (session) load()
   }, [session, tick, load])
 
+  useEffect(() => {
+    if (!session || !online) return
+    flushQueue().then(() => load())
+  }, [session, online, load])
+
   const getJob = useCallback((id: string) => jobs.find((j) => j.id === id), [jobs])
   const refresh = useCallback(() => setTick((t) => t + 1), [])
 
   const addNote = useCallback(
     async (id: string, text: string) => {
-      if (!text.trim() || !session) return
+      const trimmed = text.trim()
+      if (!trimmed || !session) return
+      const authorName = (session.user.user_metadata?.full_name as string) ?? 'Employee'
+
+      if (!navigator.onLine) {
+        setJobs((prev) =>
+          prev.map((j) =>
+            j.id === id
+              ? { ...j, notes: [...j.notes, { id: `pending-${crypto.randomUUID()}`, type: 'note', author: authorName, text: trimmed, timestamp: 'Pending sync' }] }
+              : j
+          )
+        )
+        await enqueue({ kind: 'add_note', jobId: id, text: trimmed, authorName })
+        return
+      }
+
       const { error } = await supabase
         .from('job_notes')
-        .insert({ job_id: id, type: 'note', author_id: session.user.id, author_name: (session.user.user_metadata?.full_name as string) ?? 'Employee', text })
+        .insert({ job_id: id, type: 'note', author_id: session.user.id, author_name: authorName, text: trimmed })
       if (error) throw new Error(error.message)
       refresh()
     },
@@ -162,25 +196,61 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
 
   const startJob = useCallback(
     async (id: string) => {
+      if (!navigator.onLine) {
+        const nowIso = new Date().toISOString()
+        setJobs((prev) =>
+          prev.map((j) =>
+            j.id === id
+              ? {
+                  ...j,
+                  status: j.status === 'Scheduled' ? 'In Progress' : j.status,
+                  checkIns: [
+                    ...j.checkIns,
+                    { id: `pending-${crypto.randomUUID()}`, employeeId: session?.user.id ?? '', employeeName: 'You', checkIn: nowIso, checkOut: null },
+                  ],
+                }
+              : j
+          )
+        )
+        await enqueue({ kind: 'start_job', jobId: id })
+        return
+      }
       const { error } = await supabase.rpc('employee_start_job', { p_job_id: id })
       if (error) throw new Error(error.message)
       refresh()
     },
-    [refresh]
+    [session, refresh]
   )
 
   const finishJob = useCallback(
     async (id: string, note?: string, blocked?: boolean) => {
+      if (!navigator.onLine) {
+        const nowIso = new Date().toISOString()
+        setJobs((prev) =>
+          prev.map((j) => {
+            if (j.id !== id) return j
+            const checkIns = [...j.checkIns]
+            const openIdx = [...checkIns].reverse().findIndex((c) => c.employeeId === session?.user.id && c.checkOut === null)
+            if (openIdx !== -1) {
+              const realIdx = checkIns.length - 1 - openIdx
+              checkIns[realIdx] = { ...checkIns[realIdx], checkOut: nowIso, note: note ?? checkIns[realIdx].note }
+            }
+            return { ...j, checkIns }
+          })
+        )
+        await enqueue({ kind: 'finish_job', jobId: id, note, blocked: blocked ?? false })
+        return
+      }
       const { error } = await supabase.rpc('employee_finish_job', { p_job_id: id, p_note: note ?? undefined, p_blocked: blocked ?? false })
       if (error) throw new Error(error.message)
       refresh()
     },
-    [refresh]
+    [session, refresh]
   )
 
   const value = useMemo(
-    () => ({ jobs, loading, getJob, addNote, startJob, finishJob, refresh }),
-    [jobs, loading, getJob, addNote, startJob, finishJob, refresh]
+    () => ({ jobs, loading, offline: !online, pendingSyncCount, getJob, addNote, startJob, finishJob, refresh }),
+    [jobs, loading, online, pendingSyncCount, getJob, addNote, startJob, finishJob, refresh]
   )
 
   return <FieldJobsContext.Provider value={value}>{children}</FieldJobsContext.Provider>
