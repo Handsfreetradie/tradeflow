@@ -15,6 +15,8 @@ import { ProductsProvider } from '@/lib/store/products-store'
 import Login from '@/pages/auth/Login'
 import Setup from '@/pages/auth/Setup'
 import AcceptInvite from '@/pages/auth/AcceptInvite'
+import InvoicePublic from '@/pages/InvoicePublic'
+import QuotePublic from '@/pages/QuotePublic'
 import Dashboard from '@/pages/Dashboard'
 import JobsList from '@/pages/JobsList'
 import JobDetail from '@/pages/JobDetail'
@@ -105,6 +107,8 @@ function App() {
           <Route path="/auth/login" element={<Login />} />
           <Route path="/auth/setup" element={<Setup />} />
           <Route path="/auth/accept-invite" element={<AcceptInvite />} />
+          <Route path="/i/:token" element={<InvoicePublic />} />
+          <Route path="/q/:token" element={<QuotePublic />} />
           <Route
             path="/field/*"
             element={

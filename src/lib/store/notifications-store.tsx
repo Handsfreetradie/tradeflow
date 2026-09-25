@@ -3,10 +3,10 @@ import { supabase } from '@/lib/supabase'
 
 export interface Notification {
   id: string
-  jobId: string
-  jobNumber: string
-  jobTitle: string
+  type: string
+  title: string
   message: string
+  linkTo: string
   createdAt: string
   readAt: string | null
 }
@@ -22,6 +22,27 @@ interface NotificationsContextValue {
 
 const NotificationsContext = createContext<NotificationsContextValue | null>(null)
 
+type NotificationRow = {
+  id: string
+  type: string
+  job_id: string | null
+  invoice_id: string | null
+  quote_id: string | null
+  message: string
+  created_at: string
+  read_at: string | null
+  job: { number: string; title: string } | null
+  invoice: { number: string } | null
+  quote: { number: string } | null
+}
+
+function fromRow(n: NotificationRow): Notification {
+  const base = { id: n.id, type: n.type, message: n.message, createdAt: n.created_at, readAt: n.read_at }
+  if (n.job_id) return { ...base, title: `${n.job?.number ?? ''} — ${n.job?.title ?? ''}`, linkTo: `/jobs/${n.job_id}` }
+  if (n.invoice_id) return { ...base, title: n.invoice?.number ?? '', linkTo: `/invoices/${n.invoice_id}` }
+  return { ...base, title: n.quote?.number ?? '', linkTo: `/quotes/${n.quote_id}` }
+}
+
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
@@ -31,31 +52,12 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     let cancelled = false
     supabase
       .from('notifications')
-      .select('id, job_id, message, created_at, read_at, job:jobs(number, title)')
+      .select('id, type, job_id, invoice_id, quote_id, message, created_at, read_at, job:jobs(number, title), invoice:invoices(number), quote:quotes(number)')
       .order('created_at', { ascending: false })
       .limit(50)
       .then(({ data, error }) => {
         if (cancelled) return
-        if (!error && data) {
-          setNotifications(
-            (data as unknown as Array<{
-              id: string
-              job_id: string
-              message: string
-              created_at: string
-              read_at: string | null
-              job: { number: string; title: string } | null
-            }>).map((n) => ({
-              id: n.id,
-              jobId: n.job_id,
-              jobNumber: n.job?.number ?? '',
-              jobTitle: n.job?.title ?? '',
-              message: n.message,
-              createdAt: n.created_at,
-              readAt: n.read_at,
-            }))
-          )
-        }
+        if (!error && data) setNotifications((data as unknown as NotificationRow[]).map(fromRow))
         setLoading(false)
       })
     return () => {

@@ -38,6 +38,10 @@ type QuoteRow = {
   validity_days: number
   terms: string
   notes: string
+  share_token: string
+  first_viewed_at: string | null
+  last_viewed_at: string | null
+  view_count: number
   quote_line_items: Array<{ id: string; description: string; qty: number; unit_price: number }>
 }
 
@@ -56,6 +60,10 @@ function fromRow(row: QuoteRow): Quote {
     terms: row.terms,
     notes: row.notes,
     lineItems: row.quote_line_items.map((li) => ({ id: li.id, description: li.description, qty: li.qty, unitPrice: li.unit_price })),
+    shareToken: row.share_token,
+    firstViewedAt: row.first_viewed_at ?? undefined,
+    lastViewedAt: row.last_viewed_at ?? undefined,
+    viewCount: row.view_count,
   }
 }
 

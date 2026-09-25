@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowLeft, Send, DollarSign, Briefcase } from 'lucide-react'
+import { ArrowLeft, Send, DollarSign, Briefcase, Link as LinkIcon, Eye } from 'lucide-react'
 import { LogoMark } from '@/components/shared/Logo'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -51,6 +51,23 @@ export default function InvoiceDetail() {
     setPaymentOpen(false)
   }
 
+  const shareUrl = `${window.location.origin}/i/${invoice.shareToken}`
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(shareUrl)
+    toast.success('Link copied')
+  }
+
+  const sendViaEmail = async () => {
+    const subject = `Invoice ${invoice.number} from ${business.businessName}`
+    const body = `Hi ${customer?.contact ?? invoice.customer},\n\nHere's your invoice ${invoice.number} for ${formatCurrency(invoiceTotal(invoice))}.\n\nView and pay: ${shareUrl}\n\nThanks,\n${business.businessName}`
+    window.location.href = `mailto:${customer?.email ?? ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    if (invoice.status === 'Draft') {
+      await markSent(invoice.id)
+      toast.success(`${invoice.number} marked as sent`)
+    }
+  }
+
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -66,18 +83,14 @@ export default function InvoiceDetail() {
               View linked job
             </Button>
           )}
-          {invoice.status === 'Draft' && (
-            <Button
-              variant="secondary"
-              onClick={() => {
-                markSent(invoice.id)
-                toast.success(`${invoice.number} sent to ${invoice.customer}`)
-              }}
-            >
-              <Send />
-              Send invoice
-            </Button>
-          )}
+          <Button variant="secondary" onClick={copyLink}>
+            <LinkIcon />
+            Copy link
+          </Button>
+          <Button variant="secondary" onClick={sendViaEmail}>
+            <Send />
+            {invoice.status === 'Draft' ? 'Send invoice' : 'Email invoice'}
+          </Button>
           {invoice.status !== 'Draft' && balanceDue > 0 && (
             <Button onClick={() => setPaymentOpen(true)}>
               <DollarSign />
@@ -86,6 +99,14 @@ export default function InvoiceDetail() {
           )}
         </div>
       </div>
+
+      {invoice.firstViewedAt && (
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Eye className="size-3.5" />
+          Viewed by customer {formatDate(invoice.firstViewedAt, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
+          {invoice.viewCount > 1 && ` · opened ${invoice.viewCount} times`}
+        </p>
+      )}
 
       <Card className="overflow-hidden">
         <CardContent className="space-y-8 p-8">

@@ -115,6 +115,10 @@ export interface Invoice {
   paymentTerms: string
   payments: Payment[]
   jobId?: string
+  shareToken: string
+  firstViewedAt?: string
+  lastViewedAt?: string
+  viewCount: number
 }
 
 export interface Expense {
@@ -143,6 +147,10 @@ export interface Quote {
   notes: string
   /** Set once this quote has been converted into a job. */
   jobId?: string
+  shareToken: string
+  firstViewedAt?: string
+  lastViewedAt?: string
+  viewCount: number
 }
 
 export interface ActivityItem {

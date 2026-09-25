@@ -1,6 +1,6 @@
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowLeft, Briefcase, Send, Check, X } from 'lucide-react'
+import { ArrowLeft, Briefcase, Send, Check, X, Link as LinkIcon, Eye } from 'lucide-react'
 import { LogoMark } from '@/components/shared/Logo'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -45,6 +45,24 @@ export default function QuoteDetail() {
     navigate(`/jobs/${job.id}`)
   }
 
+  const shareUrl = `${window.location.origin}/q/${quote.shareToken}`
+  const quoteTotal = quote.includeGst ? quote.amount * 1.1 : quote.amount
+
+  const copyLink = () => {
+    navigator.clipboard.writeText(shareUrl)
+    toast.success('Link copied')
+  }
+
+  const sendViaEmail = async () => {
+    const subject = `Quote ${quote.number} from ${business.businessName}`
+    const body = `Hi ${customer?.contact ?? quote.customer},\n\nHere's your quote ${quote.number} for ${new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(quoteTotal)}.\n\nView and respond: ${shareUrl}\n\nThanks,\n${business.businessName}`
+    window.location.href = `mailto:${customer?.email ?? ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+    if (quote.status === 'Draft') {
+      await updateStatus(quote.id, 'Sent')
+      toast.success(`${quote.number} marked as sent`)
+    }
+  }
+
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -54,18 +72,14 @@ export default function QuoteDetail() {
         </Button>
 
         <div className="flex flex-wrap items-center gap-2">
-          {quote.status === 'Draft' && (
-            <Button
-              variant="secondary"
-              onClick={() => {
-                updateStatus(quote.id, 'Sent')
-                toast.success(`${quote.number} sent to ${quote.customer}`)
-              }}
-            >
-              <Send />
-              Send quote
-            </Button>
-          )}
+          <Button variant="secondary" onClick={copyLink}>
+            <LinkIcon />
+            Copy link
+          </Button>
+          <Button variant="secondary" onClick={sendViaEmail}>
+            <Send />
+            {quote.status === 'Draft' ? 'Send quote' : 'Email quote'}
+          </Button>
           {quote.status === 'Sent' && (
             <>
               <Button variant="secondary" onClick={() => updateStatus(quote.id, 'Declined')}>
@@ -92,6 +106,14 @@ export default function QuoteDetail() {
           )}
         </div>
       </div>
+
+      {quote.firstViewedAt && (
+        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Eye className="size-3.5" />
+          Viewed by customer {formatDate(quote.firstViewedAt, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
+          {quote.viewCount > 1 && ` · opened ${quote.viewCount} times`}
+        </p>
+      )}
 
       <Card className="overflow-hidden">
         <CardContent className="space-y-8 p-8">

@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Search, Bell, HelpCircle, ChevronDown, AlertTriangle } from 'lucide-react'
+import { Search, Bell, HelpCircle, ChevronDown, AlertTriangle, Eye } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -79,14 +79,16 @@ export function Header() {
                     className={cn('flex items-start gap-2 whitespace-normal py-2', !n.readAt && 'bg-warning/5')}
                     onClick={() => {
                       if (!n.readAt) markRead(n.id)
-                      navigate(`/jobs/${n.jobId}`)
+                      navigate(n.linkTo)
                     }}
                   >
-                    <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warning" />
+                    {n.type === 'job_blocked' ? (
+                      <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warning" />
+                    ) : (
+                      <Eye className="mt-0.5 size-3.5 shrink-0 text-primary" />
+                    )}
                     <span className="min-w-0">
-                      <span className="block text-xs font-medium">
-                        {n.jobNumber} — {n.jobTitle}
-                      </span>
+                      <span className="block text-xs font-medium">{n.title}</span>
                       <span className="block text-xs text-muted-foreground">{n.message}</span>
                       <span className="mt-0.5 block text-[10px] text-muted-foreground">{formatRelativeTime(n.createdAt)}</span>
                     </span>

@@ -58,6 +58,10 @@ type InvoiceRow = {
   notes: string
   payment_terms: string
   job_id: string | null
+  share_token: string
+  first_viewed_at: string | null
+  last_viewed_at: string | null
+  view_count: number
   invoice_line_items: Array<{ id: string; description: string; qty: number; unit_price: number }>
   payments: Array<{ id: string; amount: number; method: string; date: string }>
 }
@@ -78,6 +82,10 @@ function fromRow(row: InvoiceRow): Invoice {
     lineItems: row.invoice_line_items.map((li) => ({ id: li.id, description: li.description, qty: li.qty, unitPrice: li.unit_price })),
     payments: row.payments.map((p) => ({ id: p.id, amount: p.amount, method: p.method as PaymentMethod, date: p.date })),
     jobId: row.job_id ?? undefined,
+    shareToken: row.share_token,
+    firstViewedAt: row.first_viewed_at ?? undefined,
+    lastViewedAt: row.last_viewed_at ?? undefined,
+    viewCount: row.view_count,
   }
 }
 

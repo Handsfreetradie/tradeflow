@@ -205,6 +205,10 @@ export type Database = {
           number: string
           payment_terms: string
           status: string
+          share_token: string
+          first_viewed_at: string | null
+          last_viewed_at: string | null
+          view_count: number
         }
         Insert: {
           amount?: number
@@ -219,6 +223,10 @@ export type Database = {
           number: string
           payment_terms?: string
           status?: string
+          share_token?: string
+          first_viewed_at?: string | null
+          last_viewed_at?: string | null
+          view_count?: number
         }
         Update: {
           amount?: number
@@ -233,6 +241,10 @@ export type Database = {
           number?: string
           payment_terms?: string
           status?: string
+          share_token?: string
+          first_viewed_at?: string | null
+          last_viewed_at?: string | null
+          view_count?: number
         }
         Relationships: [
           {
@@ -612,7 +624,9 @@ export type Database = {
       notifications: {
         Row: {
           id: string
-          job_id: string
+          job_id: string | null
+          invoice_id: string | null
+          quote_id: string | null
           type: string
           message: string
           created_by: string | null
@@ -621,7 +635,9 @@ export type Database = {
         }
         Insert: {
           id?: string
-          job_id: string
+          job_id?: string | null
+          invoice_id?: string | null
+          quote_id?: string | null
           type: string
           message: string
           created_by?: string | null
@@ -630,7 +646,9 @@ export type Database = {
         }
         Update: {
           id?: string
-          job_id?: string
+          job_id?: string | null
+          invoice_id?: string | null
+          quote_id?: string | null
           type?: string
           message?: string
           created_by?: string | null
@@ -780,6 +798,10 @@ export type Database = {
           status: string
           terms: string
           validity_days: number
+          share_token: string
+          first_viewed_at: string | null
+          last_viewed_at: string | null
+          view_count: number
         }
         Insert: {
           amount?: number
@@ -794,6 +816,10 @@ export type Database = {
           status?: string
           terms?: string
           validity_days?: number
+          share_token?: string
+          first_viewed_at?: string | null
+          last_viewed_at?: string | null
+          view_count?: number
         }
         Update: {
           amount?: number
@@ -807,6 +833,10 @@ export type Database = {
           number?: string
           status?: string
           terms?: string
+          share_token?: string
+          first_viewed_at?: string | null
+          last_viewed_at?: string | null
+          view_count?: number
           validity_days?: number
         }
         Relationships: [
@@ -915,6 +945,72 @@ export type Database = {
       }
     }
     Functions: {
+      get_public_quote: {
+        Args: { p_token: string }
+        Returns: {
+          id: string
+          number: string
+          date: string
+          amount: number
+          status: string
+          include_gst: boolean
+          validity_days: number
+          terms: string
+          notes: string
+          customer_name: string
+          customer_contact: string
+          customer_address: string
+          business_name: string
+          business_abn: string
+          business_licence_number: string
+          business_logo_url: string | null
+        }[]
+      }
+      get_public_quote_line_items: {
+        Args: { p_token: string }
+        Returns: { id: string; description: string; qty: number; unit_price: number }[]
+      }
+      mark_quote_viewed: {
+        Args: { p_token: string }
+        Returns: undefined
+      }
+      respond_to_public_quote: {
+        Args: { p_token: string; p_accept: boolean }
+        Returns: undefined
+      }
+      get_public_invoice: {
+        Args: { p_token: string }
+        Returns: {
+          id: string
+          number: string
+          date: string
+          due_date: string
+          amount: number
+          status: string
+          include_gst: boolean
+          notes: string
+          payment_terms: string
+          customer_name: string
+          customer_contact: string
+          customer_address: string
+          business_name: string
+          business_abn: string
+          business_licence_number: string
+          business_logo_url: string | null
+          bank_account_name: string
+          bank_bsb: string
+          bank_account_number: string
+          paid_amount: number
+        }[]
+      }
+      get_public_invoice_line_items: {
+        Args: { p_token: string }
+        Returns: { id: string; description: string; qty: number; unit_price: number }[]
+      }
+      mark_invoice_viewed: {
+        Args: { p_token: string }
+        Returns: undefined
+      }
       employee_finish_job: {
         Args: { p_job_id: string; p_note?: string; p_blocked?: boolean }
         Returns: {
