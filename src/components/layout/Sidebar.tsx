@@ -8,6 +8,7 @@ import {
   Package,
   BarChart3,
   Calendar,
+  CalendarDays,
   Settings,
   ChevronsUpDown,
 } from 'lucide-react'
@@ -18,17 +19,20 @@ import { businessName } from '@/lib/demo-data'
 import { useJobsStore } from '@/lib/store/jobs-store'
 import { useQuotesStore } from '@/lib/store/quotes-store'
 import { useInvoicesStore } from '@/lib/store/invoices-store'
+import { useLeaveStore } from '@/lib/store/leave-store'
 import { useAuth } from '@/lib/auth/AuthProvider'
 
 export function Sidebar() {
   const { jobs } = useJobsStore()
   const { quotes } = useQuotesStore()
   const { invoices } = useInvoicesStore()
+  const { requests: leaveRequests } = useLeaveStore()
   const { fullName, signOut } = useAuth()
 
   const openJobs = jobs.filter((j) => j.status === 'In Progress' || j.status === 'Scheduled').length
   const unpaidInvoices = invoices.filter((i) => i.status === 'Sent' || i.status === 'Partial' || i.status === 'Overdue').length
   const openQuotes = quotes.filter((q) => q.status === 'Draft' || q.status === 'Sent').length
+  const pendingLeave = leaveRequests.filter((r) => r.status === 'pending').length
 
   const primaryNav = [
     { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
@@ -38,6 +42,7 @@ export function Sidebar() {
     { to: '/customers', icon: Users, label: 'Customers' },
     { to: '/expenses', icon: Receipt, label: 'Expenses' },
     { to: '/products', icon: Package, label: 'Products & Services' },
+    { to: '/leave', icon: CalendarDays, label: 'Leave', count: pendingLeave },
     { to: '/reports', icon: BarChart3, label: 'Reports' },
     { to: '/calendar', icon: Calendar, label: 'Calendar' },
   ]

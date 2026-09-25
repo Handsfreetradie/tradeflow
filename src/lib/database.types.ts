@@ -633,6 +633,7 @@ export type Database = {
           job_id: string | null
           invoice_id: string | null
           quote_id: string | null
+          leave_request_id: string | null
           type: string
           message: string
           created_by: string | null
@@ -644,6 +645,7 @@ export type Database = {
           job_id?: string | null
           invoice_id?: string | null
           quote_id?: string | null
+          leave_request_id?: string | null
           type: string
           message: string
           created_by?: string | null
@@ -655,6 +657,7 @@ export type Database = {
           job_id?: string | null
           invoice_id?: string | null
           quote_id?: string | null
+          leave_request_id?: string | null
           type?: string
           message?: string
           created_by?: string | null
@@ -734,6 +737,9 @@ export type Database = {
           role: string
           hourly_rate: number | null
           trade_role: string
+          employment_type: string
+          weekly_hours: number
+          employment_start_date: string | null
         }
         Insert: {
           created_at?: string
@@ -743,6 +749,9 @@ export type Database = {
           role: string
           hourly_rate?: number | null
           trade_role?: string
+          employment_type?: string
+          weekly_hours?: number
+          employment_start_date?: string | null
         }
         Update: {
           created_at?: string
@@ -752,8 +761,61 @@ export type Database = {
           role?: string
           hourly_rate?: number | null
           trade_role?: string
+          employment_type?: string
+          weekly_hours?: number
+          employment_start_date?: string | null
         }
         Relationships: []
+      }
+      leave_requests: {
+        Row: {
+          id: string
+          employee_id: string
+          type: string
+          start_date: string
+          end_date: string
+          hours: number
+          note: string
+          status: string
+          reviewed_by: string | null
+          reviewed_at: string | null
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          employee_id: string
+          type: string
+          start_date: string
+          end_date: string
+          hours: number
+          note?: string
+          status?: string
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          employee_id?: string
+          type?: string
+          start_date?: string
+          end_date?: string
+          hours?: number
+          note?: string
+          status?: string
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "leave_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       quote_line_items: {
         Row: {
@@ -954,6 +1016,38 @@ export type Database = {
       }
     }
     Functions: {
+      request_leave: {
+        Args: { p_type: string; p_start_date: string; p_end_date: string; p_hours: number; p_note?: string }
+        Returns: {
+          id: string
+          employee_id: string
+          type: string
+          start_date: string
+          end_date: string
+          hours: number
+          note: string
+          status: string
+          reviewed_by: string | null
+          reviewed_at: string | null
+          created_at: string
+        }
+      }
+      review_leave_request: {
+        Args: { p_request_id: string; p_approve: boolean }
+        Returns: {
+          id: string
+          employee_id: string
+          type: string
+          start_date: string
+          end_date: string
+          hours: number
+          note: string
+          status: string
+          reviewed_by: string | null
+          reviewed_at: string | null
+          created_at: string
+        }
+      }
       get_job_crew: {
         Args: { p_job_ids: string[] }
         Returns: {

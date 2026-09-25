@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 
+export type EmploymentType = 'full_time' | 'part_time' | 'casual'
+
 export interface TeamMember {
   id: string
   fullName: string
@@ -8,6 +10,9 @@ export interface TeamMember {
   email: string
   hourlyRate: number | null
   tradeRole: string
+  employmentType: EmploymentType
+  weeklyHours: number
+  employmentStartDate: string | null
 }
 
 interface TeamContextValue {
@@ -16,6 +21,7 @@ interface TeamContextValue {
   refresh: () => void
   updateRate: (id: string, hourlyRate: number | null) => Promise<void>
   updateTradeRole: (id: string, tradeRole: string) => Promise<void>
+  updateEmployment: (id: string, patch: Partial<{ employmentType: EmploymentType; weeklyHours: number; employmentStartDate: string | null }>) => Promise<void>
 }
 
 const TeamContext = createContext<TeamContextValue | null>(null)
@@ -30,7 +36,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     supabase
       .from('profiles')
-      .select('id, full_name, role, email, hourly_rate, trade_role')
+      .select('id, full_name, role, email, hourly_rate, trade_role, employment_type, weekly_hours, employment_start_date')
       .order('full_name')
       .then(({ data, error }) => {
         if (cancelled) return
@@ -43,6 +49,9 @@ export function TeamProvider({ children }: { children: ReactNode }) {
               email: p.email,
               hourlyRate: p.hourly_rate,
               tradeRole: p.trade_role,
+              employmentType: p.employment_type as EmploymentType,
+              weeklyHours: p.weekly_hours,
+              employmentStartDate: p.employment_start_date,
             }))
           )
         }
@@ -67,9 +76,25 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     setTeam((prev) => prev.map((m) => (m.id === id ? { ...m, tradeRole } : m)))
   }, [])
 
+  const updateEmployment = useCallback(
+    async (id: string, patch: Partial<{ employmentType: EmploymentType; weeklyHours: number; employmentStartDate: string | null }>) => {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          ...(patch.employmentType !== undefined ? { employment_type: patch.employmentType } : {}),
+          ...(patch.weeklyHours !== undefined ? { weekly_hours: patch.weeklyHours } : {}),
+          ...(patch.employmentStartDate !== undefined ? { employment_start_date: patch.employmentStartDate } : {}),
+        })
+        .eq('id', id)
+      if (error) throw new Error(error.message)
+      setTeam((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)))
+    },
+    []
+  )
+
   const value = useMemo(
-    () => ({ team, loading, refresh, updateRate, updateTradeRole }),
-    [team, loading, refresh, updateRate, updateTradeRole]
+    () => ({ team, loading, refresh, updateRate, updateTradeRole, updateEmployment }),
+    [team, loading, refresh, updateRate, updateTradeRole, updateEmployment]
   )
 
   return <TeamContext.Provider value={value}>{children}</TeamContext.Provider>

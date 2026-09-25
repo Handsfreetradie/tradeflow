@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { UserPlus, Users as UsersIcon, Building2, Upload, Trash2, FileSpreadsheet } from 'lucide-react'
+import { UserPlus, Users as UsersIcon, Building2, Upload, Trash2, FileSpreadsheet, CalendarDays } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -300,6 +300,90 @@ function TradeRoleSelect({ member }: { member: TeamMember }) {
   )
 }
 
+function EmploymentDialog({ member }: { member: TeamMember }) {
+  const { updateEmployment } = useTeamStore()
+  const [open, setOpen] = useState(false)
+  const [employmentType, setEmploymentType] = useState(member.employmentType)
+  const [weeklyHours, setWeeklyHours] = useState(member.weeklyHours.toString())
+  const [startDate, setStartDate] = useState(member.employmentStartDate ?? '')
+  const [saving, setSaving] = useState(false)
+
+  const openDialog = () => {
+    setEmploymentType(member.employmentType)
+    setWeeklyHours(member.weeklyHours.toString())
+    setStartDate(member.employmentStartDate ?? '')
+    setOpen(true)
+  }
+
+  const save = async () => {
+    const hours = Number(weeklyHours)
+    if (Number.isNaN(hours) || hours <= 0) {
+      toast.error('Enter valid weekly hours')
+      return
+    }
+    setSaving(true)
+    try {
+      await updateEmployment(member.id, { employmentType, weeklyHours: hours, employmentStartDate: startDate || null })
+      toast.success('Employment details updated')
+      setOpen(false)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <>
+      <Button variant="ghost" size="icon" onClick={openDialog} title="Employment & leave settings">
+        <CalendarDays className="text-muted-foreground" />
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Employment — {member.fullName}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Employment type</label>
+              <Select value={employmentType} onValueChange={(v) => setEmploymentType(v as TeamMember['employmentType'])}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="full_time">Full-time</SelectItem>
+                  <SelectItem value="part_time">Part-time</SelectItem>
+                  <SelectItem value="casual">Casual</SelectItem>
+                </SelectContent>
+              </Select>
+              {employmentType === 'casual' && (
+                <p className="mt-1 text-xs text-muted-foreground">Casuals don't accrue paid leave under the NES, so they won't see leave tracking.</p>
+              )}
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Ordinary weekly hours</label>
+              <Input type="number" min="1" step="0.5" value={weeklyHours} onChange={(e) => setWeeklyHours(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Employment start date</label>
+              <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="mt-1" />
+              <p className="mt-1 text-xs text-muted-foreground">Used to calculate accrued leave to date.</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button disabled={saving} onClick={save}>
+              {saving ? 'Saving…' : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
 export default function Settings() {
   const { team, loading, refresh } = useTeamStore()
   const { session } = useAuth()
@@ -384,6 +468,7 @@ export default function Settings() {
                   <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium capitalize text-secondary-foreground">{m.role}</span>
                   {m.role === 'employee' && <TradeRoleSelect member={m} />}
                   {m.role === 'employee' && <RateInput member={m} />}
+                  {m.role === 'employee' && <EmploymentDialog member={m} />}
                   {m.role === 'employee' && m.id !== session?.user.id && (
                     <Button
                       variant="ghost"

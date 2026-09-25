@@ -8,6 +8,7 @@ import { QuotesProvider } from '@/lib/store/quotes-store'
 import { InvoicesProvider } from '@/lib/store/invoices-store'
 import { ExpensesProvider } from '@/lib/store/expenses-store'
 import { TeamProvider } from '@/lib/store/team-store'
+import { LeaveProvider } from '@/lib/store/leave-store'
 import { FieldJobsProvider } from '@/lib/store/field-jobs-store'
 import { BusinessSettingsProvider } from '@/lib/store/business-settings-store'
 import { NotificationsProvider } from '@/lib/store/notifications-store'
@@ -36,10 +37,12 @@ import CalendarPage from '@/pages/Calendar'
 import Reports from '@/pages/Reports'
 import Settings from '@/pages/Settings'
 import ProductsList from '@/pages/ProductsList'
+import Leave from '@/pages/Leave'
 import { FieldShell } from '@/components/field/FieldShell'
 import FieldToday from '@/pages/field/FieldToday'
 import FieldJobs from '@/pages/field/FieldJobs'
 import FieldJobDetail from '@/pages/field/FieldJobDetail'
+import FieldLeave from '@/pages/field/FieldLeave'
 
 function OwnerApp() {
   return (
@@ -71,6 +74,7 @@ function OwnerApp() {
                     <Route path="products" element={<ProductsList />} />
                     <Route path="reports" element={<Reports />} />
                     <Route path="calendar" element={<CalendarPage />} />
+                    <Route path="leave" element={<Leave />} />
                     <Route path="settings" element={<Settings />} />
                   </Route>
                 </Routes>
@@ -93,6 +97,7 @@ function EmployeeApp() {
           <Route index element={<FieldToday />} />
           <Route path="jobs" element={<FieldJobs />} />
           <Route path="jobs/:id" element={<FieldJobDetail />} />
+          <Route path="leave" element={<FieldLeave />} />
         </Route>
       </Routes>
     </FieldJobsProvider>
@@ -103,6 +108,7 @@ function App() {
   return (
     <AuthProvider>
       <TeamProvider>
+      <LeaveProvider>
         <Routes>
           <Route path="/auth/login" element={<Login />} />
           <Route path="/auth/setup" element={<Setup />} />
@@ -126,6 +132,7 @@ function App() {
             }
           />
         </Routes>
+      </LeaveProvider>
       </TeamProvider>
     </AuthProvider>
   )

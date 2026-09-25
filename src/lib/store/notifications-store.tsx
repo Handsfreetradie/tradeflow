@@ -28,6 +28,7 @@ type NotificationRow = {
   job_id: string | null
   invoice_id: string | null
   quote_id: string | null
+  leave_request_id: string | null
   message: string
   created_at: string
   read_at: string | null
@@ -40,6 +41,7 @@ function fromRow(n: NotificationRow): Notification {
   const base = { id: n.id, type: n.type, message: n.message, createdAt: n.created_at, readAt: n.read_at }
   if (n.job_id) return { ...base, title: `${n.job?.number ?? ''} — ${n.job?.title ?? ''}`, linkTo: `/jobs/${n.job_id}` }
   if (n.invoice_id) return { ...base, title: n.invoice?.number ?? '', linkTo: `/invoices/${n.invoice_id}` }
+  if (n.leave_request_id) return { ...base, title: 'Leave request', linkTo: '/leave' }
   return { ...base, title: n.quote?.number ?? '', linkTo: `/quotes/${n.quote_id}` }
 }
 
@@ -52,7 +54,9 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     let cancelled = false
     supabase
       .from('notifications')
-      .select('id, type, job_id, invoice_id, quote_id, message, created_at, read_at, job:jobs(number, title), invoice:invoices(number), quote:quotes(number)')
+      .select(
+        'id, type, job_id, invoice_id, quote_id, leave_request_id, message, created_at, read_at, job:jobs(number, title), invoice:invoices(number), quote:quotes(number)'
+      )
       .order('created_at', { ascending: false })
       .limit(50)
       .then(({ data, error }) => {

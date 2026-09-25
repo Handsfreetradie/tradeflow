@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Home, Briefcase, LogOut, WifiOff, RefreshCw } from 'lucide-react'
+import { Home, Briefcase, CalendarDays, LogOut, WifiOff, RefreshCw } from 'lucide-react'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { useFieldJobsStore } from '@/lib/store/field-jobs-store'
 import { cn } from '@/lib/utils'
@@ -46,6 +46,15 @@ export function FieldShell() {
         >
           <Briefcase className="size-5" />
           Jobs
+        </NavLink>
+        <NavLink
+          to="/field/leave"
+          className={({ isActive }) =>
+            cn('flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-[11px] font-medium', isActive ? 'text-primary' : 'text-muted-foreground')
+          }
+        >
+          <CalendarDays className="size-5" />
+          Leave
         </NavLink>
         <button
           onClick={() => signOut()}
