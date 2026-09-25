@@ -954,6 +954,17 @@ export type Database = {
       }
     }
     Functions: {
+      get_job_crew: {
+        Args: { p_job_ids: string[] }
+        Returns: {
+          job_id: string
+          employee_id: string
+          full_name: string
+          trade_role: string | null
+          on_site: boolean
+          check_in: string | null
+        }[]
+      }
       get_public_quote: {
         Args: { p_token: string }
         Returns: {

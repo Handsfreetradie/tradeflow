@@ -9,6 +9,14 @@ export interface FieldLineItem {
   qty: number
 }
 
+export interface FieldCrewMember {
+  employeeId: string
+  fullName: string
+  tradeRole: string
+  onSite: boolean
+  checkInAt?: string
+}
+
 export interface FieldJob {
   id: string
   number: string
@@ -24,6 +32,7 @@ export interface FieldJob {
   lineItems: FieldLineItem[]
   notes: JobNote[]
   checkIns: JobCheckIn[]
+  crew: FieldCrewMember[]
 }
 
 interface FieldJobsContextValue {
@@ -63,12 +72,22 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    const [{ data: customerRows }, { data: lineItemRows }, { data: noteRows }, { data: checkinRows }] = await Promise.all([
+    const [{ data: customerRows }, { data: lineItemRows }, { data: noteRows }, { data: checkinRows }, { data: crewRows }] = await Promise.all([
       supabase.from('customers_field_view').select('*'),
       supabase.from('job_line_items_field_view').select('*').in('job_id', jobIds).order('sort_order'),
       supabase.from('job_notes').select('*').in('job_id', jobIds).order('created_at'),
-      supabase.from('job_checkins').select('*, employee:profiles(full_name)').in('job_id', jobIds).order('check_in'),
+      supabase.from('job_checkins').select('*').in('job_id', jobIds).order('check_in'),
+      supabase.rpc('get_job_crew', { p_job_ids: jobIds }),
     ])
+
+    const crewByJob = new Map<string, FieldCrewMember[]>()
+    const crewNameById = new Map<string, string>()
+    for (const c of crewRows ?? []) {
+      crewNameById.set(c.employee_id, c.full_name)
+      const arr = crewByJob.get(c.job_id) ?? []
+      arr.push({ employeeId: c.employee_id, fullName: c.full_name, tradeRole: c.trade_role ?? '', onSite: c.on_site ?? false, checkInAt: c.check_in ?? undefined })
+      crewByJob.set(c.job_id, arr)
+    }
 
     const customersById = new Map((customerRows ?? []).map((c) => [c.id as string, c]))
     const lineItemsByJob = new Map<string, FieldLineItem[]>()
@@ -85,20 +104,12 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
       notesByJob.set(n.job_id, arr)
     }
     const checkinsByJob = new Map<string, JobCheckIn[]>()
-    for (const ci of (checkinRows ?? []) as Array<{
-      id: string
-      job_id: string
-      employee_id: string
-      check_in: string
-      check_out: string | null
-      note: string | null
-      employee: { full_name: string } | null
-    }>) {
+    for (const ci of checkinRows ?? []) {
       const arr = checkinsByJob.get(ci.job_id) ?? []
       arr.push({
         id: ci.id,
         employeeId: ci.employee_id,
-        employeeName: ci.employee?.full_name ?? 'You',
+        employeeName: crewNameById.get(ci.employee_id) ?? 'Employee',
         checkIn: ci.check_in,
         checkOut: ci.check_out,
         note: ci.note ?? undefined,
@@ -123,6 +134,7 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
         lineItems: lineItemsByJob.get(row.id!) ?? [],
         notes: notesByJob.get(row.id!) ?? [],
         checkIns: checkinsByJob.get(row.id!) ?? [],
+        crew: crewByJob.get(row.id!) ?? [],
       }
     })
     setJobs(assembled)

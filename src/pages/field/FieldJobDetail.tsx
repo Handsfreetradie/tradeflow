@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowLeft, Navigation, Phone, MapPin, Play, Square, Send, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Navigation, Phone, MapPin, Play, Square, Send, AlertTriangle, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -147,6 +147,36 @@ export default function FieldJobDetail() {
           )}
         </div>
       </div>
+
+      {job.crew.length > 1 && (
+        <div className="mx-5 space-y-2">
+          <p className="flex items-center gap-1.5 text-sm font-semibold">
+            <Users className="size-4 text-muted-foreground" />
+            Crew on this job
+          </p>
+          <div className="rounded-xl border border-border bg-card divide-y divide-border">
+            {job.crew.map((member) => (
+              <div key={member.employeeId} className="flex items-center justify-between px-3.5 py-2.5 text-sm">
+                <div className="min-w-0">
+                  <p className="truncate font-medium">
+                    {member.fullName}
+                    {member.employeeId === myId && ' (you)'}
+                  </p>
+                  {member.tradeRole && <p className="truncate text-xs text-muted-foreground">{member.tradeRole}</p>}
+                </div>
+                {member.onSite ? (
+                  <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-success/10 px-2.5 py-1 text-xs font-medium text-success">
+                    <span className="size-1.5 rounded-full bg-success" />
+                    On site{member.checkInAt ? ` since ${formatDate(member.checkInAt, { hour: 'numeric', minute: '2-digit' })}` : ''}
+                  </span>
+                ) : (
+                  <span className="shrink-0 text-xs text-muted-foreground">Not on site</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {job.lineItems.length > 0 && (
         <div className="mx-5 space-y-2">

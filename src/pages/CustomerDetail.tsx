@@ -1,11 +1,14 @@
 import { useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Mail, Phone, MapPin, Plus, Briefcase, FileSpreadsheet, FileText, ChevronRight } from 'lucide-react'
+import { toast } from 'sonner'
+import { ArrowLeft, Mail, Phone, MapPin, Plus, Pencil, Briefcase, FileSpreadsheet, FileText, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { StatusBadge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Input } from '@/components/ui/input'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useCustomersStore } from '@/lib/store/customers-store'
 import { useJobsStore } from '@/lib/store/jobs-store'
 import { useQuotesStore } from '@/lib/store/quotes-store'
@@ -15,15 +18,51 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 export default function CustomerDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { loading, getCustomer, updateNotes } = useCustomersStore()
+  const { loading, getCustomer, updateCustomer, updateNotes } = useCustomersStore()
   const { jobs } = useJobsStore()
   const { quotes } = useQuotesStore()
   const { invoices } = useInvoicesStore()
   const [notesDraft, setNotesDraft] = useState<string | null>(null)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editSaving, setEditSaving] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editContact, setEditContact] = useState('')
+  const [editPhone, setEditPhone] = useState('')
+  const [editEmail, setEditEmail] = useState('')
+  const [editAddress, setEditAddress] = useState('')
 
   const customer = id ? getCustomer(id) : undefined
   if (!loading && !customer) return <Navigate to="/customers" replace />
   if (!customer) return null
+
+  const openEdit = () => {
+    setEditName(customer.name)
+    setEditContact(customer.contact)
+    setEditPhone(customer.phone)
+    setEditEmail(customer.email)
+    setEditAddress(customer.address)
+    setEditOpen(true)
+  }
+
+  const saveEdit = async () => {
+    if (!editName.trim()) return
+    setEditSaving(true)
+    try {
+      await updateCustomer(customer.id, {
+        name: editName.trim(),
+        contact: editContact.trim(),
+        phone: editPhone.trim(),
+        email: editEmail.trim(),
+        address: editAddress.trim(),
+      })
+      toast.success('Customer details updated')
+      setEditOpen(false)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to save')
+    } finally {
+      setEditSaving(false)
+    }
+  }
 
   const customerJobs = jobs.filter((j) => j.customerId === customer.id)
   const customerQuotes = quotes.filter((q) => q.customerId === customer.id)
@@ -53,10 +92,16 @@ export default function CustomerDetail() {
             <p className="text-sm text-muted-foreground">{customer.contact}</p>
           </div>
         </div>
-        <Button onClick={() => navigate(`/jobs/new?customerId=${customer.id}`)}>
-          <Plus />
-          New job for this customer
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="secondary" onClick={openEdit}>
+            <Pencil />
+            Edit details
+          </Button>
+          <Button onClick={() => navigate(`/jobs/new?customerId=${customer.id}`)}>
+            <Plus />
+            New job for this customer
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
@@ -229,6 +274,44 @@ export default function CustomerDetail() {
           </Card>
         </div>
       </div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit customer details</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Business / customer name</label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Contact person</label>
+              <Input value={editContact} onChange={(e) => setEditContact(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Phone</label>
+              <Input value={editPhone} onChange={(e) => setEditPhone(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Email</label>
+              <Input value={editEmail} onChange={(e) => setEditEmail(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Address</label>
+              <Input value={editAddress} onChange={(e) => setEditAddress(e.target.value)} className="mt-1" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button disabled={editSaving || !editName.trim()} onClick={saveEdit}>
+              {editSaving ? 'Saving…' : 'Save changes'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

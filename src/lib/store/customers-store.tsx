@@ -10,11 +10,20 @@ export interface NewCustomerInput {
   address?: string
 }
 
+export interface CustomerEditInput {
+  name?: string
+  contact?: string
+  email?: string
+  phone?: string
+  address?: string
+}
+
 interface CustomersContextValue {
   customers: Customer[]
   loading: boolean
   getCustomer: (id: string) => Customer | undefined
   addCustomer: (input: NewCustomerInput) => Promise<Customer>
+  updateCustomer: (id: string, patch: CustomerEditInput) => Promise<void>
   updateNotes: (id: string, notes: string) => Promise<void>
 }
 
@@ -72,6 +81,14 @@ export function CustomersProvider({ children }: { children: ReactNode }) {
     return created
   }, [])
 
+  const updateCustomer = useCallback(async (id: string, patch: CustomerEditInput) => {
+    const { error } = await supabase.from('customers').update(patch).eq('id', id)
+    if (error) throw new Error(error.message)
+    setCustomers((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, ...patch } : c)).sort((a, b) => a.name.localeCompare(b.name))
+    )
+  }, [])
+
   const updateNotes = useCallback(async (id: string, notes: string) => {
     const { error } = await supabase.from('customers').update({ notes }).eq('id', id)
     if (error) throw new Error(error.message)
@@ -79,8 +96,8 @@ export function CustomersProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo(
-    () => ({ customers, loading, getCustomer, addCustomer, updateNotes }),
-    [customers, loading, getCustomer, addCustomer, updateNotes]
+    () => ({ customers, loading, getCustomer, addCustomer, updateCustomer, updateNotes }),
+    [customers, loading, getCustomer, addCustomer, updateCustomer, updateNotes]
   )
 
   return <CustomersContext.Provider value={value}>{children}</CustomersContext.Provider>
