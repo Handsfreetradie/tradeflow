@@ -8,8 +8,15 @@ export interface NewQuoteInput {
   includeGst: boolean
   validityDays: number
   terms: string
+  exclusions: string
   notes: string
   lineItems: LineItem[]
+}
+
+export interface QuoteEditInput {
+  terms?: string
+  exclusions?: string
+  notes?: string
 }
 
 interface QuotesContextValue {
@@ -18,6 +25,7 @@ interface QuotesContextValue {
   getQuote: (id: string) => Quote | undefined
   addQuote: (input: NewQuoteInput) => Promise<Quote>
   updateStatus: (id: string, status: QuoteStatus) => Promise<void>
+  updateQuote: (id: string, patch: QuoteEditInput) => Promise<void>
   linkJob: (id: string, jobId: string) => Promise<void>
 }
 
@@ -37,6 +45,7 @@ type QuoteRow = {
   include_gst: boolean
   validity_days: number
   terms: string
+  exclusions: string
   notes: string
   share_token: string
   first_viewed_at: string | null
@@ -58,6 +67,7 @@ function fromRow(row: QuoteRow): Quote {
     includeGst: row.include_gst,
     validityDays: row.validity_days,
     terms: row.terms,
+    exclusions: row.exclusions,
     notes: row.notes,
     lineItems: row.quote_line_items.map((li) => ({ id: li.id, description: li.description, qty: li.qty, unitPrice: li.unit_price })),
     shareToken: row.share_token,
@@ -105,6 +115,7 @@ export function QuotesProvider({ children }: { children: ReactNode }) {
         include_gst: input.includeGst,
         validity_days: input.validityDays,
         terms: input.terms,
+        exclusions: input.exclusions,
         notes: input.notes,
       })
       .select('*, customer:customers(name)')
@@ -129,6 +140,19 @@ export function QuotesProvider({ children }: { children: ReactNode }) {
     setQuotes((prev) => prev.map((q) => (q.id === id ? { ...q, status } : q)))
   }, [])
 
+  const updateQuote = useCallback(async (id: string, patch: QuoteEditInput) => {
+    const { error } = await supabase
+      .from('quotes')
+      .update({
+        ...(patch.terms !== undefined ? { terms: patch.terms } : {}),
+        ...(patch.exclusions !== undefined ? { exclusions: patch.exclusions } : {}),
+        ...(patch.notes !== undefined ? { notes: patch.notes } : {}),
+      })
+      .eq('id', id)
+    if (error) throw new Error(error.message)
+    setQuotes((prev) => prev.map((q) => (q.id === id ? { ...q, ...patch } : q)))
+  }, [])
+
   const linkJob = useCallback(async (id: string, jobId: string) => {
     const { error } = await supabase.from('quotes').update({ job_id: jobId }).eq('id', id)
     if (error) throw new Error(error.message)
@@ -136,8 +160,8 @@ export function QuotesProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo(
-    () => ({ quotes, loading, getQuote, addQuote, updateStatus, linkJob }),
-    [quotes, loading, getQuote, addQuote, updateStatus, linkJob]
+    () => ({ quotes, loading, getQuote, addQuote, updateStatus, updateQuote, linkJob }),
+    [quotes, loading, getQuote, addQuote, updateStatus, updateQuote, linkJob]
   )
 
   return <QuotesContext.Provider value={value}>{children}</QuotesContext.Provider>

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ArrowLeft, Briefcase, Send, Check, X, Link as LinkIcon, Eye } from 'lucide-react'
@@ -14,15 +15,55 @@ import { formatDate, toDateKey } from '@/lib/utils'
 
 export default function QuoteDetail() {
   const { id } = useParams()
-  const navigate = useNavigate()
-  const { loading, getQuote, updateStatus, linkJob } = useQuotesStore()
-  const { addJob } = useJobsStore()
-  const { getCustomer } = useCustomersStore()
-  const { settings: business } = useBusinessSettings()
+  const { loading, getQuote, updateStatus, updateQuote, linkJob } = useQuotesStore()
 
   const quote = id ? getQuote(id) : undefined
   if (!loading && !quote) return <Navigate to="/quotes" replace />
   if (!quote) return null
+
+  return <QuoteDetailLoaded quote={quote} updateStatus={updateStatus} updateQuote={updateQuote} linkJob={linkJob} />
+}
+
+function QuoteDetailLoaded({
+  quote,
+  updateStatus,
+  updateQuote,
+  linkJob,
+}: {
+  quote: ReturnType<typeof useQuotesStore>['quotes'][number]
+  updateStatus: ReturnType<typeof useQuotesStore>['updateStatus']
+  updateQuote: ReturnType<typeof useQuotesStore>['updateQuote']
+  linkJob: ReturnType<typeof useQuotesStore>['linkJob']
+}) {
+  const navigate = useNavigate()
+  const { addJob } = useJobsStore()
+  const { getCustomer } = useCustomersStore()
+  const { settings: business } = useBusinessSettings()
+
+  const [terms, setTerms] = useState(quote.terms)
+  const [exclusions, setExclusions] = useState(quote.exclusions)
+  const [notes, setNotes] = useState(quote.notes)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setTerms(quote.terms)
+    setExclusions(quote.exclusions)
+    setNotes(quote.notes)
+  }, [quote.terms, quote.exclusions, quote.notes])
+
+  const dirty = terms !== quote.terms || exclusions !== quote.exclusions || notes !== quote.notes
+
+  const saveTermsSection = async () => {
+    setSaving(true)
+    try {
+      await updateQuote(quote.id, { terms, exclusions, notes })
+      toast.success('Quote updated')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   const customer = getCustomer(quote.customerId)
   const expiryDate = new Date(quote.date)
@@ -163,20 +204,42 @@ export default function QuoteDetail() {
 
           <LineItemsTable lineItems={quote.lineItems} includeGst={quote.includeGst} />
 
-          {(quote.notes || quote.terms) && (
-            <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
-              {quote.notes && (
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Notes</p>
-                  <p className="mt-1.5 text-muted-foreground">{quote.notes}</p>
-                </div>
-              )}
-              {quote.terms && (
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Terms</p>
-                  <p className="mt-1.5 text-muted-foreground">{quote.terms}</p>
-                </div>
-              )}
+          <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
+            <div>
+              <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Terms</label>
+              <textarea
+                value={terms}
+                onChange={(e) => setTerms(e.target.value)}
+                rows={3}
+                className="mt-1.5 w-full resize-none rounded-lg border border-transparent bg-secondary/40 p-2 text-sm text-muted-foreground hover:border-input focus:border-input focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Exclusions</label>
+              <textarea
+                value={exclusions}
+                onChange={(e) => setExclusions(e.target.value)}
+                rows={3}
+                placeholder="Nothing excluded"
+                className="mt-1.5 w-full resize-none rounded-lg border border-transparent bg-secondary/40 p-2 text-sm text-muted-foreground hover:border-input focus:border-input focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Notes</label>
+              <textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                rows={3}
+                placeholder="Nothing to note"
+                className="mt-1.5 w-full resize-none rounded-lg border border-transparent bg-secondary/40 p-2 text-sm text-muted-foreground hover:border-input focus:border-input focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+          </div>
+          {dirty && (
+            <div className="flex justify-end">
+              <Button size="sm" disabled={saving} onClick={saveTermsSection}>
+                {saving ? 'Saving…' : 'Save changes'}
+              </Button>
             </div>
           )}
         </CardContent>

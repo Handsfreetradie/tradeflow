@@ -9,6 +9,8 @@ export interface BusinessSettings {
   bankAccountName: string
   bankBsb: string
   bankAccountNumber: string
+  defaultQuoteTerms: string
+  defaultQuoteExclusions: string
 }
 
 type EditableFields = Omit<BusinessSettings, 'logoUrl'>
@@ -28,6 +30,8 @@ const DEFAULTS: BusinessSettings = {
   bankAccountName: '',
   bankBsb: '',
   bankAccountNumber: '',
+  defaultQuoteTerms: '',
+  defaultQuoteExclusions: '',
 }
 
 const BusinessSettingsContext = createContext<BusinessSettingsContextValue | null>(null)
@@ -54,6 +58,8 @@ export function BusinessSettingsProvider({ children }: { children: ReactNode }) 
             bankAccountName: data.bank_account_name,
             bankBsb: data.bank_bsb,
             bankAccountNumber: data.bank_account_number,
+            defaultQuoteTerms: data.default_quote_terms,
+            defaultQuoteExclusions: data.default_quote_exclusions,
           })
         }
         setLoading(false)
@@ -73,6 +79,8 @@ export function BusinessSettingsProvider({ children }: { children: ReactNode }) 
         ...(patch.bankAccountName !== undefined ? { bank_account_name: patch.bankAccountName } : {}),
         ...(patch.bankBsb !== undefined ? { bank_bsb: patch.bankBsb } : {}),
         ...(patch.bankAccountNumber !== undefined ? { bank_account_number: patch.bankAccountNumber } : {}),
+        ...(patch.defaultQuoteTerms !== undefined ? { default_quote_terms: patch.defaultQuoteTerms } : {}),
+        ...(patch.defaultQuoteExclusions !== undefined ? { default_quote_exclusions: patch.defaultQuoteExclusions } : {}),
       })
       .eq('id', true)
     if (error) throw new Error(error.message)

@@ -18,6 +18,7 @@ interface PublicQuote {
   includeGst: boolean
   validityDays: number
   terms: string
+  exclusions: string
   notes: string
   customerName: string
   customerContact: string
@@ -64,6 +65,7 @@ export default function QuotePublic() {
         includeGst: row.include_gst,
         validityDays: row.validity_days,
         terms: row.terms,
+        exclusions: row.exclusions,
         notes: row.notes,
         customerName: row.customer_name,
         customerContact: row.customer_contact,
@@ -185,18 +187,24 @@ export default function QuotePublic() {
 
             <LineItemsTable lineItems={lineItems} includeGst={quote.includeGst} />
 
-            {(quote.notes || quote.terms) && (
-              <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
-                {quote.notes && (
-                  <div>
-                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Notes</p>
-                    <p className="mt-1.5 text-muted-foreground">{quote.notes}</p>
-                  </div>
-                )}
+            {(quote.notes || quote.terms || quote.exclusions) && (
+              <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
                 {quote.terms && (
                   <div>
                     <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Terms</p>
                     <p className="mt-1.5 text-muted-foreground">{quote.terms}</p>
+                  </div>
+                )}
+                {quote.exclusions && (
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Exclusions</p>
+                    <p className="mt-1.5 text-muted-foreground">{quote.exclusions}</p>
+                  </div>
+                )}
+                {quote.notes && (
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Notes</p>
+                    <p className="mt-1.5 text-muted-foreground">{quote.notes}</p>
                   </div>
                 )}
               </div>

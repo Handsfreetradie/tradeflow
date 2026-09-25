@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AddFromCatalog } from '@/components/shared/AddFromCatalog'
 import { useQuotesStore } from '@/lib/store/quotes-store'
 import { useCustomersStore } from '@/lib/store/customers-store'
+import { useBusinessSettings } from '@/lib/store/business-settings-store'
 import type { LineItem } from '@/lib/demo-data'
 import { formatCurrency } from '@/lib/utils'
 
@@ -18,13 +19,24 @@ export default function QuoteNew() {
   const navigate = useNavigate()
   const { addQuote, updateStatus } = useQuotesStore()
   const { customers } = useCustomersStore()
+  const { settings: business, loading: businessLoading } = useBusinessSettings()
 
   const [customerId, setCustomerId] = useState('')
   const [includeGst, setIncludeGst] = useState(true)
   const [validityDays, setValidityDays] = useState('30')
   const [terms, setTerms] = useState('50% deposit on acceptance, balance on completion.')
+  const [exclusions, setExclusions] = useState('')
   const [notes, setNotes] = useState('')
   const [lineItems, setLineItems] = useState<LineItem[]>([newLineItem()])
+  const [defaultsSeeded, setDefaultsSeeded] = useState(false)
+
+  useEffect(() => {
+    if (!businessLoading && !defaultsSeeded) {
+      if (business.defaultQuoteTerms) setTerms(business.defaultQuoteTerms)
+      setExclusions(business.defaultQuoteExclusions)
+      setDefaultsSeeded(true)
+    }
+  }, [businessLoading, defaultsSeeded, business])
 
   const customer = customers.find((c) => c.id === customerId)
   const subtotal = lineItems.reduce((sum, li) => sum + li.qty * li.unitPrice, 0)
@@ -43,6 +55,7 @@ export default function QuoteNew() {
       includeGst,
       validityDays: Number(validityDays) || 30,
       terms: terms.trim(),
+      exclusions: exclusions.trim(),
       notes: notes.trim(),
       lineItems: lineItems.filter((li) => li.description.trim() && li.unitPrice > 0),
     })
@@ -179,6 +192,16 @@ export default function QuoteNew() {
               value={terms}
               onChange={(e) => setTerms(e.target.value)}
               rows={2}
+              className="mt-1 w-full resize-none rounded-lg border border-input bg-white p-3 text-sm shadow-subtle placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Exclusions</label>
+            <textarea
+              value={exclusions}
+              onChange={(e) => setExclusions(e.target.value)}
+              rows={2}
+              placeholder="e.g. Excludes council permits, asbestos removal, making good of walls/ceilings."
               className="mt-1 w-full resize-none rounded-lg border border-input bg-white p-3 text-sm shadow-subtle placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>

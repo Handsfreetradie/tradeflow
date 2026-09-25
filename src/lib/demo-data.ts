@@ -144,6 +144,7 @@ export interface Quote {
   includeGst: boolean
   validityDays: number
   terms: string
+  exclusions: string
   notes: string
   /** Set once this quote has been converted into a job. */
   jobId?: string

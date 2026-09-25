@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { UserPlus, Users as UsersIcon, Building2, Upload, Trash2 } from 'lucide-react'
+import { UserPlus, Users as UsersIcon, Building2, Upload, Trash2, FileSpreadsheet } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -153,6 +153,74 @@ function BusinessCard() {
   )
 }
 
+function QuoteDefaultsCard() {
+  const { settings, loading, updateSettings } = useBusinessSettings()
+  const [terms, setTerms] = useState(settings.defaultQuoteTerms)
+  const [exclusions, setExclusions] = useState(settings.defaultQuoteExclusions)
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setTerms(settings.defaultQuoteTerms)
+    setExclusions(settings.defaultQuoteExclusions)
+  }, [settings.defaultQuoteTerms, settings.defaultQuoteExclusions])
+
+  const dirty = terms !== settings.defaultQuoteTerms || exclusions !== settings.defaultQuoteExclusions
+
+  const save = async () => {
+    setSaving(true)
+    try {
+      await updateSettings({ defaultQuoteTerms: terms, defaultQuoteExclusions: exclusions })
+      toast.success('Quote defaults updated')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) return null
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <FileSpreadsheet className="size-4 text-muted-foreground" />
+          Quote Defaults
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-xs text-muted-foreground">
+          Pre-fills every new quote — you can still change or add to it on any individual quote.
+        </p>
+        <div>
+          <label className="text-xs font-medium text-muted-foreground">Default terms</label>
+          <textarea
+            value={terms}
+            onChange={(e) => setTerms(e.target.value)}
+            rows={2}
+            className="mt-1 w-full resize-none rounded-lg border border-input bg-white p-3 text-sm shadow-subtle placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+        <div>
+          <label className="text-xs font-medium text-muted-foreground">Default exclusions</label>
+          <textarea
+            value={exclusions}
+            onChange={(e) => setExclusions(e.target.value)}
+            rows={2}
+            placeholder="e.g. Excludes council permits, asbestos removal, making good of walls/ceilings."
+            className="mt-1 w-full resize-none rounded-lg border border-input bg-white p-3 text-sm shadow-subtle placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+        </div>
+        {dirty && (
+          <Button size="sm" disabled={saving} onClick={save}>
+            {saving ? 'Saving…' : 'Save defaults'}
+          </Button>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
 function RateInput({ member }: { member: TeamMember }) {
   const { updateRate } = useTeamStore()
   const [value, setValue] = useState(member.hourlyRate?.toString() ?? '')
@@ -285,6 +353,8 @@ export default function Settings() {
       </div>
 
       <BusinessCard />
+
+      <QuoteDefaultsCard />
 
       <Card>
         <CardHeader className="flex-row items-center justify-between gap-4 space-y-0">

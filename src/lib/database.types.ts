@@ -47,6 +47,8 @@ export type Database = {
           bank_account_name: string
           bank_bsb: string
           bank_account_number: string
+          default_quote_terms: string
+          default_quote_exclusions: string
         }
         Insert: {
           id?: boolean
@@ -58,6 +60,8 @@ export type Database = {
           bank_account_name?: string
           bank_bsb?: string
           bank_account_number?: string
+          default_quote_terms?: string
+          default_quote_exclusions?: string
         }
         Update: {
           id?: boolean
@@ -69,6 +73,8 @@ export type Database = {
           bank_account_name?: string
           bank_bsb?: string
           bank_account_number?: string
+          default_quote_terms?: string
+          default_quote_exclusions?: string
         }
         Relationships: []
       }
@@ -797,6 +803,7 @@ export type Database = {
           number: string
           status: string
           terms: string
+          exclusions: string
           validity_days: number
           share_token: string
           first_viewed_at: string | null
@@ -815,6 +822,7 @@ export type Database = {
           number: string
           status?: string
           terms?: string
+          exclusions?: string
           validity_days?: number
           share_token?: string
           first_viewed_at?: string | null
@@ -833,6 +841,7 @@ export type Database = {
           number?: string
           status?: string
           terms?: string
+          exclusions?: string
           share_token?: string
           first_viewed_at?: string | null
           last_viewed_at?: string | null
@@ -956,6 +965,7 @@ export type Database = {
           include_gst: boolean
           validity_days: number
           terms: string
+          exclusions: string
           notes: string
           customer_name: string
           customer_contact: string
