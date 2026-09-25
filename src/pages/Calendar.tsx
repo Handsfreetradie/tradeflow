@@ -322,6 +322,7 @@ export default function CalendarPage() {
                                       }}
                                     >
                                       {m.fullName}
+                                      {m.tradeRole && <span className="ml-1 text-muted-foreground">· {m.tradeRole}</span>}
                                     </DropdownMenuCheckboxItem>
                                   )
                                 })}

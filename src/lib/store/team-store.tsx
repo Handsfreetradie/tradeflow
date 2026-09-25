@@ -7,6 +7,7 @@ export interface TeamMember {
   role: 'owner' | 'employee'
   email: string
   hourlyRate: number | null
+  tradeRole: string
 }
 
 interface TeamContextValue {
@@ -14,6 +15,7 @@ interface TeamContextValue {
   loading: boolean
   refresh: () => void
   updateRate: (id: string, hourlyRate: number | null) => Promise<void>
+  updateTradeRole: (id: string, tradeRole: string) => Promise<void>
 }
 
 const TeamContext = createContext<TeamContextValue | null>(null)
@@ -28,13 +30,20 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     supabase
       .from('profiles')
-      .select('id, full_name, role, email, hourly_rate')
+      .select('id, full_name, role, email, hourly_rate, trade_role')
       .order('full_name')
       .then(({ data, error }) => {
         if (cancelled) return
         if (!error && data) {
           setTeam(
-            data.map((p) => ({ id: p.id, fullName: p.full_name, role: p.role as 'owner' | 'employee', email: p.email, hourlyRate: p.hourly_rate }))
+            data.map((p) => ({
+              id: p.id,
+              fullName: p.full_name,
+              role: p.role as 'owner' | 'employee',
+              email: p.email,
+              hourlyRate: p.hourly_rate,
+              tradeRole: p.trade_role,
+            }))
           )
         }
         setLoading(false)
@@ -52,7 +61,16 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     setTeam((prev) => prev.map((m) => (m.id === id ? { ...m, hourlyRate } : m)))
   }, [])
 
-  const value = useMemo(() => ({ team, loading, refresh, updateRate }), [team, loading, refresh, updateRate])
+  const updateTradeRole = useCallback(async (id: string, tradeRole: string) => {
+    const { error } = await supabase.from('profiles').update({ trade_role: tradeRole }).eq('id', id)
+    if (error) throw new Error(error.message)
+    setTeam((prev) => prev.map((m) => (m.id === id ? { ...m, tradeRole } : m)))
+  }, [])
+
+  const value = useMemo(
+    () => ({ team, loading, refresh, updateRate, updateTradeRole }),
+    [team, loading, refresh, updateRate, updateTradeRole]
+  )
 
   return <TeamContext.Provider value={value}>{children}</TeamContext.Provider>
 }

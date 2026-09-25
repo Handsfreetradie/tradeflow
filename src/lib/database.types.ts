@@ -43,6 +43,10 @@ export type Database = {
           abn: string
           logo_url: string | null
           updated_at: string
+          licence_number: string
+          bank_account_name: string
+          bank_bsb: string
+          bank_account_number: string
         }
         Insert: {
           id?: boolean
@@ -50,6 +54,10 @@ export type Database = {
           abn?: string
           logo_url?: string | null
           updated_at?: string
+          licence_number?: string
+          bank_account_name?: string
+          bank_bsb?: string
+          bank_account_number?: string
         }
         Update: {
           id?: boolean
@@ -57,6 +65,10 @@ export type Database = {
           abn?: string
           logo_url?: string | null
           updated_at?: string
+          licence_number?: string
+          bank_account_name?: string
+          bank_bsb?: string
+          bank_account_number?: string
         }
         Relationships: []
       }
@@ -697,6 +709,7 @@ export type Database = {
           id: string
           role: string
           hourly_rate: number | null
+          trade_role: string
         }
         Insert: {
           created_at?: string
@@ -705,6 +718,7 @@ export type Database = {
           id: string
           role: string
           hourly_rate?: number | null
+          trade_role?: string
         }
         Update: {
           created_at?: string
@@ -713,6 +727,7 @@ export type Database = {
           id?: string
           role?: string
           hourly_rate?: number | null
+          trade_role?: string
         }
         Relationships: []
       }

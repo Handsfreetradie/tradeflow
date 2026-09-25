@@ -99,6 +99,7 @@ export default function InvoiceDetail() {
               <div>
                 <p className="text-sm font-semibold leading-none">{business.businessName}</p>
                 {business.abn && <p className="mt-1 text-xs text-muted-foreground">ABN {business.abn}</p>}
+                {business.licenceNumber && <p className="text-xs text-muted-foreground">Lic. {business.licenceNumber}</p>}
               </div>
             </div>
             <div className="text-right">
@@ -157,7 +158,7 @@ export default function InvoiceDetail() {
             </div>
           )}
 
-          {(invoice.notes || invoice.paymentTerms) && (
+          {(invoice.notes || invoice.paymentTerms || business.bankAccountNumber) && (
             <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
               {invoice.notes && (
                 <div>
@@ -169,6 +170,16 @@ export default function InvoiceDetail() {
                 <div>
                   <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Payment terms</p>
                   <p className="mt-1.5 text-muted-foreground">{invoice.paymentTerms}</p>
+                </div>
+              )}
+              {balanceDue > 0 && business.bankAccountNumber && (
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Payment details</p>
+                  <p className="mt-1.5 text-muted-foreground">
+                    {business.bankAccountName && <>Acc. name: {business.bankAccountName}<br /></>}
+                    {business.bankBsb && <>BSB: {business.bankBsb}<br /></>}
+                    Acc. number: {business.bankAccountNumber}
+                  </p>
                 </div>
               )}
             </div>

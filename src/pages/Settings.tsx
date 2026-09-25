@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useTeamStore, type TeamMember } from '@/lib/store/team-store'
@@ -17,6 +18,10 @@ function BusinessCard() {
   const { settings, loading, updateSettings, uploadLogo } = useBusinessSettings()
   const [name, setName] = useState(settings.businessName)
   const [abn, setAbn] = useState(settings.abn)
+  const [licenceNumber, setLicenceNumber] = useState(settings.licenceNumber)
+  const [bankAccountName, setBankAccountName] = useState(settings.bankAccountName)
+  const [bankBsb, setBankBsb] = useState(settings.bankBsb)
+  const [bankAccountNumber, setBankAccountNumber] = useState(settings.bankAccountNumber)
   const [savingName, setSavingName] = useState(false)
   const [uploading, setUploading] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -24,14 +29,24 @@ function BusinessCard() {
   useEffect(() => {
     setName(settings.businessName)
     setAbn(settings.abn)
-  }, [settings.businessName, settings.abn])
+    setLicenceNumber(settings.licenceNumber)
+    setBankAccountName(settings.bankAccountName)
+    setBankBsb(settings.bankBsb)
+    setBankAccountNumber(settings.bankAccountNumber)
+  }, [settings])
 
-  const dirty = name !== settings.businessName || abn !== settings.abn
+  const dirty =
+    name !== settings.businessName ||
+    abn !== settings.abn ||
+    licenceNumber !== settings.licenceNumber ||
+    bankAccountName !== settings.bankAccountName ||
+    bankBsb !== settings.bankBsb ||
+    bankAccountNumber !== settings.bankAccountNumber
 
   const saveDetails = async () => {
     setSavingName(true)
     try {
-      await updateSettings({ businessName: name, abn })
+      await updateSettings({ businessName: name, abn, licenceNumber, bankAccountName, bankBsb, bankAccountNumber })
       toast.success('Business details updated')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to save')
@@ -104,6 +119,29 @@ function BusinessCard() {
             <label className="text-xs font-medium text-muted-foreground">ABN (optional)</label>
             <Input value={abn} onChange={(e) => setAbn(e.target.value)} className="mt-1" />
           </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Electrical licence number</label>
+            <Input value={licenceNumber} onChange={(e) => setLicenceNumber(e.target.value)} placeholder="e.g. EC12345" className="mt-1" />
+          </div>
+        </div>
+
+        <div className="border-t border-border pt-4">
+          <p className="text-sm font-medium">Bank details</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">Shown on invoices so customers know where to pay.</p>
+          <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Account name</label>
+              <Input value={bankAccountName} onChange={(e) => setBankAccountName(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">BSB</label>
+              <Input value={bankBsb} onChange={(e) => setBankBsb(e.target.value)} placeholder="000-000" className="mt-1" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Account number</label>
+              <Input value={bankAccountNumber} onChange={(e) => setBankAccountNumber(e.target.value)} className="mt-1" />
+            </div>
+          </div>
         </div>
         {dirty && (
           <Button size="sm" disabled={savingName} onClick={saveDetails}>
@@ -157,6 +195,40 @@ function RateInput({ member }: { member: TeamMember }) {
       />
       <span>/hr</span>
     </div>
+  )
+}
+
+const TRADE_ROLES = [
+  'Licensed Electrician',
+  'Apprentice (1st Year)',
+  'Apprentice (2nd Year)',
+  'Apprentice (3rd Year)',
+  'Apprentice (4th Year)',
+  'Labourer',
+  'Supervisor',
+  'Office/Admin',
+]
+
+function TradeRoleSelect({ member }: { member: TeamMember }) {
+  const { updateTradeRole } = useTeamStore()
+
+  return (
+    <Select
+      value={member.tradeRole || 'unset'}
+      onValueChange={(v) => updateTradeRole(member.id, v === 'unset' ? '' : v).catch((e) => toast.error(e instanceof Error ? e.message : 'Failed to save'))}
+    >
+      <SelectTrigger className="h-7 w-40 text-xs">
+        <SelectValue placeholder="Set role..." />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="unset">Not set</SelectItem>
+        {TRADE_ROLES.map((r) => (
+          <SelectItem key={r} value={r}>
+            {r}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }
 
@@ -231,7 +303,7 @@ export default function Settings() {
           ) : (
             <div className="divide-y divide-border">
               {team.map((m) => (
-                <div key={m.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
+                <div key={m.id} className="flex flex-wrap items-center gap-3 py-3 first:pt-0 last:pb-0">
                   <Avatar>
                     <AvatarFallback>{m.fullName.slice(0, 2).toUpperCase()}</AvatarFallback>
                   </Avatar>
@@ -240,6 +312,7 @@ export default function Settings() {
                     <p className="truncate text-xs text-muted-foreground">{m.email}</p>
                   </div>
                   <span className="rounded-full bg-secondary px-2.5 py-1 text-xs font-medium capitalize text-secondary-foreground">{m.role}</span>
+                  {m.role === 'employee' && <TradeRoleSelect member={m} />}
                   {m.role === 'employee' && <RateInput member={m} />}
                   {m.role === 'employee' && m.id !== session?.user.id && (
                     <Button

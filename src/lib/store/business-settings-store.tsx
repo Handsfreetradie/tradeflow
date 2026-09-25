@@ -5,16 +5,30 @@ export interface BusinessSettings {
   businessName: string
   abn: string
   logoUrl: string | null
+  licenceNumber: string
+  bankAccountName: string
+  bankBsb: string
+  bankAccountNumber: string
 }
+
+type EditableFields = Omit<BusinessSettings, 'logoUrl'>
 
 interface BusinessSettingsContextValue {
   settings: BusinessSettings
   loading: boolean
-  updateSettings: (patch: Partial<Pick<BusinessSettings, 'businessName' | 'abn'>>) => Promise<void>
+  updateSettings: (patch: Partial<EditableFields>) => Promise<void>
   uploadLogo: (file: File) => Promise<void>
 }
 
-const DEFAULTS: BusinessSettings = { businessName: 'My Business', abn: '', logoUrl: null }
+const DEFAULTS: BusinessSettings = {
+  businessName: 'My Business',
+  abn: '',
+  logoUrl: null,
+  licenceNumber: '',
+  bankAccountName: '',
+  bankBsb: '',
+  bankAccountNumber: '',
+}
 
 const BusinessSettingsContext = createContext<BusinessSettingsContextValue | null>(null)
 
@@ -31,7 +45,17 @@ export function BusinessSettingsProvider({ children }: { children: ReactNode }) 
       .maybeSingle()
       .then(({ data }) => {
         if (cancelled) return
-        if (data) setSettings({ businessName: data.business_name, abn: data.abn, logoUrl: data.logo_url })
+        if (data) {
+          setSettings({
+            businessName: data.business_name,
+            abn: data.abn,
+            logoUrl: data.logo_url,
+            licenceNumber: data.licence_number,
+            bankAccountName: data.bank_account_name,
+            bankBsb: data.bank_bsb,
+            bankAccountNumber: data.bank_account_number,
+          })
+        }
         setLoading(false)
       })
     return () => {
@@ -39,12 +63,16 @@ export function BusinessSettingsProvider({ children }: { children: ReactNode }) 
     }
   }, [])
 
-  const updateSettings = useCallback(async (patch: Partial<Pick<BusinessSettings, 'businessName' | 'abn'>>) => {
+  const updateSettings = useCallback(async (patch: Partial<EditableFields>) => {
     const { error } = await supabase
       .from('business_settings')
       .update({
         ...(patch.businessName !== undefined ? { business_name: patch.businessName } : {}),
         ...(patch.abn !== undefined ? { abn: patch.abn } : {}),
+        ...(patch.licenceNumber !== undefined ? { licence_number: patch.licenceNumber } : {}),
+        ...(patch.bankAccountName !== undefined ? { bank_account_name: patch.bankAccountName } : {}),
+        ...(patch.bankBsb !== undefined ? { bank_bsb: patch.bankBsb } : {}),
+        ...(patch.bankAccountNumber !== undefined ? { bank_account_number: patch.bankAccountNumber } : {}),
       })
       .eq('id', true)
     if (error) throw new Error(error.message)

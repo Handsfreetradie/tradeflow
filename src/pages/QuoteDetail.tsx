@@ -105,6 +105,7 @@ export default function QuoteDetail() {
               <div>
                 <p className="text-sm font-semibold leading-none">{business.businessName}</p>
                 {business.abn && <p className="mt-1 text-xs text-muted-foreground">ABN {business.abn}</p>}
+                {business.licenceNumber && <p className="text-xs text-muted-foreground">Lic. {business.licenceNumber}</p>}
               </div>
             </div>
             <div className="text-right">
