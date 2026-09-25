@@ -533,6 +533,9 @@ export type Database = {
           status: string
           title: string
           value: number
+          coc_status: string
+          coc_number: string | null
+          coc_issued_date: string | null
         }
         Insert: {
           address?: string | null
@@ -548,6 +551,9 @@ export type Database = {
           status?: string
           title: string
           value?: number
+          coc_status?: string
+          coc_number?: string | null
+          coc_issued_date?: string | null
         }
         Update: {
           address?: string | null
@@ -563,6 +569,9 @@ export type Database = {
           status?: string
           title?: string
           value?: number
+          coc_status?: string
+          coc_number?: string | null
+          coc_issued_date?: string | null
         }
         Relationships: [
           {
@@ -649,6 +658,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      products: {
+        Row: {
+          id: string
+          name: string
+          description: string
+          category: string
+          unit: string
+          unit_price: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          description?: string
+          category?: string
+          unit?: string
+          unit_price?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          description?: string
+          category?: string
+          unit?: string
+          unit_price?: number
+          created_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {

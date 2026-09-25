@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth/AuthProvider'
-import type { Job, JobCheckIn, JobCost, JobNote, JobStatus, LineItem, PricingType } from '@/lib/demo-data'
+import type { CocStatus, Job, JobCheckIn, JobCost, JobNote, JobStatus, LineItem, PricingType } from '@/lib/demo-data'
 
 export interface NewJobInput {
   title: string
@@ -25,6 +25,7 @@ interface JobsContextValue {
   updateJobStatus: (id: string, status: JobStatus) => Promise<void>
   updateDueDate: (id: string, dueDate: string) => Promise<void>
   setAssignees: (id: string, employeeIds: string[]) => Promise<void>
+  updateCoc: (id: string, patch: { cocStatus?: CocStatus; cocNumber?: string; cocIssuedDate?: string }) => Promise<void>
   addNote: (id: string, text: string) => Promise<void>
   addCost: (id: string, cost: Omit<JobCost, 'id'>) => Promise<void>
   startJob: (id: string) => Promise<void>
@@ -50,6 +51,9 @@ type JobRow = {
   quote_id: string | null
   pricing_type: string
   photos: number
+  coc_status: string
+  coc_number: string | null
+  coc_issued_date: string | null
   customer: { name: string; address: string } | null
 }
 
@@ -81,6 +85,9 @@ function assembleJob(
     photos: row.photos,
     notes,
     checkIns,
+    cocStatus: row.coc_status as CocStatus,
+    cocNumber: row.coc_number ?? undefined,
+    cocIssuedDate: row.coc_issued_date ?? undefined,
   }
 }
 
@@ -316,6 +323,19 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     setJobs((prev) => prev.map((j) => (j.id === id ? { ...j, dueDate } : j)))
   }, [])
 
+  const updateCoc = useCallback(async (id: string, patch: { cocStatus?: CocStatus; cocNumber?: string; cocIssuedDate?: string }) => {
+    const { error } = await supabase
+      .from('jobs')
+      .update({
+        ...(patch.cocStatus !== undefined ? { coc_status: patch.cocStatus } : {}),
+        ...(patch.cocNumber !== undefined ? { coc_number: patch.cocNumber || null } : {}),
+        ...(patch.cocIssuedDate !== undefined ? { coc_issued_date: patch.cocIssuedDate || null } : {}),
+      })
+      .eq('id', id)
+    if (error) throw new Error(error.message)
+    setJobs((prev) => prev.map((j) => (j.id === id ? { ...j, ...patch } : j)))
+  }, [])
+
   const setAssignees = useCallback(async (id: string, employeeIds: string[]) => {
     const { error: deleteError } = await supabase.from('job_assignees').delete().eq('job_id', id)
     if (deleteError) throw new Error(deleteError.message)
@@ -401,8 +421,8 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   )
 
   const value = useMemo(
-    () => ({ jobs, loading, getJob, addJob, updateJobStatus, updateDueDate, setAssignees, addNote, addCost, startJob, finishJob }),
-    [jobs, loading, getJob, addJob, updateJobStatus, updateDueDate, setAssignees, addNote, addCost, startJob, finishJob]
+    () => ({ jobs, loading, getJob, addJob, updateJobStatus, updateDueDate, setAssignees, updateCoc, addNote, addCost, startJob, finishJob }),
+    [jobs, loading, getJob, addJob, updateJobStatus, updateDueDate, setAssignees, updateCoc, addNote, addCost, startJob, finishJob]
   )
 
   return <JobsContext.Provider value={value}>{children}</JobsContext.Provider>

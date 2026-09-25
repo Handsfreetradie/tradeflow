@@ -1,7 +1,5 @@
 import { Route, Routes } from 'react-router-dom'
-import { Package } from 'lucide-react'
 import { AppShell } from '@/components/layout/AppShell'
-import { PlaceholderPage } from '@/components/layout/PlaceholderPage'
 import { AuthProvider } from '@/lib/auth/AuthProvider'
 import { RequireRole } from '@/components/auth/RequireRole'
 import { JobsProvider } from '@/lib/store/jobs-store'
@@ -13,6 +11,7 @@ import { TeamProvider } from '@/lib/store/team-store'
 import { FieldJobsProvider } from '@/lib/store/field-jobs-store'
 import { BusinessSettingsProvider } from '@/lib/store/business-settings-store'
 import { NotificationsProvider } from '@/lib/store/notifications-store'
+import { ProductsProvider } from '@/lib/store/products-store'
 import Login from '@/pages/auth/Login'
 import Setup from '@/pages/auth/Setup'
 import AcceptInvite from '@/pages/auth/AcceptInvite'
@@ -34,6 +33,7 @@ import ExpenseNew from '@/pages/ExpenseNew'
 import CalendarPage from '@/pages/Calendar'
 import Reports from '@/pages/Reports'
 import Settings from '@/pages/Settings'
+import ProductsList from '@/pages/ProductsList'
 import { FieldShell } from '@/components/field/FieldShell'
 import FieldToday from '@/pages/field/FieldToday'
 import FieldJobs from '@/pages/field/FieldJobs'
@@ -43,6 +43,7 @@ function OwnerApp() {
   return (
     <BusinessSettingsProvider>
       <NotificationsProvider>
+      <ProductsProvider>
       <CustomersProvider>
         <JobsProvider>
           <QuotesProvider>
@@ -65,7 +66,7 @@ function OwnerApp() {
                     <Route path="customers/:id" element={<CustomerDetail />} />
                     <Route path="expenses" element={<ExpensesList />} />
                     <Route path="expenses/new" element={<ExpenseNew />} />
-                    <Route path="products" element={<PlaceholderPage title="Products & Services" icon={Package} />} />
+                    <Route path="products" element={<ProductsList />} />
                     <Route path="reports" element={<Reports />} />
                     <Route path="calendar" element={<CalendarPage />} />
                     <Route path="settings" element={<Settings />} />
@@ -76,6 +77,7 @@ function OwnerApp() {
           </QuotesProvider>
         </JobsProvider>
       </CustomersProvider>
+      </ProductsProvider>
       </NotificationsProvider>
     </BusinessSettingsProvider>
   )

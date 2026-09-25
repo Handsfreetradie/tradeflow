@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { AddFromCatalog } from '@/components/shared/AddFromCatalog'
 import { useJobsStore } from '@/lib/store/jobs-store'
 import { useCustomersStore } from '@/lib/store/customers-store'
 import { useTeamStore } from '@/lib/store/team-store'
@@ -232,10 +233,15 @@ export default function JobNew() {
               </Button>
             </div>
           ))}
-          <Button variant="secondary" size="sm" onClick={() => setLineItems((prev) => [...prev, newLineItem()])}>
-            <Plus />
-            Add line
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setLineItems((prev) => [...prev, newLineItem()])}>
+              <Plus />
+              Add line
+            </Button>
+            <AddFromCatalog
+              onAdd={(item) => setLineItems((prev) => [...prev, { id: crypto.randomUUID(), ...item }])}
+            />
+          </div>
 
           {lineItems.length > 0 && (
             <div className="flex items-center justify-between border-t border-border pt-3 text-sm">

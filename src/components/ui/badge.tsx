@@ -63,6 +63,10 @@ export const statusBadgeVariant: Record<string, VariantProps<typeof badgeVariant
   cancelled: 'danger',
   expired: 'danger',
   'on hold': 'purple',
+  issued: 'success',
+  submitted: 'info',
+  'not started': 'default',
+  'not required': 'default',
 }
 
 export function StatusBadge({ status, className }: { status: string; className?: string }) {

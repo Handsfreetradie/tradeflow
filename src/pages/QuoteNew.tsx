@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { AddFromCatalog } from '@/components/shared/AddFromCatalog'
 import { useQuotesStore } from '@/lib/store/quotes-store'
 import { useCustomersStore } from '@/lib/store/customers-store'
 import type { LineItem } from '@/lib/demo-data'
@@ -140,10 +141,13 @@ export default function QuoteNew() {
               </Button>
             </div>
           ))}
-          <Button variant="secondary" size="sm" onClick={() => setLineItems((prev) => [...prev, newLineItem()])}>
-            <Plus />
-            Add line
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="secondary" size="sm" onClick={() => setLineItems((prev) => [...prev, newLineItem()])}>
+              <Plus />
+              Add line
+            </Button>
+            <AddFromCatalog onAdd={(item) => setLineItems((prev) => [...prev, { id: crypto.randomUUID(), ...item }])} />
+          </div>
 
           <div className="space-y-1 border-t border-border pt-3 text-sm">
             <div className="flex justify-between text-muted-foreground">

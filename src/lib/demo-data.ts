@@ -4,6 +4,7 @@
 // constants that aren't part of the database.
 
 export type JobStatus = 'In Progress' | 'Scheduled' | 'Completed' | 'On Hold' | 'Cancelled'
+export type CocStatus = 'Not Required' | 'Not Started' | 'Submitted' | 'Issued'
 export type InvoiceStatus = 'Draft' | 'Sent' | 'Partial' | 'Paid' | 'Overdue'
 export type QuoteStatus = 'Draft' | 'Sent' | 'Accepted' | 'Declined' | 'Expired'
 export type ExpenseCategory = 'Materials' | 'Fuel' | 'Tools & Equipment' | 'Subcontractor' | 'Vehicle' | 'Insurance' | 'Office' | 'Other'
@@ -85,6 +86,11 @@ export interface Job {
   photos: number
   notes: JobNote[]
   checkIns: JobCheckIn[]
+  /** Certificate of Compliance for Electrical Work (NSW eCert or equivalent). Tracked manually
+   * for now — see CLAUDE.md's eCert note for why this isn't a live API submission yet. */
+  cocStatus: CocStatus
+  cocNumber?: string
+  cocIssuedDate?: string
 }
 
 export interface Payment {
