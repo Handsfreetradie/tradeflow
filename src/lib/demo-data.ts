@@ -111,6 +111,8 @@ export interface Job {
   cocIssuedDate?: string
   /** Optional milestones — empty unless the owner opted in at job creation. */
   stages: JobStage[]
+  /** Manual drag-to-reorder position on the owner's Jobs list — independent of due date or value. */
+  sortOrder: number
 }
 
 export interface Payment {

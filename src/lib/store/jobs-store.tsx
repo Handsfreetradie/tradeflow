@@ -43,6 +43,7 @@ interface JobsContextValue {
   toggleStage: (stageId: string, jobId: string, complete: boolean) => Promise<void>
   deleteStage: (stageId: string, jobId: string) => Promise<void>
   claimStages: (jobId: string, stageIds: string[], invoiceId: string) => Promise<void>
+  reorderJobs: (orderedIds: string[]) => Promise<void>
 }
 
 const JobsContext = createContext<JobsContextValue | null>(null)
@@ -67,6 +68,7 @@ type JobRow = {
   coc_status: string
   coc_number: string | null
   coc_issued_date: string | null
+  sort_order: number
   customer: { name: string; address: string } | null
 }
 
@@ -130,6 +132,7 @@ function assembleJob(
     cocNumber: row.coc_number ?? undefined,
     cocIssuedDate: row.coc_issued_date ?? undefined,
     stages,
+    sortOrder: row.sort_order,
   }
 }
 
@@ -310,6 +313,9 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       const value = items.reduce((sum, li) => sum + li.qty * li.unitPrice, 0)
       const pricingType: PricingType = input.pricingType ?? (items.length > 0 ? 'Fixed Price' : 'Time & Materials')
 
+      const { data: maxSortRow } = await supabase.from('jobs').select('sort_order').order('sort_order', { ascending: false }).limit(1).maybeSingle()
+      const nextSortOrder = (maxSortRow?.sort_order ?? 0) + 1
+
       const { data: jobRow, error } = await supabase
         .from('jobs')
         .insert({
@@ -322,6 +328,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           pricing_type: pricingType,
           value,
           quote_id: input.quoteId ?? null,
+          sort_order: nextSortOrder,
         })
         .select(JOB_SELECT)
         .single()
@@ -552,6 +559,14 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     [jobs, fullName, refreshJob]
   )
 
+  const reorderJobs = useCallback(async (orderedIds: string[]) => {
+    const orderMap = new Map(orderedIds.map((id, i) => [id, i]))
+    setJobs((prev) => prev.map((j) => (orderMap.has(j.id) ? { ...j, sortOrder: orderMap.get(j.id)! } : j)))
+    const results = await Promise.all(orderedIds.map((id, i) => supabase.from('jobs').update({ sort_order: i }).eq('id', id)))
+    const failed = results.find((r) => r.error)
+    if (failed?.error) throw new Error(failed.error.message)
+  }, [])
+
   const value = useMemo(
     () => ({
       jobs,
@@ -571,6 +586,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       toggleStage,
       deleteStage,
       claimStages,
+      reorderJobs,
     }),
     [
       jobs,
@@ -590,6 +606,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       toggleStage,
       deleteStage,
       claimStages,
+      reorderJobs,
     ]
   )
 

@@ -789,6 +789,7 @@ export type Database = {
           pricing_type: string
           quote_id: string | null
           scheduled_time: string | null
+          sort_order: number
           status: string
           title: string
           value: number
@@ -807,6 +808,7 @@ export type Database = {
           pricing_type?: string
           quote_id?: string | null
           scheduled_time?: string | null
+          sort_order?: number
           status?: string
           title: string
           value?: number
@@ -825,6 +827,7 @@ export type Database = {
           pricing_type?: string
           quote_id?: string | null
           scheduled_time?: string | null
+          sort_order?: number
           status?: string
           title?: string
           value?: number
@@ -1431,6 +1434,7 @@ export type Database = {
         }
       }
       employee_join_job: { Args: { p_job_id: string }; Returns: undefined }
+      employee_leave_job: { Args: { p_job_id: string }; Returns: undefined }
       employee_start_job: {
         Args: { p_job_id: string }
         Returns: {

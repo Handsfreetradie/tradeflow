@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowUpDown, Briefcase, Plus, Search } from 'lucide-react'
+import { toast } from 'sonner'
+import { ArrowUpDown, Briefcase, GripVertical, Plus, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -10,19 +11,22 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useJobsStore } from '@/lib/store/jobs-store'
 import type { JobStatus } from '@/lib/demo-data'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { cn, formatCurrency, formatDate } from '@/lib/utils'
 
-type SortKey = 'dueDate' | 'value'
+type SortKey = 'custom' | 'dueDate' | 'value'
 
 const statusFilters: (JobStatus | 'All')[] = ['All', 'Scheduled', 'In Progress', 'Completed', 'On Hold', 'Cancelled']
 
 export default function JobsList() {
-  const { jobs } = useJobsStore()
+  const { jobs, reorderJobs } = useJobsStore()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [status, setStatus] = useState<JobStatus | 'All'>('All')
-  const [sortKey, setSortKey] = useState<SortKey>('dueDate')
+  const [sortKey, setSortKey] = useState<SortKey>('custom')
   const [sortAsc, setSortAsc] = useState(true)
+  const [draggingId, setDraggingId] = useState<string | null>(null)
+
+  const canReorder = sortKey === 'custom' && status === 'All' && search.trim() === ''
 
   const filtered = useMemo(() => {
     let result = jobs
@@ -34,6 +38,7 @@ export default function JobsList() {
       )
     }
     return [...result].sort((a, b) => {
+      if (sortKey === 'custom') return a.sortOrder - b.sortOrder
       const dir = sortAsc ? 1 : -1
       if (sortKey === 'value') return (a.value - b.value) * dir
       return (new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()) * dir
@@ -46,6 +51,17 @@ export default function JobsList() {
       setSortKey(key)
       setSortAsc(true)
     }
+  }
+
+  const handleDrop = (targetId: string) => {
+    if (!draggingId || draggingId === targetId) return
+    const ids = filtered.map((j) => j.id)
+    const from = ids.indexOf(draggingId)
+    const to = ids.indexOf(targetId)
+    if (from === -1 || to === -1) return
+    ids.splice(from, 1)
+    ids.splice(to, 0, draggingId)
+    reorderJobs(ids).catch((e) => toast.error(e instanceof Error ? e.message : 'Could not save the new order'))
   }
 
   return (
@@ -78,7 +94,16 @@ export default function JobsList() {
             ))}
           </SelectContent>
         </Select>
+        {sortKey !== 'custom' && (
+          <button onClick={() => setSortKey('custom')} className="text-xs text-primary hover:underline">
+            Back to custom order
+          </button>
+        )}
       </div>
+
+      {!canReorder && sortKey === 'custom' && (
+        <p className="text-xs text-muted-foreground">Clear the search and status filter to drag jobs into a custom order.</p>
+      )}
 
       <Card>
         <CardContent className="p-0">
@@ -92,6 +117,7 @@ export default function JobsList() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  {canReorder && <TableHead className="w-8" />}
                   <TableHead>Job</TableHead>
                   <TableHead className="hidden md:table-cell">Customer</TableHead>
                   <TableHead className="hidden lg:table-cell">Address</TableHead>
@@ -112,7 +138,21 @@ export default function JobsList() {
               </TableHeader>
               <TableBody>
                 {filtered.map((job) => (
-                  <TableRow key={job.id} className="cursor-pointer" onClick={() => navigate(`/jobs/${job.id}`)}>
+                  <TableRow
+                    key={job.id}
+                    draggable={canReorder}
+                    onDragStart={() => setDraggingId(job.id)}
+                    onDragOver={(e) => canReorder && e.preventDefault()}
+                    onDrop={() => handleDrop(job.id)}
+                    onDragEnd={() => setDraggingId(null)}
+                    className={cn('cursor-pointer', draggingId === job.id && 'opacity-40')}
+                    onClick={() => navigate(`/jobs/${job.id}`)}
+                  >
+                    {canReorder && (
+                      <TableCell className="cursor-grab text-muted-foreground" onClick={(e) => e.stopPropagation()}>
+                        <GripVertical className="size-4" />
+                      </TableCell>
+                    )}
                     <TableCell>
                       <p className="font-medium">{job.title}</p>
                       <p className="text-xs text-muted-foreground">{job.number}</p>

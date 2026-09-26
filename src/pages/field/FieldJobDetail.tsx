@@ -59,7 +59,8 @@ export default function FieldJobDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { session } = useAuth()
-  const { loading, getJob, addNote, startJob, finishJob, updateStage } = useFieldJobsStore()
+  const { loading, getJob, addNote, startJob, finishJob, updateStage, leaveJob } = useFieldJobsStore()
+  const [leaving, setLeaving] = useState(false)
   const [noteText, setNoteText] = useState('')
   const [finishOpen, setFinishOpen] = useState(false)
   const [finishNote, setFinishNote] = useState('')
@@ -68,23 +69,24 @@ export default function FieldJobDetail() {
   const [busy, setBusy] = useState(false)
 
   const job = id ? getJob(id) : undefined
-  if (!loading && !job) return <Navigate to="/field/jobs" replace />
-  if (!job) return <p className="p-5 text-sm text-muted-foreground">Loading…</p>
-
   const myId = session?.user.id
-  const openSession = [...job.checkIns].reverse().find((c) => c.employeeId === myId && c.checkOut === null)
-  const totalMs = job.checkIns.reduce((sum, c) => {
-    if (c.employeeId !== myId) return sum
-    const start = new Date(c.checkIn).getTime()
-    const end = c.checkOut ? new Date(c.checkOut).getTime() : now
-    return sum + Math.max(0, end - start)
-  }, 0)
+  const openSession = job ? [...job.checkIns].reverse().find((c) => c.employeeId === myId && c.checkOut === null) : undefined
 
   useEffect(() => {
     if (!openSession) return
     const interval = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(interval)
   }, [openSession])
+
+  if (!loading && !job) return <Navigate to="/field/jobs" replace />
+  if (!job) return <p className="p-5 text-sm text-muted-foreground">Loading…</p>
+
+  const totalMs = job.checkIns.reduce((sum, c) => {
+    if (c.employeeId !== myId) return sum
+    const start = new Date(c.checkIn).getTime()
+    const end = c.checkOut ? new Date(c.checkOut).getTime() : now
+    return sum + Math.max(0, end - start)
+  }, 0)
 
   const handleStart = async () => {
     setBusy(true)
@@ -117,6 +119,19 @@ export default function FieldJobDetail() {
     if (!noteText.trim()) return
     await addNote(job.id, noteText.trim())
     setNoteText('')
+  }
+
+  const handleLeave = async () => {
+    if (!window.confirm("Leave this job? The office will be notified.")) return
+    setLeaving(true)
+    try {
+      await leaveJob(job.id)
+      toast.success('Removed from job')
+      navigate('/field/jobs')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not leave this job')
+      setLeaving(false)
+    }
   }
 
   return (
@@ -212,6 +227,12 @@ export default function FieldJobDetail() {
           </div>
         </div>
       )}
+
+      <div className="mx-5">
+        <button onClick={handleLeave} disabled={leaving} className="text-xs font-medium text-destructive">
+          {leaving ? 'Leaving…' : 'Leave this job'}
+        </button>
+      </div>
 
       {job.stages.length > 0 && (
         <div className="mx-5 space-y-2">

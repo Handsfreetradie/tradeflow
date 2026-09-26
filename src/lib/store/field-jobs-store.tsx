@@ -61,6 +61,7 @@ interface FieldJobsContextValue {
   finishJob: (id: string, note?: string, blocked?: boolean) => Promise<void>
   updateStage: (stageId: string, jobId: string, patch: { complete?: boolean; notes?: string }) => Promise<void>
   joinJob: (jobId: string) => Promise<void>
+  leaveJob: (jobId: string) => Promise<void>
   refresh: () => void
 }
 
@@ -345,6 +346,16 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
     [load, loadJoinable]
   )
 
+  const leaveJob = useCallback(
+    async (jobId: string) => {
+      const { error } = await supabase.rpc('employee_leave_job', { p_job_id: jobId })
+      if (error) throw new Error(error.message)
+      await load()
+      loadJoinable()
+    },
+    [load, loadJoinable]
+  )
+
   const value = useMemo(
     () => ({
       jobs,
@@ -358,9 +369,10 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
       finishJob,
       updateStage,
       joinJob,
+      leaveJob,
       refresh,
     }),
-    [jobs, loading, online, pendingSyncCount, joinableJobs, getJob, addNote, startJob, finishJob, updateStage, joinJob, refresh]
+    [jobs, loading, online, pendingSyncCount, joinableJobs, getJob, addNote, startJob, finishJob, updateStage, joinJob, leaveJob, refresh]
   )
 
   return <FieldJobsContext.Provider value={value}>{children}</FieldJobsContext.Provider>
