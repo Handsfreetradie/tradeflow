@@ -21,6 +21,15 @@ export interface FieldCrewMember {
   checkInAt?: string
 }
 
+export interface JoinableJob {
+  id: string
+  number: string
+  title: string
+  address: string
+  scheduledTime?: string
+  status: JobStatus
+}
+
 export interface FieldJob {
   id: string
   number: string
@@ -45,11 +54,13 @@ interface FieldJobsContextValue {
   loading: boolean
   offline: boolean
   pendingSyncCount: number
+  joinableJobs: JoinableJob[]
   getJob: (id: string) => FieldJob | undefined
   addNote: (id: string, text: string) => Promise<void>
   startJob: (id: string) => Promise<void>
   finishJob: (id: string, note?: string, blocked?: boolean) => Promise<void>
   updateStage: (stageId: string, jobId: string, patch: { complete?: boolean; notes?: string }) => Promise<void>
+  joinJob: (jobId: string) => Promise<void>
   refresh: () => void
 }
 
@@ -66,6 +77,7 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
   const [jobs, setJobs] = useState<FieldJob[]>([])
   const [loading, setLoading] = useState(true)
   const [tick, setTick] = useState(0)
+  const [joinableJobs, setJoinableJobs] = useState<JoinableJob[]>([])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -176,9 +188,29 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const loadJoinable = useCallback(async () => {
+    if (!navigator.onLine) return
+    const { data, error } = await supabase.rpc('get_joinable_jobs')
+    if (error || !data) return
+    setJoinableJobs(
+      data.map((row) => ({
+        id: row.id,
+        number: row.number,
+        title: row.title,
+        address: row.address ?? '',
+        scheduledTime: row.scheduled_time ?? undefined,
+        status: row.status as JobStatus,
+      }))
+    )
+  }, [])
+
   useEffect(() => {
     if (session) load()
   }, [session, tick, load])
+
+  useEffect(() => {
+    if (session) loadJoinable()
+  }, [session, tick, loadJoinable])
 
   useEffect(() => {
     if (!session || !online) return
@@ -301,9 +333,32 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
     [refresh]
   )
 
+  const joinJob = useCallback(
+    async (jobId: string) => {
+      const { error } = await supabase.rpc('employee_join_job', { p_job_id: jobId })
+      if (error) throw new Error(error.message)
+      refresh()
+      loadJoinable()
+    },
+    [refresh, loadJoinable]
+  )
+
   const value = useMemo(
-    () => ({ jobs, loading, offline: !online, pendingSyncCount, getJob, addNote, startJob, finishJob, updateStage, refresh }),
-    [jobs, loading, online, pendingSyncCount, getJob, addNote, startJob, finishJob, updateStage, refresh]
+    () => ({
+      jobs,
+      loading,
+      offline: !online,
+      pendingSyncCount,
+      joinableJobs,
+      getJob,
+      addNote,
+      startJob,
+      finishJob,
+      updateStage,
+      joinJob,
+      refresh,
+    }),
+    [jobs, loading, online, pendingSyncCount, joinableJobs, getJob, addNote, startJob, finishJob, updateStage, joinJob, refresh]
   )
 
   return <FieldJobsContext.Provider value={value}>{children}</FieldJobsContext.Provider>

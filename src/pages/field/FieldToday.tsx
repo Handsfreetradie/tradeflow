@@ -119,7 +119,12 @@ export default function FieldToday() {
       <NotificationBanner />
 
       <div className="space-y-3 px-5">
-        <p className="text-sm font-semibold">Today's Jobs</p>
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold">Today's Jobs</p>
+          <button onClick={() => navigate('/field/find-job')} className="text-xs font-medium text-primary">
+            Not on your list? Find a job
+          </button>
+        </div>
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
         ) : todaysJobs.length === 0 ? (

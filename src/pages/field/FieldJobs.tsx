@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { MapPin } from 'lucide-react'
+import { MapPin, Search } from 'lucide-react'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { StatusBadge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Briefcase } from 'lucide-react'
 import { useFieldJobsStore } from '@/lib/store/field-jobs-store'
@@ -10,22 +11,37 @@ import { toDateKey } from '@/lib/utils'
 
 type Tab = 'today' | 'upcoming' | 'completed'
 
+function timeSortValue(scheduledTime?: string) {
+  if (!scheduledTime) return Number.POSITIVE_INFINITY
+  const start = scheduledTime.split(/[-–—]/)[0].trim()
+  const parsed = new Date(`2000-01-01 ${start}`)
+  return Number.isNaN(parsed.getTime()) ? Number.POSITIVE_INFINITY : parsed.getTime()
+}
+
 export default function FieldJobs() {
   const navigate = useNavigate()
-  const { jobs, loading } = useFieldJobsStore()
+  const { jobs, loading, joinableJobs } = useFieldJobsStore()
   const [tab, setTab] = useState<Tab>('today')
 
   const todayKey = toDateKey(new Date())
 
   const filtered = useMemo(() => {
-    if (tab === 'completed') return jobs.filter((j) => j.status === 'Completed')
-    if (tab === 'today') return jobs.filter((j) => j.dueDate === todayKey && j.status !== 'Completed' && j.status !== 'Cancelled')
-    return jobs.filter((j) => j.dueDate > todayKey && j.status !== 'Completed' && j.status !== 'Cancelled')
+    let result: typeof jobs
+    if (tab === 'completed') result = jobs.filter((j) => j.status === 'Completed')
+    else if (tab === 'today') result = jobs.filter((j) => j.dueDate === todayKey && j.status !== 'Completed' && j.status !== 'Cancelled')
+    else result = jobs.filter((j) => j.dueDate > todayKey && j.status !== 'Completed' && j.status !== 'Cancelled')
+    return [...result].sort((a, b) => a.dueDate.localeCompare(b.dueDate) || timeSortValue(a.scheduledTime) - timeSortValue(b.scheduledTime))
   }, [jobs, tab, todayKey])
 
   return (
     <div className="space-y-4 p-5">
-      <h1 className="text-xl font-semibold">Jobs</h1>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="text-xl font-semibold">Jobs</h1>
+        <Button size="sm" variant="secondary" onClick={() => navigate('/field/find-job')}>
+          <Search className="size-3.5" />
+          Find a job{joinableJobs.length > 0 ? ` (${joinableJobs.length})` : ''}
+        </Button>
+      </div>
 
       <Tabs value={tab} onValueChange={(v) => setTab(v as Tab)}>
         <TabsList className="w-full">

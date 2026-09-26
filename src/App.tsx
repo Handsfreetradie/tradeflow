@@ -44,6 +44,7 @@ import FieldToday from '@/pages/field/FieldToday'
 import FieldJobs from '@/pages/field/FieldJobs'
 import FieldJobDetail from '@/pages/field/FieldJobDetail'
 import FieldLeave from '@/pages/field/FieldLeave'
+import FieldFindJob from '@/pages/field/FieldFindJob'
 
 function OwnerApp() {
   return (
@@ -100,6 +101,7 @@ function EmployeeApp() {
             <Route index element={<FieldToday />} />
             <Route path="jobs" element={<FieldJobs />} />
             <Route path="jobs/:id" element={<FieldJobDetail />} />
+            <Route path="find-job" element={<FieldFindJob />} />
             <Route path="leave" element={<FieldLeave />} />
           </Route>
         </Routes>

@@ -1430,6 +1430,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      employee_join_job: { Args: { p_job_id: string }; Returns: undefined }
       employee_start_job: {
         Args: { p_job_id: string }
         Returns: {
@@ -1482,6 +1483,17 @@ export type Database = {
           job_id: string
           on_site: boolean
           trade_role: string
+        }[]
+      }
+      get_joinable_jobs: {
+        Args: never
+        Returns: {
+          address: string
+          id: string
+          number: string
+          scheduled_time: string
+          status: string
+          title: string
         }[]
       }
       get_public_invoice: {
