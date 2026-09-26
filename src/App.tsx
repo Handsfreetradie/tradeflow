@@ -38,6 +38,7 @@ import Reports from '@/pages/Reports'
 import Settings from '@/pages/Settings'
 import ProductsList from '@/pages/ProductsList'
 import Leave from '@/pages/Leave'
+import ImportData from '@/pages/ImportData'
 import { FieldShell } from '@/components/field/FieldShell'
 import FieldToday from '@/pages/field/FieldToday'
 import FieldJobs from '@/pages/field/FieldJobs'
@@ -76,6 +77,7 @@ function OwnerApp() {
                     <Route path="calendar" element={<CalendarPage />} />
                     <Route path="leave" element={<Leave />} />
                     <Route path="settings" element={<Settings />} />
+                    <Route path="import" element={<ImportData />} />
                   </Route>
                 </Routes>
               </ExpensesProvider>

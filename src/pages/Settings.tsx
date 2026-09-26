@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { UserPlus, Users as UsersIcon, Building2, Upload, Trash2, FileSpreadsheet, CalendarDays, Mail } from 'lucide-react'
+import { UserPlus, Users as UsersIcon, Building2, Upload, Trash2, FileSpreadsheet, CalendarDays, Mail, FileUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -222,6 +223,9 @@ function QuoteDefaultsCard() {
   )
 }
 
+/** Flip once the Google Cloud OAuth app + secrets are set up — see the "Connect Gmail" setup steps given to the owner. */
+const GMAIL_INTEGRATION_LIVE = false
+
 function EmailIntegrationCard() {
   const [status, setStatus] = useState<EmailConnectionStatus | null>(null)
   const [connecting, setConnecting] = useState(false)
@@ -277,6 +281,28 @@ function EmailIntegrationCard() {
     }
   }
 
+  if (!GMAIL_INTEGRATION_LIVE) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Mail className="size-4 text-muted-foreground" />
+            Email
+            <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-muted-foreground">Coming soon</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground">Connect your Gmail so TradeFlow can flag emails that need a reply.</p>
+            <Button size="sm" disabled>
+              Connect Gmail
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    )
+  }
+
   if (!status) return null
 
   return (
@@ -308,6 +334,29 @@ function EmailIntegrationCard() {
             </Button>
           </div>
         )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function ImportDataCard() {
+  const navigate = useNavigate()
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <FileUp className="size-4 text-muted-foreground" />
+          Import data
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between gap-4">
+          <p className="text-sm text-muted-foreground">Bring in historical customers or expenses from a CSV export, e.g. from Invoice2Go.</p>
+          <Button variant="secondary" size="sm" onClick={() => navigate('/import')}>
+            Import CSV
+          </Button>
+        </div>
       </CardContent>
     </Card>
   )
@@ -533,6 +582,8 @@ export default function Settings() {
       <QuoteDefaultsCard />
 
       <EmailIntegrationCard />
+
+      <ImportDataCard />
 
       <Card>
         <CardHeader className="flex-row items-center justify-between gap-4 space-y-0">
