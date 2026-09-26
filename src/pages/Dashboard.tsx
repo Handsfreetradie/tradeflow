@@ -1,6 +1,7 @@
 import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting'
 import { KpiRow } from '@/components/dashboard/KpiRow'
 import { JobOverviewCard } from '@/components/dashboard/JobOverviewCard'
+import { EmployeePerformanceCard } from '@/components/dashboard/EmployeePerformanceCard'
 import { CashFlowCard } from '@/components/dashboard/CashFlowCard'
 import { InvoiceStatusCard } from '@/components/dashboard/InvoiceStatusCard'
 import { RecentInvoicesCard } from '@/components/dashboard/RecentInvoicesCard'
@@ -22,6 +23,7 @@ export default function Dashboard() {
             <CashFlowCard />
             <InvoiceStatusCard />
           </div>
+          <EmployeePerformanceCard />
           <div className="flex flex-col gap-6 lg:flex-row">
             <RecentInvoicesCard />
             <QuickActionsCard />
