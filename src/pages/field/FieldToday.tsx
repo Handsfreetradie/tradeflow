@@ -1,10 +1,57 @@
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Navigation, MapPin } from 'lucide-react'
+import { toast } from 'sonner'
+import { Navigation, MapPin, Bell, X } from 'lucide-react'
 import { StatusBadge } from '@/components/ui/badge'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { useFieldJobsStore } from '@/lib/store/field-jobs-store'
 import { toDateKey } from '@/lib/utils'
+import { getExistingSubscription, isPushSupported, subscribeToPush } from '@/lib/push/subscribe'
+
+const DISMISS_KEY = 'field-notif-banner-dismissed'
+
+function NotificationBanner() {
+  const [visible, setVisible] = useState(false)
+  const [enabling, setEnabling] = useState(false)
+
+  useEffect(() => {
+    if (!isPushSupported() || Notification.permission === 'denied' || localStorage.getItem(DISMISS_KEY)) return
+    getExistingSubscription().then((sub) => setVisible(!sub))
+  }, [])
+
+  const enable = async () => {
+    setEnabling(true)
+    try {
+      await subscribeToPush()
+      toast.success("Notifications on — you'll get a ping when a same-day job comes in")
+      setVisible(false)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not turn on notifications')
+    } finally {
+      setEnabling(false)
+    }
+  }
+
+  const dismiss = () => {
+    localStorage.setItem(DISMISS_KEY, '1')
+    setVisible(false)
+  }
+
+  if (!visible) return null
+
+  return (
+    <div className="mx-5 flex items-center gap-3 rounded-xl border border-border bg-card p-3.5">
+      <Bell className="size-4 shrink-0 text-primary" />
+      <p className="flex-1 text-xs text-muted-foreground">Turn on notifications to hear about jobs added to your day.</p>
+      <button onClick={enable} disabled={enabling} className="shrink-0 text-xs font-medium text-primary">
+        {enabling ? 'Enabling…' : 'Enable'}
+      </button>
+      <button onClick={dismiss} className="shrink-0 text-muted-foreground">
+        <X className="size-3.5" />
+      </button>
+    </div>
+  )
+}
 
 export default function FieldToday() {
   const navigate = useNavigate()
@@ -39,6 +86,8 @@ export default function FieldToday() {
           </div>
         )}
       </div>
+
+      <NotificationBanner />
 
       <div className="space-y-3 px-5">
         <p className="text-sm font-semibold">Today's Jobs</p>

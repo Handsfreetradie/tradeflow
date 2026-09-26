@@ -8,11 +8,16 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
       includeAssets: ['favicon.svg', 'icons.svg'],
       // Only precaches the app shell (JS/CSS/HTML) so it loads with no signal.
       // Supabase API data is cached/queued separately in src/lib/offline — never
       // add runtimeCaching for the Supabase origin here, it would risk serving
       // stale or cross-account data from the shared workbox cache.
+      // Custom src/sw.ts (instead of the default generated worker) adds push
+      // notification + notificationclick handling for same-day job assignments.
       manifest: {
         name: 'TradeFlow',
         short_name: 'TradeFlow',
