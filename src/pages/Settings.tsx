@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { UserPlus, Users as UsersIcon, Building2, Upload, Trash2, FileSpreadsheet, CalendarDays } from 'lucide-react'
+import { UserPlus, Users as UsersIcon, Building2, Upload, Trash2, FileSpreadsheet, CalendarDays, Mail } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -13,6 +13,7 @@ import { useBusinessSettings } from '@/lib/store/business-settings-store'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { createUser } from '@/lib/api/createUser'
 import { deleteUser } from '@/lib/api/deleteUser'
+import { connectGmail, disconnectGmail, getEmailConnectionStatus, type EmailConnectionStatus } from '@/lib/api/email'
 
 function BusinessCard() {
   const { settings, loading, updateSettings, uploadLogo } = useBusinessSettings()
@@ -215,6 +216,97 @@ function QuoteDefaultsCard() {
           <Button size="sm" disabled={saving} onClick={save}>
             {saving ? 'Saving…' : 'Save defaults'}
           </Button>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function EmailIntegrationCard() {
+  const [status, setStatus] = useState<EmailConnectionStatus | null>(null)
+  const [connecting, setConnecting] = useState(false)
+  const [disconnecting, setDisconnecting] = useState(false)
+
+  const load = () => {
+    getEmailConnectionStatus().then(setStatus)
+  }
+
+  useEffect(() => {
+    load()
+  }, [])
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const gmail = params.get('gmail')
+    if (gmail === 'connected') {
+      toast.success('Gmail connected — new emails will be checked automatically')
+      load()
+    } else if (gmail === 'error') {
+      toast.error("Couldn't connect Gmail — try again")
+    }
+    if (gmail) {
+      params.delete('gmail')
+      params.delete('reason')
+      const search = params.toString()
+      window.history.replaceState({}, '', `${window.location.pathname}${search ? `?${search}` : ''}`)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const connect = async () => {
+    setConnecting(true)
+    try {
+      const url = await connectGmail()
+      window.location.href = url
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not start Google sign-in')
+      setConnecting(false)
+    }
+  }
+
+  const disconnect = async () => {
+    setDisconnecting(true)
+    try {
+      await disconnectGmail()
+      toast.success('Gmail disconnected')
+      load()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not disconnect')
+    } finally {
+      setDisconnecting(false)
+    }
+  }
+
+  if (!status) return null
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Mail className="size-4 text-muted-foreground" />
+          Email
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {status.connected ? (
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <p className="text-sm font-medium">Connected to {status.googleEmail}</p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                New emails are checked automatically — flagged ones show up on your dashboard.
+              </p>
+            </div>
+            <Button variant="secondary" size="sm" disabled={disconnecting} onClick={disconnect}>
+              Disconnect
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-sm text-muted-foreground">Connect your Gmail so TradeFlow can flag emails that need a reply.</p>
+            <Button size="sm" disabled={connecting} onClick={connect}>
+              Connect Gmail
+            </Button>
+          </div>
         )}
       </CardContent>
     </Card>
@@ -439,6 +531,8 @@ export default function Settings() {
       <BusinessCard />
 
       <QuoteDefaultsCard />
+
+      <EmailIntegrationCard />
 
       <Card>
         <CardHeader className="flex-row items-center justify-between gap-4 space-y-0">

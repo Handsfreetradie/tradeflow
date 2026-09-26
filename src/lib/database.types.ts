@@ -113,6 +113,120 @@ export type Database = {
         }
         Relationships: []
       }
+      email_alerts: {
+        Row: {
+          ai_reason: string
+          created_at: string
+          dismissed: boolean
+          from_address: string
+          id: string
+          message_id: string
+          priority: string
+          read_at: string | null
+          received_at: string
+          snippet: string
+          subject: string
+          thread_id: string | null
+        }
+        Insert: {
+          ai_reason?: string
+          created_at?: string
+          dismissed?: boolean
+          from_address?: string
+          id?: string
+          message_id: string
+          priority?: string
+          read_at?: string | null
+          received_at: string
+          snippet?: string
+          subject?: string
+          thread_id?: string | null
+        }
+        Update: {
+          ai_reason?: string
+          created_at?: string
+          dismissed?: boolean
+          from_address?: string
+          id?: string
+          message_id?: string
+          priority?: string
+          read_at?: string | null
+          received_at?: string
+          snippet?: string
+          subject?: string
+          thread_id?: string | null
+        }
+        Relationships: []
+      }
+      email_connections: {
+        Row: {
+          access_token: string | null
+          connected_at: string | null
+          connected_by: string | null
+          google_email: string | null
+          id: boolean
+          last_checked_at: string | null
+          pending_state: string | null
+          pending_state_expires_at: string | null
+          refresh_token: string | null
+          token_expires_at: string | null
+        }
+        Insert: {
+          access_token?: string | null
+          connected_at?: string | null
+          connected_by?: string | null
+          google_email?: string | null
+          id?: boolean
+          last_checked_at?: string | null
+          pending_state?: string | null
+          pending_state_expires_at?: string | null
+          refresh_token?: string | null
+          token_expires_at?: string | null
+        }
+        Update: {
+          access_token?: string | null
+          connected_at?: string | null
+          connected_by?: string | null
+          google_email?: string | null
+          id?: boolean
+          last_checked_at?: string | null
+          pending_state?: string | null
+          pending_state_expires_at?: string | null
+          refresh_token?: string | null
+          token_expires_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_connections_connected_by_fkey"
+            columns: ["connected_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_connections_connected_by_fkey"
+            columns: ["connected_by"]
+            isOneToOne: false
+            referencedRelation: "team_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_processed_messages: {
+        Row: {
+          message_id: string
+          processed_at: string
+        }
+        Insert: {
+          message_id: string
+          processed_at?: string
+        }
+        Update: {
+          message_id?: string
+          processed_at?: string
+        }
+        Relationships: []
+      }
       expenses: {
         Row: {
           amount: number
@@ -721,6 +835,13 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers_field_view"
             referencedColumns: ["id"]
           },
           {
