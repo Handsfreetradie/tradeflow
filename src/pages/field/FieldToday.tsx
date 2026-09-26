@@ -83,7 +83,7 @@ export default function FieldToday() {
 
   return (
     <div className="space-y-5">
-      <div className="bg-sidebar px-5 pb-6 pt-8 text-sidebar-foreground">
+      <div className="-mt-[env(safe-area-inset-top)] bg-sidebar px-5 pb-6 pt-[calc(env(safe-area-inset-top)_+_2rem)] text-sidebar-foreground">
         {settings.logoUrl ? (
           <div className="inline-flex h-10 items-center rounded-lg bg-white/95 px-3">
             <img src={settings.logoUrl} alt={settings.businessName} className="h-6 w-auto object-contain" />

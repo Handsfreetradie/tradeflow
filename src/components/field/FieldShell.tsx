@@ -23,7 +23,7 @@ export function FieldShell() {
           Syncing {pendingSyncCount} change{pendingSyncCount === 1 ? '' : 's'}…
         </div>
       )}
-      <main className="flex-1 overflow-y-auto pb-20">
+      <main className="flex-1 overflow-y-auto pt-[env(safe-area-inset-top)] pb-[calc(5rem_+_env(safe-area-inset-bottom))]">
         <Outlet />
       </main>
 
