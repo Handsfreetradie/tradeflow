@@ -5,10 +5,14 @@ import { Input } from '@/components/ui/input'
 import { LogoMark } from '@/components/shared/Logo'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { businessName } from '@/lib/demo-data'
+import { supabase } from '@/lib/supabase'
+
+type Mode = 'signin' | 'reset' | 'sent'
 
 export default function Login() {
   const { session, signIn, loading } = useAuth()
   const location = useLocation()
+  const [mode, setMode] = useState<Mode>('signin')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -28,6 +32,21 @@ export default function Login() {
     if (error) setError(error)
   }
 
+  const handleReset = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    setSubmitting(true)
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/accept-invite`,
+    })
+    setSubmitting(false)
+    if (error) {
+      setError(error.message)
+      return
+    }
+    setMode('sent')
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-6">
       <div className="w-full max-w-sm">
@@ -37,45 +56,101 @@ export default function Login() {
           <p className="text-sm text-muted-foreground">Sign in to {businessName}</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-border bg-white p-6 shadow-subtle">
-          <div className="space-y-1.5">
-            <label htmlFor="email" className="text-sm font-medium">
-              Email
-            </label>
-            <Input
-              id="email"
-              type="email"
-              autoComplete="username"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+        {mode === 'sent' ? (
+          <div className="space-y-4 rounded-xl border border-border bg-white p-6 text-center shadow-subtle">
+            <p className="text-sm font-medium">Check your email</p>
+            <p className="text-sm text-muted-foreground">
+              If an account exists for {email}, we've sent a link to reset the password.
+            </p>
+            <Button variant="secondary" className="w-full" onClick={() => setMode('signin')}>
+              Back to sign in
+            </Button>
           </div>
-          <div className="space-y-1.5">
-            <label htmlFor="password" className="text-sm font-medium">
-              Password
-            </label>
-            <Input
-              id="password"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
-          {error && <p className="text-sm text-destructive">{error}</p>}
-          <Button type="submit" className="w-full" disabled={submitting}>
-            {submitting ? 'Signing in…' : 'Sign in'}
-          </Button>
-        </form>
+        ) : mode === 'reset' ? (
+          <form onSubmit={handleReset} className="space-y-4 rounded-xl border border-border bg-white p-6 shadow-subtle">
+            <div className="space-y-1.5">
+              <label htmlFor="reset-email" className="text-sm font-medium">
+                Email
+              </label>
+              <Input
+                id="reset-email"
+                type="email"
+                autoComplete="username"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <Button type="submit" className="w-full" disabled={submitting}>
+              {submitting ? 'Sending…' : 'Send reset link'}
+            </Button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode('signin')
+                setError(null)
+              }}
+              className="w-full text-center text-xs text-muted-foreground hover:underline"
+            >
+              Back to sign in
+            </button>
+          </form>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-border bg-white p-6 shadow-subtle">
+            <div className="space-y-1.5">
+              <label htmlFor="email" className="text-sm font-medium">
+                Email
+              </label>
+              <Input
+                id="email"
+                type="email"
+                autoComplete="username"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label htmlFor="password" className="text-sm font-medium">
+                  Password
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('reset')
+                    setError(null)
+                  }}
+                  className="text-xs text-primary hover:underline"
+                >
+                  Forgot password?
+                </button>
+              </div>
+              <Input
+                id="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+            {error && <p className="text-sm text-destructive">{error}</p>}
+            <Button type="submit" className="w-full" disabled={submitting}>
+              {submitting ? 'Signing in…' : 'Sign in'}
+            </Button>
+          </form>
+        )}
 
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          Setting this up for the first time?{' '}
-          <Link to="/auth/setup" className="text-primary hover:underline">
-            Create the owner account
-          </Link>
-        </p>
+        {mode === 'signin' && (
+          <p className="mt-6 text-center text-xs text-muted-foreground">
+            Setting this up for the first time?{' '}
+            <Link to="/auth/setup" className="text-primary hover:underline">
+              Create the owner account
+            </Link>
+          </p>
+        )}
       </div>
     </div>
   )

@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase'
 
 export default function AcceptInvite() {
   const navigate = useNavigate()
-  const { session, role, loading, fullName } = useAuth()
+  const { session, role, loading, fullName, isPasswordRecovery } = useAuth()
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -36,10 +36,8 @@ export default function AcceptInvite() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background p-6">
         <div className="w-full max-w-sm text-center">
-          <h1 className="text-lg font-semibold">This invite link isn't valid</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            It may have already been used or expired. Ask your employer to send a new one.
-          </p>
+          <h1 className="text-lg font-semibold">This link isn't valid</h1>
+          <p className="mt-2 text-sm text-muted-foreground">It may have already been used or expired. Request a new one and try again.</p>
         </div>
       </div>
     )
@@ -50,8 +48,12 @@ export default function AcceptInvite() {
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-2 text-center">
           <LogoMark className="size-11" />
-          <h1 className="text-xl font-semibold tracking-tight">Welcome{fullName ? `, ${fullName}` : ''}</h1>
-          <p className="text-sm text-muted-foreground">Set a password to finish setting up your account.</p>
+          <h1 className="text-xl font-semibold tracking-tight">
+            {isPasswordRecovery ? 'Reset your password' : `Welcome${fullName ? `, ${fullName}` : ''}`}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {isPasswordRecovery ? 'Choose a new password for your account.' : 'Set a password to finish setting up your account.'}
+          </p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-border bg-white p-6 shadow-subtle">
