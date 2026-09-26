@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useJobsStore } from '@/lib/store/jobs-store'
 import { useTeamStore } from '@/lib/store/team-store'
+import { useOnCallStore } from '@/lib/store/on-call-store'
 import type { Job, JobStatus } from '@/lib/demo-data'
 import { assigneeColor, initials } from '@/lib/assigneeColors'
 import { cn, formatCurrency, toDateKey } from '@/lib/utils'
@@ -34,6 +35,7 @@ export default function CalendarPage() {
   const navigate = useNavigate()
   const { jobs, updateDueDate, setAssignees } = useJobsStore()
   const { team } = useTeamStore()
+  const { getOnCallFor } = useOnCallStore()
   const teamMembers = team.map((m) => m.fullName)
   const [month, setMonth] = useState(() => new Date(new Date().getFullYear(), new Date().getMonth(), 1))
   const [selectedDay, setSelectedDay] = useState(() => toDateKey(new Date()))
@@ -79,7 +81,7 @@ export default function CalendarPage() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Calendar</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Jobs and appointments — drag a job to reschedule it.</p>
+          <p className="mt-1 text-sm text-muted-foreground">Jobs and appointments — drag a job to reschedule it. Tinted days show who's on call.</p>
         </div>
         <div className="flex items-center gap-2">
           <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
@@ -149,10 +151,14 @@ export default function CalendarPage() {
                 const isToday = key === todayKey
                 const isSelected = key === selectedDay
                 const isDragOver = key === dragOverDay
+                const onCall = getOnCallFor(key)
+                const onCallColor = onCall?.employeeName ? assigneeColor(onCall.employeeName) : null
+                const bgClass = isDragOver ? 'bg-primary/10' : !inMonth ? 'bg-secondary/30' : onCallColor ? onCallColor.bg : 'bg-card'
                 return (
                   <button
                     key={key}
                     onClick={() => setSelectedDay(key)}
+                    title={onCall?.employeeName ? `On call: ${onCall.employeeName}` : undefined}
                     onDragOver={(e) => {
                       e.preventDefault()
                       if (dragOverDay !== key) setDragOverDay(key)
@@ -163,10 +169,11 @@ export default function CalendarPage() {
                       handleDrop(key)
                     }}
                     className={cn(
-                      'flex min-h-[84px] flex-col items-start gap-1 bg-card p-1.5 text-left transition-colors hover:bg-secondary/60',
-                      !inMonth && 'bg-secondary/30 text-muted-foreground',
+                      'flex min-h-[84px] flex-col items-start gap-1 p-1.5 text-left transition-colors hover:bg-secondary/60',
+                      bgClass,
+                      !inMonth && 'text-muted-foreground',
                       isSelected && 'ring-2 ring-inset ring-primary',
-                      isDragOver && 'bg-primary/10 ring-2 ring-inset ring-primary'
+                      isDragOver && 'ring-2 ring-inset ring-primary'
                     )}
                   >
                     <span
