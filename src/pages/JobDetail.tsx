@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, MapPin, CalendarDays, Phone, Mail, Send } from 'lucide-react'
+import { ArrowLeft, MapPin, CalendarDays, Phone, Mail, Send, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StatusBadge } from '@/components/ui/badge'
@@ -64,21 +64,31 @@ export default function JobDetail() {
           </p>
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="secondary">
-              Update status
-              <ChevronDown />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            {allStatuses.map((status) => (
-              <DropdownMenuItem key={status} disabled={status === job.status} onClick={() => updateJobStatus(job.id, status)}>
-                {status}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="secondary"
+            onClick={() => window.open(`https://app.standaid.ai/setout?jobReference=${encodeURIComponent(job.number)}`, '_blank', 'noopener,noreferrer')}
+          >
+            <Zap />
+            Rough-in plan in StandAId
+          </Button>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="secondary">
+                Update status
+                <ChevronDown />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {allStatuses.map((status) => (
+                <DropdownMenuItem key={status} disabled={status === job.status} onClick={() => updateJobStatus(job.id, status)}>
+                  {status}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <JobWorkflow job={job} />
