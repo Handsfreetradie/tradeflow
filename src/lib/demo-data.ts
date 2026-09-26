@@ -150,6 +150,7 @@ export interface Expense {
   includesGst: boolean
   jobId?: string
   supplier?: string
+  receiptStoragePath?: string
 }
 
 export interface Quote {

@@ -7,6 +7,8 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "14.5"
   }
@@ -38,43 +40,43 @@ export type Database = {
       }
       business_settings: {
         Row: {
-          id: boolean
-          business_name: string
           abn: string
+          bank_account_name: string
+          bank_account_number: string
+          bank_bsb: string
+          business_name: string
+          default_quote_exclusions: string
+          default_quote_terms: string
+          id: boolean
+          licence_number: string
           logo_url: string | null
           updated_at: string
-          licence_number: string
-          bank_account_name: string
-          bank_bsb: string
-          bank_account_number: string
-          default_quote_terms: string
-          default_quote_exclusions: string
         }
         Insert: {
-          id?: boolean
-          business_name?: string
           abn?: string
+          bank_account_name?: string
+          bank_account_number?: string
+          bank_bsb?: string
+          business_name?: string
+          default_quote_exclusions?: string
+          default_quote_terms?: string
+          id?: boolean
+          licence_number?: string
           logo_url?: string | null
           updated_at?: string
-          licence_number?: string
-          bank_account_name?: string
-          bank_bsb?: string
-          bank_account_number?: string
-          default_quote_terms?: string
-          default_quote_exclusions?: string
         }
         Update: {
-          id?: boolean
-          business_name?: string
           abn?: string
+          bank_account_name?: string
+          bank_account_number?: string
+          bank_bsb?: string
+          business_name?: string
+          default_quote_exclusions?: string
+          default_quote_terms?: string
+          id?: boolean
+          licence_number?: string
           logo_url?: string | null
           updated_at?: string
-          licence_number?: string
-          bank_account_name?: string
-          bank_bsb?: string
-          bank_account_number?: string
-          default_quote_terms?: string
-          default_quote_exclusions?: string
         }
         Relationships: []
       }
@@ -121,6 +123,7 @@ export type Database = {
           id: string
           includes_gst: boolean
           job_id: string | null
+          receipt_storage_path: string | null
           supplier: string | null
         }
         Insert: {
@@ -132,6 +135,7 @@ export type Database = {
           id?: string
           includes_gst?: boolean
           job_id?: string | null
+          receipt_storage_path?: string | null
           supplier?: string | null
         }
         Update: {
@@ -143,6 +147,7 @@ export type Database = {
           id?: string
           includes_gst?: boolean
           job_id?: string | null
+          receipt_storage_path?: string | null
           supplier?: string | null
         }
         Relationships: [
@@ -204,16 +209,16 @@ export type Database = {
           customer_id: string
           date: string
           due_date: string
+          first_viewed_at: string | null
           id: string
           include_gst: boolean
           job_id: string | null
+          last_viewed_at: string | null
           notes: string
           number: string
           payment_terms: string
-          status: string
           share_token: string
-          first_viewed_at: string | null
-          last_viewed_at: string | null
+          status: string
           view_count: number
         }
         Insert: {
@@ -222,16 +227,16 @@ export type Database = {
           customer_id: string
           date: string
           due_date: string
+          first_viewed_at?: string | null
           id?: string
           include_gst?: boolean
           job_id?: string | null
+          last_viewed_at?: string | null
           notes?: string
           number: string
           payment_terms?: string
-          status?: string
           share_token?: string
-          first_viewed_at?: string | null
-          last_viewed_at?: string | null
+          status?: string
           view_count?: number
         }
         Update: {
@@ -240,16 +245,16 @@ export type Database = {
           customer_id?: string
           date?: string
           due_date?: string
+          first_viewed_at?: string | null
           id?: string
           include_gst?: boolean
           job_id?: string | null
+          last_viewed_at?: string | null
           notes?: string
           number?: string
           payment_terms?: string
-          status?: string
           share_token?: string
-          first_viewed_at?: string | null
-          last_viewed_at?: string | null
+          status?: string
           view_count?: number
         }
         Relationships: [
@@ -308,10 +313,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "job_assignees_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "team_directory"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "job_assignees_job_id_fkey"
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_assignees_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_field_view"
             referencedColumns: ["id"]
           },
         ]
@@ -465,80 +484,6 @@ export type Database = {
           },
         ]
       }
-      job_photos: {
-        Row: {
-          id: string
-          job_id: string
-          storage_path: string
-          uploaded_by: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          job_id: string
-          storage_path: string
-          uploaded_by?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          job_id?: string
-          storage_path?: string
-          uploaded_by?: string | null
-          created_at?: string
-        }
-        Relationships: []
-      }
-      job_stages: {
-        Row: {
-          id: string
-          job_id: string
-          name: string
-          target_date: string | null
-          notes: string
-          claim_amount: number | null
-          status: string
-          completed_at: string | null
-          claimed_invoice_id: string | null
-          sort_order: number
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          job_id: string
-          name: string
-          target_date?: string | null
-          notes?: string
-          claim_amount?: number | null
-          status?: string
-          completed_at?: string | null
-          claimed_invoice_id?: string | null
-          sort_order?: number
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          job_id?: string
-          name?: string
-          target_date?: string | null
-          notes?: string
-          claim_amount?: number | null
-          status?: string
-          completed_at?: string | null
-          claimed_invoice_id?: string | null
-          sort_order?: number
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "job_stages_job_id_fkey"
-            columns: ["job_id"]
-            isOneToOne: false
-            referencedRelation: "jobs"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       job_notes: {
         Row: {
           author_id: string | null
@@ -598,9 +543,129 @@ export type Database = {
           },
         ]
       }
+      job_photos: {
+        Row: {
+          created_at: string
+          id: string
+          job_id: string
+          storage_path: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          job_id: string
+          storage_path: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          job_id?: string
+          storage_path?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_photos_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_photos_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_field_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_photos_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_photos_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "team_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      job_stages: {
+        Row: {
+          claim_amount: number | null
+          claimed_invoice_id: string | null
+          completed_at: string | null
+          created_at: string
+          id: string
+          job_id: string
+          name: string
+          notes: string
+          sort_order: number
+          status: string
+          target_date: string | null
+        }
+        Insert: {
+          claim_amount?: number | null
+          claimed_invoice_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          job_id: string
+          name: string
+          notes?: string
+          sort_order?: number
+          status?: string
+          target_date?: string | null
+        }
+        Update: {
+          claim_amount?: number | null
+          claimed_invoice_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          job_id?: string
+          name?: string
+          notes?: string
+          sort_order?: number
+          status?: string
+          target_date?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_stages_claimed_invoice_id_fkey"
+            columns: ["claimed_invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_stages_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_stages_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_field_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       jobs: {
         Row: {
           address: string | null
+          coc_issued_date: string | null
+          coc_number: string | null
+          coc_status: string
           created_at: string
           customer_id: string
           due_date: string
@@ -613,12 +678,12 @@ export type Database = {
           status: string
           title: string
           value: number
-          coc_status: string
-          coc_number: string | null
-          coc_issued_date: string | null
         }
         Insert: {
           address?: string | null
+          coc_issued_date?: string | null
+          coc_number?: string | null
+          coc_status?: string
           created_at?: string
           customer_id: string
           due_date: string
@@ -631,12 +696,12 @@ export type Database = {
           status?: string
           title: string
           value?: number
-          coc_status?: string
-          coc_number?: string | null
-          coc_issued_date?: string | null
         }
         Update: {
           address?: string | null
+          coc_issued_date?: string | null
+          coc_number?: string | null
+          coc_status?: string
           created_at?: string
           customer_id?: string
           due_date?: string
@@ -649,9 +714,6 @@ export type Database = {
           status?: string
           title?: string
           value?: number
-          coc_status?: string
-          coc_number?: string | null
-          coc_issued_date?: string | null
         }
         Relationships: [
           {
@@ -659,13 +721,6 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "jobs_customer_id_fkey"
-            columns: ["customer_id"]
-            isOneToOne: false
-            referencedRelation: "customers_field_view"
             referencedColumns: ["id"]
           },
           {
@@ -677,44 +732,165 @@ export type Database = {
           },
         ]
       }
-      notifications: {
+      leave_requests: {
         Row: {
-          id: string
-          job_id: string | null
-          invoice_id: string | null
-          quote_id: string | null
-          leave_request_id: string | null
-          type: string
-          message: string
-          created_by: string | null
           created_at: string
-          read_at: string | null
+          employee_id: string
+          end_date: string
+          hours: number
+          id: string
+          note: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          start_date: string
+          status: string
+          type: string
         }
         Insert: {
-          id?: string
-          job_id?: string | null
-          invoice_id?: string | null
-          quote_id?: string | null
-          leave_request_id?: string | null
-          type: string
-          message: string
-          created_by?: string | null
           created_at?: string
-          read_at?: string | null
+          employee_id: string
+          end_date: string
+          hours: number
+          id?: string
+          note?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_date: string
+          status?: string
+          type: string
         }
         Update: {
-          id?: string
-          job_id?: string | null
-          invoice_id?: string | null
-          quote_id?: string | null
-          leave_request_id?: string | null
-          type?: string
-          message?: string
-          created_by?: string | null
           created_at?: string
-          read_at?: string | null
+          employee_id?: string
+          end_date?: string
+          hours?: number
+          id?: string
+          note?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          start_date?: string
+          status?: string
+          type?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "leave_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "team_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "team_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          invoice_id: string | null
+          job_id: string | null
+          leave_request_id: string | null
+          message: string
+          quote_id: string | null
+          read_at: string | null
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id?: string | null
+          job_id?: string | null
+          leave_request_id?: string | null
+          message: string
+          quote_id?: string | null
+          read_at?: string | null
+          type: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          invoice_id?: string | null
+          job_id?: string | null
+          leave_request_id?: string | null
+          message?: string
+          quote_id?: string | null
+          read_at?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "team_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_field_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_leave_request_id_fkey"
+            columns: ["leave_request_id"]
+            isOneToOne: false
+            referencedRelation: "leave_requests"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payments: {
         Row: {
@@ -750,31 +926,31 @@ export type Database = {
       }
       products: {
         Row: {
+          category: string
+          created_at: string
+          description: string
           id: string
           name: string
-          description: string
-          category: string
           unit: string
           unit_price: number
-          created_at: string
         }
         Insert: {
+          category?: string
+          created_at?: string
+          description?: string
           id?: string
           name: string
-          description?: string
-          category?: string
           unit?: string
           unit_price?: number
-          created_at?: string
         }
         Update: {
+          category?: string
+          created_at?: string
+          description?: string
           id?: string
           name?: string
-          description?: string
-          category?: string
           unit?: string
           unit_price?: number
-          created_at?: string
         }
         Relationships: []
       }
@@ -782,90 +958,40 @@ export type Database = {
         Row: {
           created_at: string
           email: string
+          employment_start_date: string | null
+          employment_type: string
           full_name: string
+          hourly_rate: number | null
           id: string
           role: string
-          hourly_rate: number | null
           trade_role: string
-          employment_type: string
           weekly_hours: number
-          employment_start_date: string | null
         }
         Insert: {
           created_at?: string
           email: string
+          employment_start_date?: string | null
+          employment_type?: string
           full_name: string
+          hourly_rate?: number | null
           id: string
           role: string
-          hourly_rate?: number | null
           trade_role?: string
-          employment_type?: string
           weekly_hours?: number
-          employment_start_date?: string | null
         }
         Update: {
           created_at?: string
           email?: string
+          employment_start_date?: string | null
+          employment_type?: string
           full_name?: string
+          hourly_rate?: number | null
           id?: string
           role?: string
-          hourly_rate?: number | null
           trade_role?: string
-          employment_type?: string
           weekly_hours?: number
-          employment_start_date?: string | null
         }
         Relationships: []
-      }
-      leave_requests: {
-        Row: {
-          id: string
-          employee_id: string
-          type: string
-          start_date: string
-          end_date: string
-          hours: number
-          note: string
-          status: string
-          reviewed_by: string | null
-          reviewed_at: string | null
-          created_at: string
-        }
-        Insert: {
-          id?: string
-          employee_id: string
-          type: string
-          start_date: string
-          end_date: string
-          hours: number
-          note?: string
-          status?: string
-          reviewed_by?: string | null
-          reviewed_at?: string | null
-          created_at?: string
-        }
-        Update: {
-          id?: string
-          employee_id?: string
-          type?: string
-          start_date?: string
-          end_date?: string
-          hours?: number
-          note?: string
-          status?: string
-          reviewed_by?: string | null
-          reviewed_at?: string | null
-          created_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "leave_requests_employee_id_fkey"
-            columns: ["employee_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       quote_line_items: {
         Row: {
@@ -908,18 +1034,18 @@ export type Database = {
           created_at: string
           customer_id: string
           date: string
+          exclusions: string
+          first_viewed_at: string | null
           id: string
           include_gst: boolean
           job_id: string | null
+          last_viewed_at: string | null
           notes: string
           number: string
+          share_token: string
           status: string
           terms: string
-          exclusions: string
           validity_days: number
-          share_token: string
-          first_viewed_at: string | null
-          last_viewed_at: string | null
           view_count: number
         }
         Insert: {
@@ -927,18 +1053,18 @@ export type Database = {
           created_at?: string
           customer_id: string
           date: string
+          exclusions?: string
+          first_viewed_at?: string | null
           id?: string
           include_gst?: boolean
           job_id?: string | null
+          last_viewed_at?: string | null
           notes?: string
           number: string
+          share_token?: string
           status?: string
           terms?: string
-          exclusions?: string
           validity_days?: number
-          share_token?: string
-          first_viewed_at?: string | null
-          last_viewed_at?: string | null
           view_count?: number
         }
         Update: {
@@ -946,19 +1072,19 @@ export type Database = {
           created_at?: string
           customer_id?: string
           date?: string
+          exclusions?: string
+          first_viewed_at?: string | null
           id?: string
           include_gst?: boolean
           job_id?: string | null
+          last_viewed_at?: string | null
           notes?: string
           number?: string
+          share_token?: string
           status?: string
           terms?: string
-          exclusions?: string
-          share_token?: string
-          first_viewed_at?: string | null
-          last_viewed_at?: string | null
-          view_count?: number
           validity_days?: number
+          view_count?: number
         }
         Relationships: [
           {
@@ -1001,6 +1127,20 @@ export type Database = {
           name: string | null
           phone: string | null
         }
+        Insert: {
+          address?: string | null
+          contact?: string | null
+          id?: string | null
+          name?: string | null
+          phone?: string | null
+        }
+        Update: {
+          address?: string | null
+          contact?: string | null
+          id?: string | null
+          name?: string | null
+          phone?: string | null
+        }
         Relationships: []
       }
       job_line_items_field_view: {
@@ -1010,6 +1150,20 @@ export type Database = {
           job_id: string | null
           qty: number | null
           sort_order: number | null
+        }
+        Insert: {
+          description?: string | null
+          id?: string | null
+          job_id?: string | null
+          qty?: number | null
+          sort_order?: number | null
+        }
+        Update: {
+          description?: string | null
+          id?: string | null
+          job_id?: string | null
+          qty?: number | null
+          sort_order?: number | null
         }
         Relationships: [
           {
@@ -1040,6 +1194,28 @@ export type Database = {
           status: string | null
           title: string | null
         }
+        Insert: {
+          address?: string | null
+          customer_id?: string | null
+          due_date?: string | null
+          id?: string | null
+          number?: string | null
+          pricing_type?: string | null
+          scheduled_time?: string | null
+          status?: string | null
+          title?: string | null
+        }
+        Update: {
+          address?: string | null
+          customer_id?: string | null
+          due_date?: string | null
+          id?: string | null
+          number?: string | null
+          pricing_type?: string | null
+          scheduled_time?: string | null
+          status?: string | null
+          title?: string | null
+        }
         Relationships: [
           {
             foreignKeyName: "jobs_customer_id_fkey"
@@ -1062,138 +1238,20 @@ export type Database = {
           full_name: string | null
           id: string | null
         }
+        Insert: {
+          full_name?: string | null
+          id?: string | null
+        }
+        Update: {
+          full_name?: string | null
+          id?: string | null
+        }
         Relationships: []
       }
     }
     Functions: {
-      employee_update_stage: {
-        Args: { p_stage_id: string; p_complete?: boolean; p_notes?: string }
-        Returns: {
-          id: string
-          job_id: string
-          name: string
-          target_date: string | null
-          notes: string
-          claim_amount: number | null
-          status: string
-          completed_at: string | null
-          claimed_invoice_id: string | null
-          sort_order: number
-          created_at: string
-        }
-      }
-      request_leave: {
-        Args: { p_type: string; p_start_date: string; p_end_date: string; p_hours: number; p_note?: string }
-        Returns: {
-          id: string
-          employee_id: string
-          type: string
-          start_date: string
-          end_date: string
-          hours: number
-          note: string
-          status: string
-          reviewed_by: string | null
-          reviewed_at: string | null
-          created_at: string
-        }
-      }
-      review_leave_request: {
-        Args: { p_request_id: string; p_approve: boolean }
-        Returns: {
-          id: string
-          employee_id: string
-          type: string
-          start_date: string
-          end_date: string
-          hours: number
-          note: string
-          status: string
-          reviewed_by: string | null
-          reviewed_at: string | null
-          created_at: string
-        }
-      }
-      get_job_crew: {
-        Args: { p_job_ids: string[] }
-        Returns: {
-          job_id: string
-          employee_id: string
-          full_name: string
-          trade_role: string | null
-          on_site: boolean
-          check_in: string | null
-        }[]
-      }
-      get_public_quote: {
-        Args: { p_token: string }
-        Returns: {
-          id: string
-          number: string
-          date: string
-          amount: number
-          status: string
-          include_gst: boolean
-          validity_days: number
-          terms: string
-          exclusions: string
-          notes: string
-          customer_name: string
-          customer_contact: string
-          customer_address: string
-          business_name: string
-          business_abn: string
-          business_licence_number: string
-          business_logo_url: string | null
-        }[]
-      }
-      get_public_quote_line_items: {
-        Args: { p_token: string }
-        Returns: { id: string; description: string; qty: number; unit_price: number }[]
-      }
-      mark_quote_viewed: {
-        Args: { p_token: string }
-        Returns: undefined
-      }
-      respond_to_public_quote: {
-        Args: { p_token: string; p_accept: boolean }
-        Returns: undefined
-      }
-      get_public_invoice: {
-        Args: { p_token: string }
-        Returns: {
-          id: string
-          number: string
-          date: string
-          due_date: string
-          amount: number
-          status: string
-          include_gst: boolean
-          notes: string
-          payment_terms: string
-          customer_name: string
-          customer_contact: string
-          customer_address: string
-          business_name: string
-          business_abn: string
-          business_licence_number: string
-          business_logo_url: string | null
-          bank_account_name: string
-          bank_bsb: string
-          bank_account_number: string
-          paid_amount: number
-        }[]
-      }
-      get_public_invoice_line_items: {
-        Args: { p_token: string }
-        Returns: { id: string; description: string; qty: number; unit_price: number }[]
-      }
-      mark_invoice_viewed: {
-        Args: { p_token: string }
-        Returns: undefined
-      }
       employee_finish_job: {
-        Args: { p_job_id: string; p_note?: string; p_blocked?: boolean }
+        Args: { p_blocked?: boolean; p_job_id: string; p_note?: string }
         Returns: {
           check_in: string
           check_out: string | null
@@ -1201,6 +1259,12 @@ export type Database = {
           id: string
           job_id: string
           note: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "job_checkins"
+          isOneToOne: true
+          isSetofReturn: false
         }
       }
       employee_start_job: {
@@ -1213,15 +1277,175 @@ export type Database = {
           job_id: string
           note: string | null
         }
+        SetofOptions: {
+          from: "*"
+          to: "job_checkins"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       employee_update_job_status: {
         Args: { p_job_id: string; p_status: string }
         Returns: undefined
       }
-      is_owner: { Args: Record<PropertyKey, never>; Returns: boolean }
-      next_invoice_number: { Args: Record<PropertyKey, never>; Returns: string }
-      next_job_number: { Args: Record<PropertyKey, never>; Returns: string }
-      next_quote_number: { Args: Record<PropertyKey, never>; Returns: string }
+      employee_update_stage: {
+        Args: { p_complete?: boolean; p_notes?: string; p_stage_id: string }
+        Returns: {
+          claim_amount: number | null
+          claimed_invoice_id: string | null
+          completed_at: string | null
+          created_at: string
+          id: string
+          job_id: string
+          name: string
+          notes: string
+          sort_order: number
+          status: string
+          target_date: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "job_stages"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      get_job_crew: {
+        Args: { p_job_ids: string[] }
+        Returns: {
+          check_in: string
+          employee_id: string
+          full_name: string
+          job_id: string
+          on_site: boolean
+          trade_role: string
+        }[]
+      }
+      get_public_invoice: {
+        Args: { p_token: string }
+        Returns: {
+          amount: number
+          bank_account_name: string
+          bank_account_number: string
+          bank_bsb: string
+          business_abn: string
+          business_licence_number: string
+          business_logo_url: string
+          business_name: string
+          customer_address: string
+          customer_contact: string
+          customer_name: string
+          date: string
+          due_date: string
+          id: string
+          include_gst: boolean
+          notes: string
+          number: string
+          paid_amount: number
+          payment_terms: string
+          status: string
+        }[]
+      }
+      get_public_invoice_line_items: {
+        Args: { p_token: string }
+        Returns: {
+          description: string
+          id: string
+          qty: number
+          unit_price: number
+        }[]
+      }
+      get_public_quote: {
+        Args: { p_token: string }
+        Returns: {
+          amount: number
+          business_abn: string
+          business_licence_number: string
+          business_logo_url: string
+          business_name: string
+          customer_address: string
+          customer_contact: string
+          customer_name: string
+          date: string
+          exclusions: string
+          id: string
+          include_gst: boolean
+          notes: string
+          number: string
+          status: string
+          terms: string
+          validity_days: number
+        }[]
+      }
+      get_public_quote_line_items: {
+        Args: { p_token: string }
+        Returns: {
+          description: string
+          id: string
+          qty: number
+          unit_price: number
+        }[]
+      }
+      is_owner: { Args: never; Returns: boolean }
+      mark_invoice_viewed: { Args: { p_token: string }; Returns: undefined }
+      mark_quote_viewed: { Args: { p_token: string }; Returns: undefined }
+      next_invoice_number: { Args: never; Returns: string }
+      next_job_number: { Args: never; Returns: string }
+      next_quote_number: { Args: never; Returns: string }
+      request_leave: {
+        Args: {
+          p_end_date: string
+          p_hours: number
+          p_note?: string
+          p_start_date: string
+          p_type: string
+        }
+        Returns: {
+          created_at: string
+          employee_id: string
+          end_date: string
+          hours: number
+          id: string
+          note: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          start_date: string
+          status: string
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "leave_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      respond_to_public_quote: {
+        Args: { p_accept: boolean; p_token: string }
+        Returns: undefined
+      }
+      review_leave_request: {
+        Args: { p_approve: boolean; p_request_id: string }
+        Returns: {
+          created_at: string
+          employee_id: string
+          end_date: string
+          hours: number
+          id: string
+          note: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          start_date: string
+          status: string
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "leave_requests"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
     }
     Enums: {
       [_ in never]: never
@@ -1232,13 +1456,125 @@ export type Database = {
   }
 }
 
-type DefaultSchema = Database["public"]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-export type Tables<T extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])> =
-  (DefaultSchema["Tables"] & DefaultSchema["Views"])[T] extends { Row: infer R } ? R : never
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
-export type TablesInsert<T extends keyof DefaultSchema["Tables"]> =
-  DefaultSchema["Tables"][T] extends { Insert: infer I } ? I : never
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
 
-export type TablesUpdate<T extends keyof DefaultSchema["Tables"]> =
-  DefaultSchema["Tables"][T] extends { Update: infer U } ? U : never
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never) = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const

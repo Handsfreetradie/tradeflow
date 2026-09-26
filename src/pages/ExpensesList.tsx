@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, Receipt, Search } from 'lucide-react'
+import { Paperclip, Plus, Receipt, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -12,6 +12,7 @@ import { useExpensesStore } from '@/lib/store/expenses-store'
 import { useJobsStore } from '@/lib/store/jobs-store'
 import type { ExpenseCategory } from '@/lib/demo-data'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { getReceiptUrl } from '@/lib/api/receipts'
 
 const categories: (ExpenseCategory | 'All')[] = [
   'All',
@@ -43,6 +44,11 @@ export default function ExpensesList() {
   }, [expenses, search, category])
 
   const total = filtered.reduce((sum, e) => sum + e.amount, 0)
+
+  const openReceipt = async (path: string) => {
+    const url = await getReceiptUrl(path)
+    if (url) window.open(url, '_blank', 'noopener,noreferrer')
+  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6">
@@ -99,7 +105,18 @@ export default function ExpensesList() {
                   return (
                     <TableRow key={expense.id}>
                       <TableCell>
-                        <p className="font-medium">{expense.description}</p>
+                        <p className="flex items-center gap-1.5 font-medium">
+                          {expense.description}
+                          {expense.receiptStoragePath && (
+                            <button
+                              onClick={() => openReceipt(expense.receiptStoragePath!)}
+                              title="View receipt"
+                              className="text-muted-foreground hover:text-primary"
+                            >
+                              <Paperclip className="size-3.5" />
+                            </button>
+                          )}
+                        </p>
                         <p className="text-xs text-muted-foreground">{expense.supplier ?? '—'}</p>
                       </TableCell>
                       <TableCell className="hidden md:table-cell">

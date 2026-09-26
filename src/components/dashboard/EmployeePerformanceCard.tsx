@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip as RechartsTooltip, XAxis, YAxis } from 'recharts'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { formatCurrency } from '@/lib/utils'
+import { cn, formatCurrency } from '@/lib/utils'
 import { useJobsStore } from '@/lib/store/jobs-store'
 import { useTeamStore } from '@/lib/store/team-store'
+import { supabase } from '@/lib/supabase'
 
 type Range = '30' | 'month'
 
@@ -14,6 +15,37 @@ interface EmployeeStat {
   hours: number
   jobsCompleted: number
   revenue: number
+  firstTimeFixRate: number | null
+}
+
+/** Employees raise this notification themselves via the "Can't complete this job" flow when a job needs a return visit — the only signal we have for a job not being fixed on the first attempt. */
+function useBlockedJobCounts(sinceMs: number) {
+  const [countsByEmployee, setCountsByEmployee] = useState<Map<string, number>>(new Map())
+
+  useEffect(() => {
+    let cancelled = false
+    supabase
+      .from('notifications')
+      .select('job_id, created_by')
+      .eq('type', 'job_blocked')
+      .gte('created_at', new Date(sinceMs).toISOString())
+      .then(({ data, error }) => {
+        if (cancelled || error || !data) return
+        const seenPerEmployee = new Map<string, Set<string>>()
+        for (const row of data) {
+          if (!row.created_by || !row.job_id) continue
+          const jobs = seenPerEmployee.get(row.created_by) ?? new Set<string>()
+          jobs.add(row.job_id)
+          seenPerEmployee.set(row.created_by, jobs)
+        }
+        setCountsByEmployee(new Map(Array.from(seenPerEmployee.entries()).map(([id, jobs]) => [id, jobs.size])))
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [sinceMs])
+
+  return countsByEmployee
 }
 
 function startOfRange(range: Range) {
@@ -34,6 +66,7 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: Array<
       <p className="text-muted-foreground">
         {stat.jobsCompleted} job{stat.jobsCompleted === 1 ? '' : 's'} completed
       </p>
+      {stat.firstTimeFixRate !== null && <p className="text-muted-foreground">{stat.firstTimeFixRate}% fixed first time</p>}
       <p className="text-muted-foreground">{formatCurrency(stat.revenue)} revenue</p>
     </div>
   )
@@ -43,11 +76,12 @@ export function EmployeePerformanceCard() {
   const [range, setRange] = useState<Range>('30')
   const { jobs } = useJobsStore()
   const { team } = useTeamStore()
+  const since = useMemo(() => startOfRange(range), [range])
+  const blockedCounts = useBlockedJobCounts(since.getTime())
 
   const stats = useMemo<EmployeeStat[]>(() => {
     const employees = team.filter((m) => m.role === 'employee')
     if (employees.length === 0) return []
-    const since = startOfRange(range)
     const now = Date.now()
 
     return employees
@@ -80,10 +114,13 @@ export function EmployeePerformanceCard() {
           }
         }
 
-        return { id: emp.id, name: emp.fullName, hours, jobsCompleted, revenue }
+        const blocked = Math.min(blockedCounts.get(emp.id) ?? 0, jobsCompleted)
+        const firstTimeFixRate = jobsCompleted > 0 ? Math.round(((jobsCompleted - blocked) / jobsCompleted) * 100) : null
+
+        return { id: emp.id, name: emp.fullName, hours, jobsCompleted, revenue, firstTimeFixRate }
       })
       .sort((a, b) => b.hours - a.hours)
-  }, [team, jobs, range])
+  }, [team, jobs, since, blockedCounts])
 
   const hasEmployees = team.some((m) => m.role === 'employee')
 
@@ -119,6 +156,33 @@ export function EmployeePerformanceCard() {
                 <Bar dataKey="hours" fill="hsl(221 83% 53%)" radius={[4, 4, 0, 0]} maxBarSize={40} />
               </BarChart>
             </ResponsiveContainer>
+          </div>
+        )}
+        {hasEmployees && stats.length > 0 && (
+          <div className="mt-4 space-y-1 border-t border-border pt-3">
+            {stats.map((s) => (
+              <div key={s.id} className="flex items-center justify-between py-1.5 text-sm">
+                <span className="min-w-0 truncate font-medium">{s.name}</span>
+                <div className="flex shrink-0 items-center gap-4 text-xs text-muted-foreground">
+                  <span>
+                    {s.jobsCompleted} job{s.jobsCompleted === 1 ? '' : 's'}
+                  </span>
+                  {s.firstTimeFixRate !== null ? (
+                    <span
+                      className={cn(
+                        'font-medium',
+                        s.firstTimeFixRate >= 90 ? 'text-success' : s.firstTimeFixRate >= 70 ? 'text-warning' : 'text-destructive'
+                      )}
+                    >
+                      {s.firstTimeFixRate}% first-time fix
+                    </span>
+                  ) : (
+                    <span>No jobs completed</span>
+                  )}
+                  <span className="font-medium text-foreground">{formatCurrency(s.revenue)}</span>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </CardContent>

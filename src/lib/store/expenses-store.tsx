@@ -10,6 +10,7 @@ export interface NewExpenseInput {
   includesGst: boolean
   jobId?: string
   supplier?: string
+  receiptStoragePath?: string
 }
 
 interface ExpensesContextValue {
@@ -29,6 +30,7 @@ type ExpenseRow = {
   includes_gst: boolean
   job_id: string | null
   supplier: string | null
+  receipt_storage_path: string | null
 }
 
 function fromRow(row: ExpenseRow): Expense {
@@ -41,6 +43,7 @@ function fromRow(row: ExpenseRow): Expense {
     includesGst: row.includes_gst,
     jobId: row.job_id ?? undefined,
     supplier: row.supplier ?? undefined,
+    receiptStoragePath: row.receipt_storage_path ?? undefined,
   }
 }
 
@@ -75,6 +78,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
         includes_gst: input.includesGst,
         job_id: input.jobId ?? null,
         supplier: input.supplier ?? null,
+        receipt_storage_path: input.receiptStoragePath ?? null,
       })
       .select('*')
       .single()

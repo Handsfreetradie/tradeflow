@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ArrowLeft } from 'lucide-react'
+import { toast } from 'sonner'
+import { ArrowLeft, Loader2, Receipt, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -9,13 +10,16 @@ import { useExpensesStore } from '@/lib/store/expenses-store'
 import { useJobsStore } from '@/lib/store/jobs-store'
 import type { ExpenseCategory } from '@/lib/demo-data'
 import { toDateKey } from '@/lib/utils'
+import { deleteReceipt, scanReceipt, uploadReceipt } from '@/lib/api/receipts'
 
 const categories: ExpenseCategory[] = ['Materials', 'Fuel', 'Tools & Equipment', 'Subcontractor', 'Vehicle', 'Insurance', 'Office', 'Other']
+const MAX_RECEIPT_BYTES = 8 * 1024 * 1024
 
 export default function ExpenseNew() {
   const navigate = useNavigate()
   const { addExpense } = useExpensesStore()
   const { jobs } = useJobsStore()
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState<ExpenseCategory>('Materials')
@@ -24,8 +28,44 @@ export default function ExpenseNew() {
   const [includesGst, setIncludesGst] = useState(true)
   const [supplier, setSupplier] = useState('')
   const [jobId, setJobId] = useState<string>('none')
+  const [scanning, setScanning] = useState(false)
+  const [receiptPath, setReceiptPath] = useState<string | null>(null)
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null)
 
   const canSubmit = description.trim() && Number(amount) > 0
+
+  const handleReceiptSelected = async (file: File | undefined) => {
+    if (!file) return
+    if (file.size > MAX_RECEIPT_BYTES) {
+      toast.error('Receipt photo is too large (max 8MB)')
+      return
+    }
+    setReceiptPreview(URL.createObjectURL(file))
+    setScanning(true)
+    try {
+      const path = await uploadReceipt(file)
+      setReceiptPath(path)
+      const scanned = await scanReceipt(path)
+      if (scanned.supplier) setSupplier(scanned.supplier)
+      if (scanned.amount) setAmount(String(scanned.amount))
+      if (scanned.date) setDate(scanned.date)
+      if (scanned.description) setDescription(scanned.description)
+      if (scanned.category) setCategory(scanned.category)
+      if (scanned.includesGst !== null) setIncludesGst(scanned.includesGst)
+      toast.success('Receipt scanned — check the details below')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't read that receipt — fill in the details manually")
+    } finally {
+      setScanning(false)
+    }
+  }
+
+  const removeReceipt = () => {
+    if (receiptPath) deleteReceipt(receiptPath).catch(() => {})
+    setReceiptPath(null)
+    setReceiptPreview(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
 
   const submit = async () => {
     if (!canSubmit) return
@@ -37,6 +77,7 @@ export default function ExpenseNew() {
       includesGst,
       supplier: supplier.trim() || undefined,
       jobId: jobId === 'none' ? undefined : jobId,
+      receiptStoragePath: receiptPath ?? undefined,
     })
     navigate('/expenses')
   }
@@ -52,6 +93,45 @@ export default function ExpenseNew() {
         <h1 className="text-2xl font-semibold tracking-tight">Log Expense</h1>
         <p className="mt-1 text-sm text-muted-foreground">Track a business expense, optionally against a job.</p>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Scan a receipt</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => handleReceiptSelected(e.target.files?.[0])}
+          />
+          {receiptPreview ? (
+            <div className="flex items-center gap-3">
+              <img src={receiptPreview} alt="Receipt preview" className="h-16 w-16 rounded-lg border border-border object-cover" />
+              <div className="flex-1 text-sm">
+                {scanning ? (
+                  <span className="flex items-center gap-1.5 text-muted-foreground">
+                    <Loader2 className="size-3.5 animate-spin" />
+                    Reading receipt...
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">Details filled in below — check them before saving.</span>
+                )}
+              </div>
+              <Button variant="ghost" size="sm" onClick={removeReceipt} disabled={scanning}>
+                <X />
+              </Button>
+            </div>
+          ) : (
+            <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
+              <Receipt />
+              Take or upload a photo
+            </Button>
+          )}
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader>
