@@ -54,7 +54,12 @@ export default function ExpenseNew() {
       if (scanned.includesGst !== null) setIncludesGst(scanned.includesGst)
       toast.success('Receipt scanned — check the details below')
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Couldn't read that receipt — fill in the details manually")
+      const message = e instanceof Error ? e.message : ''
+      if (message === 'Receipt scanning is not configured yet') {
+        toast.info('Receipt attached — enter the amount and details manually for now')
+      } else {
+        toast.error(message || "Couldn't read that receipt — fill in the details manually")
+      }
     } finally {
       setScanning(false)
     }
