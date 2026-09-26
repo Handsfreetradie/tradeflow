@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Package, Plus, Search, Pencil, Trash2 } from 'lucide-react'
+import { Package, Plus, Search, Pencil, Trash2, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -120,6 +121,7 @@ function ProductDialog({
 }
 
 export default function ProductsList() {
+  const navigate = useNavigate()
   const { products, loading, deleteProduct } = useProductsStore()
   const [search, setSearch] = useState('')
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -148,10 +150,16 @@ export default function ProductsList() {
           <h1 className="text-2xl font-semibold tracking-tight">Products & Services</h1>
           <p className="mt-1 text-sm text-muted-foreground">Your reusable catalog — pick these straight into jobs, quotes and invoices.</p>
         </div>
-        <Button onClick={openNew}>
-          <Plus />
-          Add product
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={() => navigate('/import')}>
+            <Upload />
+            Import from supplier CSV
+          </Button>
+          <Button onClick={openNew}>
+            <Plus />
+            Add product
+          </Button>
+        </div>
       </div>
 
       <div className="relative max-w-sm">

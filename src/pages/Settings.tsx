@@ -352,7 +352,7 @@ function ImportDataCard() {
       </CardHeader>
       <CardContent>
         <div className="flex items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground">Bring in historical customers or expenses from a CSV export, e.g. from Invoice2Go.</p>
+          <p className="text-sm text-muted-foreground">Bring in historical customers, expenses, or a supplier price list from a CSV export.</p>
           <Button variant="secondary" size="sm" onClick={() => navigate('/import')}>
             Import CSV
           </Button>

@@ -9,10 +9,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { parseCsvFile, type ParsedCsv } from '@/lib/csv'
 import { useCustomersStore } from '@/lib/store/customers-store'
 import { useExpensesStore } from '@/lib/store/expenses-store'
+import { useProductsStore } from '@/lib/store/products-store'
 import type { ExpenseCategory } from '@/lib/demo-data'
 import { toDateKey } from '@/lib/utils'
 
-type Target = 'customers' | 'expenses'
+type Target = 'customers' | 'expenses' | 'products'
 
 interface FieldSpec {
   key: string
@@ -34,6 +35,14 @@ const EXPENSE_FIELDS: FieldSpec[] = [
   { key: 'date', label: 'Date', required: true },
   { key: 'category', label: 'Category', required: false },
   { key: 'supplier', label: 'Supplier', required: false },
+]
+
+const PRODUCT_FIELDS: FieldSpec[] = [
+  { key: 'name', label: 'Name', required: true },
+  { key: 'description', label: 'Description', required: false },
+  { key: 'category', label: 'Category', required: false },
+  { key: 'unit', label: 'Unit', required: false },
+  { key: 'unitPrice', label: 'Price ($)', required: false },
 ]
 
 const EXPENSE_CATEGORIES: ExpenseCategory[] = ['Materials', 'Fuel', 'Tools & Equipment', 'Subcontractor', 'Vehicle', 'Insurance', 'Office', 'Other']
@@ -63,10 +72,17 @@ function parseAmount(raw: string): number | null {
   return Number.isFinite(value) && value > 0 ? value : null
 }
 
+function parsePrice(raw: string): number {
+  const cleaned = raw.replace(/[^0-9.-]/g, '')
+  const value = Number(cleaned)
+  return Number.isFinite(value) && value >= 0 ? value : 0
+}
+
 export default function ImportData() {
   const navigate = useNavigate()
   const { addCustomer } = useCustomersStore()
   const { addExpense } = useExpensesStore()
+  const { addProduct } = useProductsStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [target, setTarget] = useState<Target>('customers')
@@ -75,7 +91,7 @@ export default function ImportData() {
   const [importing, setImporting] = useState(false)
   const [result, setResult] = useState<{ imported: number; skipped: number } | null>(null)
 
-  const fields = target === 'customers' ? CUSTOMER_FIELDS : EXPENSE_FIELDS
+  const fields = target === 'customers' ? CUSTOMER_FIELDS : target === 'expenses' ? EXPENSE_FIELDS : PRODUCT_FIELDS
 
   const handleFile = async (file: File | undefined) => {
     if (!file) return
@@ -136,7 +152,7 @@ export default function ImportData() {
             phone: getMapped(row, 'phone') || undefined,
             address: getMapped(row, 'address') || undefined,
           })
-        } else {
+        } else if (target === 'expenses') {
           const description = getMapped(row, 'description')
           const amount = parseAmount(getMapped(row, 'amount'))
           const date = parseFlexibleDate(getMapped(row, 'date'))
@@ -155,6 +171,19 @@ export default function ImportData() {
             includesGst: true,
             supplier: getMapped(row, 'supplier') || undefined,
           })
+        } else {
+          const name = getMapped(row, 'name')
+          if (!name) {
+            skipped++
+            continue
+          }
+          await addProduct({
+            name,
+            description: getMapped(row, 'description') || undefined,
+            category: getMapped(row, 'category') || undefined,
+            unit: getMapped(row, 'unit') || undefined,
+            unitPrice: parsePrice(getMapped(row, 'unitPrice')),
+          })
         }
         imported++
       } catch {
@@ -164,7 +193,7 @@ export default function ImportData() {
 
     setImporting(false)
     setResult({ imported, skipped })
-    if (imported > 0) toast.success(`Imported ${imported} ${target}`)
+    if (imported > 0) toast.success(`Imported ${imported} ${target === 'products' ? 'products' : target}`)
     if (skipped > 0) toast.info(`Skipped ${skipped} row${skipped === 1 ? '' : 's'} — missing or invalid required fields`)
   }
 
@@ -178,8 +207,8 @@ export default function ImportData() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight">Import from CSV</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Bring in historical customers or expenses from a CSV export (e.g. from Invoice2Go). Map your columns below — every CSV export is a
-          bit different, so nothing is assumed.
+          Bring in historical customers, expenses, or a supplier's product/price list from a CSV export. Map your columns below — every CSV
+          export is a bit different, so nothing is assumed.
         </p>
       </div>
 
@@ -203,6 +232,7 @@ export default function ImportData() {
             <SelectContent>
               <SelectItem value="customers">Customers</SelectItem>
               <SelectItem value="expenses">Expenses</SelectItem>
+              <SelectItem value="products">Products & Services</SelectItem>
             </SelectContent>
           </Select>
 
