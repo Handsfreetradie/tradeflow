@@ -1,17 +1,98 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowLeft, Briefcase, Send, Check, X, Link as LinkIcon, Eye } from 'lucide-react'
+import { ArrowLeft, Briefcase, Send, Check, X, Link as LinkIcon, Eye, Download } from 'lucide-react'
 import { LogoMark } from '@/components/shared/Logo'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { StatusBadge } from '@/components/ui/badge'
 import { LineItemsTable } from '@/components/shared/LineItemsTable'
+import { SendDocumentDialog } from '@/components/shared/SendDocumentDialog'
 import { useQuotesStore } from '@/lib/store/quotes-store'
 import { useJobsStore } from '@/lib/store/jobs-store'
 import { useCustomersStore } from '@/lib/store/customers-store'
-import { useBusinessSettings } from '@/lib/store/business-settings-store'
-import { formatDate, toDateKey } from '@/lib/utils'
+import { useBusinessSettings, type BusinessSettings } from '@/lib/store/business-settings-store'
+import type { Quote, Customer } from '@/lib/demo-data'
+import { formatCurrency, formatDate, toDateKey } from '@/lib/utils'
+import { elementToPdfBlob, openPdfBlobInNewTab, downloadPdfBlob } from '@/lib/pdf'
+
+function QuoteDocument({ quote, customer, business }: { quote: Quote; customer: Customer | undefined; business: BusinessSettings }) {
+  const expiryDate = new Date(quote.date)
+  expiryDate.setDate(expiryDate.getDate() + quote.validityDays)
+
+  return (
+    <div className="space-y-8 p-8">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-2.5">
+          {business.logoUrl ? (
+            <img src={business.logoUrl} alt={business.businessName} className="size-9 rounded-lg object-contain" />
+          ) : (
+            <LogoMark className="size-9" />
+          )}
+          <div>
+            <p className="text-sm font-semibold leading-none">{business.businessName}</p>
+            {business.abn && <p className="mt-1 text-xs text-muted-foreground">ABN {business.abn}</p>}
+            {business.licenceNumber && <p className="text-xs text-muted-foreground">Lic. {business.licenceNumber}</p>}
+          </div>
+        </div>
+        <div className="text-right">
+          <h1 className="text-xl font-semibold tracking-tight">QUOTE</h1>
+          <p className="text-sm text-muted-foreground">{quote.number}</p>
+          <div className="mt-2">
+            <StatusBadge status={quote.status} />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-6 border-y border-border py-5 text-sm">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Quote for</p>
+          <p className="mt-1.5 font-medium">{quote.customer}</p>
+          {customer && (
+            <>
+              <p className="text-muted-foreground">{customer.contact}</p>
+              <p className="text-muted-foreground">{customer.address}</p>
+            </>
+          )}
+        </div>
+        <div className="text-right">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Details</p>
+          <p className="mt-1.5 text-muted-foreground">
+            Date issued <span className="font-medium text-foreground">{formatDate(quote.date, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          </p>
+          <p className="text-muted-foreground">
+            Valid until <span className="font-medium text-foreground">{formatDate(expiryDate, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          </p>
+        </div>
+      </div>
+
+      <LineItemsTable lineItems={quote.lineItems} includeGst={quote.includeGst} />
+
+      {(quote.notes || quote.terms || quote.exclusions) && (
+        <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
+          {quote.terms && (
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Terms</p>
+              <p className="mt-1.5 text-muted-foreground">{quote.terms}</p>
+            </div>
+          )}
+          {quote.exclusions && (
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Exclusions</p>
+              <p className="mt-1.5 text-muted-foreground">{quote.exclusions}</p>
+            </div>
+          )}
+          {quote.notes && (
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Notes</p>
+              <p className="mt-1.5 text-muted-foreground">{quote.notes}</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function QuoteDetail() {
   const { id } = useParams()
@@ -44,6 +125,10 @@ function QuoteDetailLoaded({
   const [exclusions, setExclusions] = useState(quote.exclusions)
   const [notes, setNotes] = useState(quote.notes)
   const [saving, setSaving] = useState(false)
+  const [sendOpen, setSendOpen] = useState(false)
+  const [previewing, setPreviewing] = useState(false)
+  const [downloading, setDownloading] = useState(false)
+  const documentRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setTerms(quote.terms)
@@ -94,13 +179,39 @@ function QuoteDetailLoaded({
     toast.success('Link copied')
   }
 
-  const sendViaEmail = async () => {
-    const subject = `Quote ${quote.number} from ${business.businessName}`
-    const body = `Hi ${customer?.contact ?? quote.customer},\n\nHere's your quote ${quote.number} for ${new Intl.NumberFormat('en-AU', { style: 'currency', currency: 'AUD' }).format(quoteTotal)}.\n\nView and respond: ${shareUrl}\n\nThanks,\n${business.businessName}`
-    window.location.href = `mailto:${customer?.email ?? ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-    if (quote.status === 'Draft') {
-      await updateStatus(quote.id, 'Sent')
-      toast.success(`${quote.number} marked as sent`)
+  const mailtoFallbackUrl = `mailto:${customer?.email ?? ''}?subject=${encodeURIComponent(
+    `Quote ${quote.number} from ${business.businessName}`
+  )}&body=${encodeURIComponent(
+    `Hi ${customer?.contact ?? quote.customer},\n\nHere's your quote ${quote.number} for ${formatCurrency(quoteTotal)}.\n\nView and respond: ${shareUrl}\n\nThanks,\n${business.businessName}`
+  )}`
+
+  const handleSent = async () => {
+    if (quote.status === 'Draft') await updateStatus(quote.id, 'Sent')
+  }
+
+  const previewPdf = async () => {
+    if (!documentRef.current) return
+    setPreviewing(true)
+    try {
+      const blob = await elementToPdfBlob(documentRef.current)
+      openPdfBlobInNewTab(blob)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not generate the PDF')
+    } finally {
+      setPreviewing(false)
+    }
+  }
+
+  const downloadPdf = async () => {
+    if (!documentRef.current) return
+    setDownloading(true)
+    try {
+      const blob = await elementToPdfBlob(documentRef.current)
+      downloadPdfBlob(blob, `Quote-${quote.number}.pdf`)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not generate the PDF')
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -117,7 +228,15 @@ function QuoteDetailLoaded({
             <LinkIcon />
             Copy link
           </Button>
-          <Button variant="secondary" onClick={sendViaEmail}>
+          <Button variant="secondary" disabled={previewing} onClick={previewPdf}>
+            <Eye />
+            {previewing ? 'Preparing…' : 'Preview'}
+          </Button>
+          <Button variant="secondary" disabled={downloading} onClick={downloadPdf}>
+            <Download />
+            {downloading ? 'Preparing…' : 'Download'}
+          </Button>
+          <Button variant="secondary" onClick={() => setSendOpen(true)}>
             <Send />
             {quote.status === 'Draft' ? 'Send quote' : 'Email quote'}
           </Button>
@@ -244,6 +363,26 @@ function QuoteDetailLoaded({
           )}
         </CardContent>
       </Card>
+
+      <SendDocumentDialog
+        open={sendOpen}
+        onOpenChange={setSendOpen}
+        to={customer?.email ?? ''}
+        fromName={business.businessName}
+        defaultSubject={`Quote ${quote.number} from ${business.businessName}`}
+        defaultMessage={`Hi ${customer?.contact ?? quote.customer},\n\nHere's your quote ${quote.number} for ${formatCurrency(quoteTotal)} — see the attached PDF.\n\nYou can also view and respond online: ${shareUrl}\n\nThanks,\n${business.businessName}`}
+        mailtoFallbackUrl={mailtoFallbackUrl}
+        filename={`Quote-${quote.number}.pdf`}
+        documentPreview={<QuoteDocument quote={{ ...quote, terms, exclusions, notes }} customer={customer} business={business} />}
+        onSent={handleSent}
+      />
+
+      {/* Off-screen: the clean read-only document used by Preview/Download (the on-page card above has editable term/exclusion/note fields). */}
+      <div className="pointer-events-none fixed left-[-9999px] top-0 w-[560px] bg-white">
+        <div ref={documentRef}>
+          <QuoteDocument quote={{ ...quote, terms, exclusions, notes }} customer={customer} business={business} />
+        </div>
+      </div>
     </div>
   )
 }

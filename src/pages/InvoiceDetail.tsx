@@ -1,10 +1,10 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowLeft, Send, DollarSign, Briefcase, Link as LinkIcon, Eye } from 'lucide-react'
+import { ArrowLeft, Send, DollarSign, Briefcase, Link as LinkIcon, Eye, Download } from 'lucide-react'
 import { LogoMark } from '@/components/shared/Logo'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
+import { Card } from '@/components/ui/card'
 import { StatusBadge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import {
@@ -16,11 +16,118 @@ import {
 } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { LineItemsTable } from '@/components/shared/LineItemsTable'
+import { SendDocumentDialog } from '@/components/shared/SendDocumentDialog'
 import { useInvoicesStore, invoiceTotal } from '@/lib/store/invoices-store'
 import { useCustomersStore } from '@/lib/store/customers-store'
-import { useBusinessSettings } from '@/lib/store/business-settings-store'
-import type { PaymentMethod } from '@/lib/demo-data'
+import { useBusinessSettings, type BusinessSettings } from '@/lib/store/business-settings-store'
+import type { Invoice, Customer, PaymentMethod } from '@/lib/demo-data'
 import { formatCurrency, formatDate } from '@/lib/utils'
+import { elementToPdfBlob, openPdfBlobInNewTab, downloadPdfBlob } from '@/lib/pdf'
+
+function InvoiceDocument({ invoice, customer, business }: { invoice: Invoice; customer: Customer | undefined; business: BusinessSettings }) {
+  const paidSoFar = invoice.payments.reduce((sum, p) => sum + p.amount, 0)
+  const balanceDue = Math.round((invoiceTotal(invoice) - paidSoFar) * 100) / 100
+
+  return (
+    <div className="space-y-8 p-8">
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-2.5">
+          {business.logoUrl ? (
+            <img src={business.logoUrl} alt={business.businessName} className="size-9 rounded-lg object-contain" />
+          ) : (
+            <LogoMark className="size-9" />
+          )}
+          <div>
+            <p className="text-sm font-semibold leading-none">{business.businessName}</p>
+            {business.abn && <p className="mt-1 text-xs text-muted-foreground">ABN {business.abn}</p>}
+            {business.licenceNumber && <p className="text-xs text-muted-foreground">Lic. {business.licenceNumber}</p>}
+          </div>
+        </div>
+        <div className="text-right">
+          <h1 className="text-xl font-semibold tracking-tight">INVOICE</h1>
+          <p className="text-sm text-muted-foreground">{invoice.number}</p>
+          <div className="mt-2">
+            <StatusBadge status={invoice.status} />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-6 border-y border-border py-5 text-sm">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Bill to</p>
+          <p className="mt-1.5 font-medium">{invoice.customer}</p>
+          {customer && (
+            <>
+              <p className="text-muted-foreground">{customer.contact}</p>
+              <p className="text-muted-foreground">{customer.address}</p>
+            </>
+          )}
+        </div>
+        <div className="text-right">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Details</p>
+          <p className="mt-1.5 text-muted-foreground">
+            Date issued <span className="font-medium text-foreground">{formatDate(invoice.date, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          </p>
+          <p className="text-muted-foreground">
+            Due <span className="font-medium text-foreground">{formatDate(invoice.dueDate, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          </p>
+        </div>
+      </div>
+
+      <LineItemsTable lineItems={invoice.lineItems} includeGst={invoice.includeGst} />
+
+      {paidSoFar > 0 && (
+        <div className="rounded-lg border border-border bg-secondary/40 p-4">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Paid to date</span>
+            <span className="font-medium text-success">{formatCurrency(paidSoFar)}</span>
+          </div>
+          <div className="mt-1.5 flex items-center justify-between text-base font-semibold">
+            <span>Balance due</span>
+            <span className={balanceDue > 0 ? 'text-destructive' : 'text-success'}>{formatCurrency(Math.max(balanceDue, 0))}</span>
+          </div>
+          <div className="mt-3 space-y-1.5 border-t border-border pt-3">
+            {invoice.payments.map((p) => (
+              <div key={p.id} className="flex justify-between text-xs text-muted-foreground">
+                <span>
+                  {formatDate(p.date)} · {p.method}
+                </span>
+                <span>{formatCurrency(p.amount)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {(invoice.notes || invoice.paymentTerms || business.bankAccountNumber) && (
+        <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+          {invoice.notes && (
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Notes</p>
+              <p className="mt-1.5 text-muted-foreground">{invoice.notes}</p>
+            </div>
+          )}
+          {invoice.paymentTerms && (
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Payment terms</p>
+              <p className="mt-1.5 text-muted-foreground">{invoice.paymentTerms}</p>
+            </div>
+          )}
+          {balanceDue > 0 && business.bankAccountNumber && (
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Payment details</p>
+              <p className="mt-1.5 text-muted-foreground">
+                {business.bankAccountName && <>Acc. name: {business.bankAccountName}<br /></>}
+                {business.bankBsb && <>BSB: {business.bankBsb}<br /></>}
+                Acc. number: {business.bankAccountNumber}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
 
 export default function InvoiceDetail() {
   const { id } = useParams()
@@ -31,6 +138,10 @@ export default function InvoiceDetail() {
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [amount, setAmount] = useState('')
   const [method, setMethod] = useState<PaymentMethod>('Bank Transfer')
+  const [sendOpen, setSendOpen] = useState(false)
+  const [previewing, setPreviewing] = useState(false)
+  const [downloading, setDownloading] = useState(false)
+  const documentRef = useRef<HTMLDivElement>(null)
 
   const invoice = id ? getInvoice(id) : undefined
   if (!loading && !invoice) return <Navigate to="/invoices" replace />
@@ -58,13 +169,39 @@ export default function InvoiceDetail() {
     toast.success('Link copied')
   }
 
-  const sendViaEmail = async () => {
-    const subject = `Invoice ${invoice.number} from ${business.businessName}`
-    const body = `Hi ${customer?.contact ?? invoice.customer},\n\nHere's your invoice ${invoice.number} for ${formatCurrency(invoiceTotal(invoice))}.\n\nView and pay: ${shareUrl}\n\nThanks,\n${business.businessName}`
-    window.location.href = `mailto:${customer?.email ?? ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
-    if (invoice.status === 'Draft') {
-      await markSent(invoice.id)
-      toast.success(`${invoice.number} marked as sent`)
+  const mailtoFallbackUrl = `mailto:${customer?.email ?? ''}?subject=${encodeURIComponent(
+    `Invoice ${invoice.number} from ${business.businessName}`
+  )}&body=${encodeURIComponent(
+    `Hi ${customer?.contact ?? invoice.customer},\n\nHere's your invoice ${invoice.number} for ${formatCurrency(total)}.\n\nView and pay: ${shareUrl}\n\nThanks,\n${business.businessName}`
+  )}`
+
+  const handleSent = async () => {
+    if (invoice.status === 'Draft') await markSent(invoice.id)
+  }
+
+  const previewPdf = async () => {
+    if (!documentRef.current) return
+    setPreviewing(true)
+    try {
+      const blob = await elementToPdfBlob(documentRef.current)
+      openPdfBlobInNewTab(blob)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not generate the PDF')
+    } finally {
+      setPreviewing(false)
+    }
+  }
+
+  const downloadPdf = async () => {
+    if (!documentRef.current) return
+    setDownloading(true)
+    try {
+      const blob = await elementToPdfBlob(documentRef.current)
+      downloadPdfBlob(blob, `Invoice-${invoice.number}.pdf`)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not generate the PDF')
+    } finally {
+      setDownloading(false)
     }
   }
 
@@ -87,7 +224,15 @@ export default function InvoiceDetail() {
             <LinkIcon />
             Copy link
           </Button>
-          <Button variant="secondary" onClick={sendViaEmail}>
+          <Button variant="secondary" disabled={previewing} onClick={previewPdf}>
+            <Eye />
+            {previewing ? 'Preparing…' : 'Preview'}
+          </Button>
+          <Button variant="secondary" disabled={downloading} onClick={downloadPdf}>
+            <Download />
+            {downloading ? 'Preparing…' : 'Download'}
+          </Button>
+          <Button variant="secondary" onClick={() => setSendOpen(true)}>
             <Send />
             {invoice.status === 'Draft' ? 'Send invoice' : 'Email invoice'}
           </Button>
@@ -108,105 +253,22 @@ export default function InvoiceDetail() {
         </p>
       )}
 
-      <Card className="overflow-hidden">
-        <CardContent className="space-y-8 p-8">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-2.5">
-              {business.logoUrl ? (
-                <img src={business.logoUrl} alt={business.businessName} className="size-9 rounded-lg object-contain" />
-              ) : (
-                <LogoMark className="size-9" />
-              )}
-              <div>
-                <p className="text-sm font-semibold leading-none">{business.businessName}</p>
-                {business.abn && <p className="mt-1 text-xs text-muted-foreground">ABN {business.abn}</p>}
-                {business.licenceNumber && <p className="text-xs text-muted-foreground">Lic. {business.licenceNumber}</p>}
-              </div>
-            </div>
-            <div className="text-right">
-              <h1 className="text-xl font-semibold tracking-tight">INVOICE</h1>
-              <p className="text-sm text-muted-foreground">{invoice.number}</p>
-              <div className="mt-2">
-                <StatusBadge status={invoice.status} />
-              </div>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-6 border-y border-border py-5 text-sm">
-            <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Bill to</p>
-              <p className="mt-1.5 font-medium">{invoice.customer}</p>
-              {customer && (
-                <>
-                  <p className="text-muted-foreground">{customer.contact}</p>
-                  <p className="text-muted-foreground">{customer.address}</p>
-                </>
-              )}
-            </div>
-            <div className="text-right">
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Details</p>
-              <p className="mt-1.5 text-muted-foreground">
-                Date issued <span className="font-medium text-foreground">{formatDate(invoice.date, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-              </p>
-              <p className="text-muted-foreground">
-                Due <span className="font-medium text-foreground">{formatDate(invoice.dueDate, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-              </p>
-            </div>
-          </div>
-
-          <LineItemsTable lineItems={invoice.lineItems} includeGst={invoice.includeGst} />
-
-          {paidSoFar > 0 && (
-            <div className="rounded-lg border border-border bg-secondary/40 p-4">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Paid to date</span>
-                <span className="font-medium text-success">{formatCurrency(paidSoFar)}</span>
-              </div>
-              <div className="mt-1.5 flex items-center justify-between text-base font-semibold">
-                <span>Balance due</span>
-                <span className={balanceDue > 0 ? 'text-destructive' : 'text-success'}>{formatCurrency(Math.max(balanceDue, 0))}</span>
-              </div>
-              <div className="mt-3 space-y-1.5 border-t border-border pt-3">
-                {invoice.payments.map((p) => (
-                  <div key={p.id} className="flex justify-between text-xs text-muted-foreground">
-                    <span>
-                      {formatDate(p.date)} · {p.method}
-                    </span>
-                    <span>{formatCurrency(p.amount)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {(invoice.notes || invoice.paymentTerms || business.bankAccountNumber) && (
-            <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
-              {invoice.notes && (
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Notes</p>
-                  <p className="mt-1.5 text-muted-foreground">{invoice.notes}</p>
-                </div>
-              )}
-              {invoice.paymentTerms && (
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Payment terms</p>
-                  <p className="mt-1.5 text-muted-foreground">{invoice.paymentTerms}</p>
-                </div>
-              )}
-              {balanceDue > 0 && business.bankAccountNumber && (
-                <div>
-                  <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Payment details</p>
-                  <p className="mt-1.5 text-muted-foreground">
-                    {business.bankAccountName && <>Acc. name: {business.bankAccountName}<br /></>}
-                    {business.bankBsb && <>BSB: {business.bankBsb}<br /></>}
-                    Acc. number: {business.bankAccountNumber}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
-        </CardContent>
+      <Card ref={documentRef} className="overflow-hidden">
+        <InvoiceDocument invoice={invoice} customer={customer} business={business} />
       </Card>
+
+      <SendDocumentDialog
+        open={sendOpen}
+        onOpenChange={setSendOpen}
+        to={customer?.email ?? ''}
+        fromName={business.businessName}
+        defaultSubject={`Invoice ${invoice.number} from ${business.businessName}`}
+        defaultMessage={`Hi ${customer?.contact ?? invoice.customer},\n\nHere's your invoice ${invoice.number} for ${formatCurrency(total)} — see the attached PDF.\n\nYou can also view and pay it online: ${shareUrl}\n\nThanks,\n${business.businessName}`}
+        mailtoFallbackUrl={mailtoFallbackUrl}
+        filename={`Invoice-${invoice.number}.pdf`}
+        documentPreview={<InvoiceDocument invoice={invoice} customer={customer} business={business} />}
+        onSent={handleSent}
+      />
 
       <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
         <DialogContent>

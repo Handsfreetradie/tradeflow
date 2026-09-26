@@ -42,6 +42,29 @@ export async function disconnectGmail(): Promise<void> {
   if (error) throw new Error(error.message)
 }
 
+export interface SendDocumentEmailInput {
+  to: string
+  fromName: string
+  subject: string
+  message: string
+  pdfBase64: string
+  filename: string
+}
+
+const SEND_ERROR_MESSAGES: Record<string, string> = {
+  not_connected: 'Connect Gmail in Settings first to send email from TradeFlow.',
+  reconnect_required: 'Your Gmail connection needs refreshing — reconnect it in Settings and try again.',
+  not_configured: 'Email sending is not configured yet.',
+}
+
+export async function sendDocumentEmail(input: SendDocumentEmailInput): Promise<void> {
+  const { data, error } = await supabase.functions.invoke('send-document-email', { body: input })
+  if (error) throw new Error(error.message)
+  if (data?.error) {
+    throw new Error(SEND_ERROR_MESSAGES[data.error] ?? (typeof data.error === 'string' ? data.error : 'Failed to send email'))
+  }
+}
+
 type AlertRow = {
   id: string
   subject: string
