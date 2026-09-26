@@ -27,11 +27,11 @@ export function LineItemsTable({ lineItems, includeGst = true }: { lineItems: Li
       <div className="hidden sm:block">
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Description</TableHead>
-              <TableHead className="text-right">Qty</TableHead>
-              <TableHead className="text-right">Unit Price</TableHead>
-              <TableHead className="text-right">Total</TableHead>
+            <TableRow className="bg-secondary/60 hover:bg-secondary/60">
+              <TableHead className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Description</TableHead>
+              <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Qty</TableHead>
+              <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Unit Price</TableHead>
+              <TableHead className="text-right text-xs font-semibold uppercase tracking-wide text-muted-foreground">Total</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -58,7 +58,7 @@ export function LineItemsTable({ lineItems, includeGst = true }: { lineItems: Li
             <span>{formatCurrency(gst)}</span>
           </div>
         )}
-        <div className="flex justify-between text-base font-semibold">
+        <div className="flex justify-between border-t border-border pt-1.5 text-lg font-bold text-primary">
           <span>Total</span>
           <span>{formatCurrency(subtotal + gst)}</span>
         </div>

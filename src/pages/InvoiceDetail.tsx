@@ -27,62 +27,63 @@ import { elementToPdfBlob, openPdfBlobInNewTab, downloadPdfBlob } from '@/lib/pd
 function InvoiceDocument({ invoice, customer, business }: { invoice: Invoice; customer: Customer | undefined; business: BusinessSettings }) {
   const paidSoFar = invoice.payments.reduce((sum, p) => sum + p.amount, 0)
   const balanceDue = Math.round((invoiceTotal(invoice) - paidSoFar) * 100) / 100
+  const credentials = [business.abn && `ABN ${business.abn}`, business.licenceNumber && `Lic. ${business.licenceNumber}`].filter(Boolean).join('  ·  ')
 
   return (
-    <div className="space-y-8 p-8">
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-2.5">
+    <div className="p-10">
+      <div className="flex items-start justify-between gap-6">
+        <div className="flex items-center gap-3">
           {business.logoUrl ? (
-            <img src={business.logoUrl} alt={business.businessName} className="size-9 rounded-lg object-contain" />
+            <img src={business.logoUrl} alt={business.businessName} className="size-11 rounded-lg object-contain" />
           ) : (
-            <LogoMark className="size-9" />
+            <LogoMark className="size-11" />
           )}
           <div>
-            <p className="text-sm font-semibold leading-none">{business.businessName}</p>
-            {business.abn && <p className="mt-1 text-xs text-muted-foreground">ABN {business.abn}</p>}
-            {business.licenceNumber && <p className="text-xs text-muted-foreground">Lic. {business.licenceNumber}</p>}
+            <p className="text-base font-bold leading-tight">{business.businessName}</p>
+            {credentials && <p className="mt-0.5 text-xs text-muted-foreground">{credentials}</p>}
           </div>
         </div>
         <div className="text-right">
-          <h1 className="text-xl font-semibold tracking-tight">INVOICE</h1>
-          <p className="text-sm text-muted-foreground">{invoice.number}</p>
-          <div className="mt-2">
-            <StatusBadge status={invoice.status} />
-          </div>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">INVOICE</h1>
+          <p className="mt-1 text-sm font-medium text-muted-foreground">{invoice.number}</p>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-6 border-y border-border py-5 text-sm">
+      <div className="mt-6 h-1 rounded-full bg-primary" />
+
+      <div className="mt-8 grid grid-cols-2 gap-6 rounded-lg border border-border bg-secondary/20 p-5 text-sm">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Bill to</p>
-          <p className="mt-1.5 font-medium">{invoice.customer}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Bill to</p>
+          <p className="mt-2 font-semibold">{invoice.customer}</p>
           {customer && (
             <>
-              <p className="text-muted-foreground">{customer.contact}</p>
+              <p className="mt-0.5 text-muted-foreground">{customer.contact}</p>
               <p className="text-muted-foreground">{customer.address}</p>
             </>
           )}
         </div>
         <div className="text-right">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Details</p>
-          <p className="mt-1.5 text-muted-foreground">
-            Date issued <span className="font-medium text-foreground">{formatDate(invoice.date, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Details</p>
+          <p className="mt-2 text-muted-foreground">
+            Date issued <span className="font-semibold text-foreground">{formatDate(invoice.date, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
           </p>
-          <p className="text-muted-foreground">
-            Due <span className="font-medium text-foreground">{formatDate(invoice.dueDate, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          <p className="mt-0.5 text-muted-foreground">
+            Due <span className="font-semibold text-foreground">{formatDate(invoice.dueDate, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
           </p>
         </div>
       </div>
 
-      <LineItemsTable lineItems={invoice.lineItems} includeGst={invoice.includeGst} />
+      <div className="mt-8">
+        <LineItemsTable lineItems={invoice.lineItems} includeGst={invoice.includeGst} />
+      </div>
 
       {paidSoFar > 0 && (
-        <div className="rounded-lg border border-border bg-secondary/40 p-4">
+        <div className="mt-6 rounded-lg border border-border bg-secondary/20 p-4">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Paid to date</span>
             <span className="font-medium text-success">{formatCurrency(paidSoFar)}</span>
           </div>
-          <div className="mt-1.5 flex items-center justify-between text-base font-semibold">
+          <div className="mt-1.5 flex items-center justify-between text-base font-bold">
             <span>Balance due</span>
             <span className={balanceDue > 0 ? 'text-destructive' : 'text-success'}>{formatCurrency(Math.max(balanceDue, 0))}</span>
           </div>
@@ -100,22 +101,22 @@ function InvoiceDocument({ invoice, customer, business }: { invoice: Invoice; cu
       )}
 
       {(invoice.notes || invoice.paymentTerms || business.bankAccountNumber) && (
-        <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2">
+        <div className="mt-8 grid grid-cols-1 gap-4 rounded-lg border border-border p-5 text-sm sm:grid-cols-2">
           {invoice.notes && (
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Notes</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Notes</p>
               <p className="mt-1.5 text-muted-foreground">{invoice.notes}</p>
             </div>
           )}
           {invoice.paymentTerms && (
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Payment terms</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Payment terms</p>
               <p className="mt-1.5 text-muted-foreground">{invoice.paymentTerms}</p>
             </div>
           )}
           {balanceDue > 0 && business.bankAccountNumber && (
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Payment details</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Payment details</p>
               <p className="mt-1.5 text-muted-foreground">
                 {business.bankAccountName && <>Acc. name: {business.bankAccountName}<br /></>}
                 {business.bankBsb && <>BSB: {business.bankBsb}<br /></>}
@@ -125,6 +126,8 @@ function InvoiceDocument({ invoice, customer, business }: { invoice: Invoice; cu
           )}
         </div>
       )}
+
+      <p className="mt-10 text-center text-xs text-muted-foreground">Thank you for your business.</p>
     </div>
   )
 }
@@ -208,10 +211,13 @@ export default function InvoiceDetail() {
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="-ml-2">
-          <ArrowLeft />
-          Back
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => navigate(-1)} className="-ml-2">
+            <ArrowLeft />
+            Back
+          </Button>
+          <StatusBadge status={invoice.status} />
+        </div>
 
         <div className="flex flex-wrap items-center gap-2">
           {invoice.jobId && (

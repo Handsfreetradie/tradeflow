@@ -19,77 +19,83 @@ import { elementToPdfBlob, openPdfBlobInNewTab, downloadPdfBlob } from '@/lib/pd
 function QuoteDocument({ quote, customer, business }: { quote: Quote; customer: Customer | undefined; business: BusinessSettings }) {
   const expiryDate = new Date(quote.date)
   expiryDate.setDate(expiryDate.getDate() + quote.validityDays)
+  const credentials = [business.abn && `ABN ${business.abn}`, business.licenceNumber && `Lic. ${business.licenceNumber}`].filter(Boolean).join('  ·  ')
 
   return (
-    <div className="space-y-8 p-8">
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-2.5">
+    <div className="p-10">
+      <div className="flex items-start justify-between gap-6">
+        <div className="flex items-center gap-3">
           {business.logoUrl ? (
-            <img src={business.logoUrl} alt={business.businessName} className="size-9 rounded-lg object-contain" />
+            <img src={business.logoUrl} alt={business.businessName} className="size-11 rounded-lg object-contain" />
           ) : (
-            <LogoMark className="size-9" />
+            <LogoMark className="size-11" />
           )}
           <div>
-            <p className="text-sm font-semibold leading-none">{business.businessName}</p>
-            {business.abn && <p className="mt-1 text-xs text-muted-foreground">ABN {business.abn}</p>}
-            {business.licenceNumber && <p className="text-xs text-muted-foreground">Lic. {business.licenceNumber}</p>}
+            <p className="text-base font-bold leading-tight">{business.businessName}</p>
+            {credentials && <p className="mt-0.5 text-xs text-muted-foreground">{credentials}</p>}
           </div>
         </div>
         <div className="text-right">
-          <h1 className="text-xl font-semibold tracking-tight">QUOTE</h1>
-          <p className="text-sm text-muted-foreground">{quote.number}</p>
+          <h1 className="text-3xl font-bold tracking-tight text-primary">QUOTE</h1>
+          <p className="mt-1 text-sm font-medium text-muted-foreground">{quote.number}</p>
           <div className="mt-2">
             <StatusBadge status={quote.status} />
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-6 border-y border-border py-5 text-sm">
+      <div className="mt-6 h-1 rounded-full bg-primary" />
+
+      <div className="mt-8 grid grid-cols-2 gap-6 rounded-lg border border-border bg-secondary/20 p-5 text-sm">
         <div>
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Quote for</p>
-          <p className="mt-1.5 font-medium">{quote.customer}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Quote for</p>
+          <p className="mt-2 font-semibold">{quote.customer}</p>
           {customer && (
             <>
-              <p className="text-muted-foreground">{customer.contact}</p>
+              <p className="mt-0.5 text-muted-foreground">{customer.contact}</p>
               <p className="text-muted-foreground">{customer.address}</p>
             </>
           )}
         </div>
         <div className="text-right">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Details</p>
-          <p className="mt-1.5 text-muted-foreground">
-            Date issued <span className="font-medium text-foreground">{formatDate(quote.date, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Details</p>
+          <p className="mt-2 text-muted-foreground">
+            Date issued <span className="font-semibold text-foreground">{formatDate(quote.date, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
           </p>
-          <p className="text-muted-foreground">
-            Valid until <span className="font-medium text-foreground">{formatDate(expiryDate, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          <p className="mt-0.5 text-muted-foreground">
+            Valid until <span className="font-semibold text-foreground">{formatDate(expiryDate, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
           </p>
         </div>
       </div>
 
-      <LineItemsTable lineItems={quote.lineItems} includeGst={quote.includeGst} />
+      <div className="mt-8">
+        <LineItemsTable lineItems={quote.lineItems} includeGst={quote.includeGst} />
+      </div>
 
       {(quote.notes || quote.terms || quote.exclusions) && (
-        <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
+        <div className="mt-8 grid grid-cols-1 gap-4 rounded-lg border border-border p-5 text-sm sm:grid-cols-3">
           {quote.terms && (
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Terms</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Terms</p>
               <p className="mt-1.5 text-muted-foreground">{quote.terms}</p>
             </div>
           )}
           {quote.exclusions && (
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Exclusions</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Exclusions</p>
               <p className="mt-1.5 text-muted-foreground">{quote.exclusions}</p>
             </div>
           )}
           {quote.notes && (
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Notes</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Notes</p>
               <p className="mt-1.5 text-muted-foreground">{quote.notes}</p>
             </div>
           )}
         </div>
       )}
+
+      <p className="mt-10 text-center text-xs text-muted-foreground">Thank you for the opportunity to quote on this work.</p>
     </div>
   )
 }
