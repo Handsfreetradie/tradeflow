@@ -1,16 +1,145 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { CalendarDays, Check, X } from 'lucide-react'
+import { CalendarDays, Check, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { LeaveStatusBadge } from '@/components/leave/LeaveStatusBadge'
-import { useLeaveStore } from '@/lib/store/leave-store'
-import { formatDate } from '@/lib/utils'
+import { useLeaveStore, type LeaveType } from '@/lib/store/leave-store'
+import { formatDate, toDateKey } from '@/lib/utils'
 
 function formatHoursAsDays(hours: number, weeklyHours: number) {
   const hoursPerDay = weeklyHours / 5
   return hoursPerDay > 0 ? (hours / hoursPerDay).toFixed(1) : '0'
+}
+
+function businessDaysBetween(start: string, end: string) {
+  const startDate = new Date(start)
+  const endDate = new Date(end)
+  let count = 0
+  for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+    const day = d.getDay()
+    if (day !== 0 && day !== 6) count++
+  }
+  return count
+}
+
+function LogLeaveDialog({ employees }: { employees: ReturnType<typeof useLeaveStore>['employees'] }) {
+  const { logLeave } = useLeaveStore()
+  const [open, setOpen] = useState(false)
+  const [employeeId, setEmployeeId] = useState(employees[0]?.id ?? '')
+  const [type, setType] = useState<LeaveType>('annual')
+  const [startDate, setStartDate] = useState(toDateKey(new Date()))
+  const [endDate, setEndDate] = useState(toDateKey(new Date()))
+  const [note, setNote] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  const employee = employees.find((e) => e.id === employeeId)
+  const hoursPerDay = (employee?.weeklyHours ?? 38) / 5
+  const hours = businessDaysBetween(startDate, endDate) * hoursPerDay
+
+  const openDialog = () => {
+    setEmployeeId(employees[0]?.id ?? '')
+    setType('annual')
+    setStartDate(toDateKey(new Date()))
+    setEndDate(toDateKey(new Date()))
+    setNote('')
+    setOpen(true)
+  }
+
+  const submit = async () => {
+    if (!employeeId || endDate < startDate || hours <= 0) {
+      toast.error('Pick an employee and a valid date range')
+      return
+    }
+    setSubmitting(true)
+    try {
+      await logLeave({ employeeId, type, startDate, endDate, hours, note: note.trim() })
+      toast.success('Leave logged')
+      setOpen(false)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to log leave')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <>
+      <Button variant="secondary" size="sm" onClick={openDialog}>
+        <Plus />
+        Log leave
+      </Button>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Log leave already taken</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              For leave taken outside the app — before you started using TradeFlow, or arranged directly with you. This is recorded as
+              already approved and comes straight off their balance.
+            </p>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Employee</label>
+              <Select value={employeeId} onValueChange={setEmployeeId}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {employees.map((e) => (
+                    <SelectItem key={e.id} value={e.id}>
+                      {e.fullName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Type</label>
+              <Select value={type} onValueChange={(v) => setType(v as LeaveType)}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="annual">Annual leave</SelectItem>
+                  <SelectItem value="sick">Sick / personal leave</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">Start date</label>
+                <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="mt-1" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">End date</label>
+                <Input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="mt-1" />
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {businessDaysBetween(startDate, endDate)} weekday{businessDaysBetween(startDate, endDate) === 1 ? '' : 's'} · {hours.toFixed(1)} hours
+            </p>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Note (optional)</label>
+              <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Took a week off in March" className="mt-1" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button disabled={submitting} onClick={submit}>
+              {submitting ? 'Saving…' : 'Log leave'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
 }
 
 export default function Leave() {
@@ -82,8 +211,9 @@ export default function Leave() {
       </Card>
 
       <Card>
-        <CardHeader>
+        <CardHeader className="flex-row items-center justify-between gap-4 space-y-0">
           <CardTitle>Team balances</CardTitle>
+          {trackedEmployees.length > 0 && <LogLeaveDialog employees={trackedEmployees} />}
         </CardHeader>
         <CardContent>
           {trackedEmployees.length === 0 ? (

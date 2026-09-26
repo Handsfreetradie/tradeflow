@@ -44,6 +44,7 @@ interface LeaveContextValue {
   loading: boolean
   getBalance: (employeeId: string) => LeaveBalance | null
   requestLeave: (input: { type: LeaveType; startDate: string; endDate: string; hours: number; note?: string }) => Promise<void>
+  logLeave: (input: { employeeId: string; type: LeaveType; startDate: string; endDate: string; hours: number; note?: string }) => Promise<void>
   reviewRequest: (id: string, approve: boolean) => Promise<void>
   refresh: () => void
 }
@@ -160,6 +161,27 @@ export function LeaveProvider({ children }: { children: ReactNode }) {
     [refresh]
   )
 
+  const logLeave = useCallback(
+    async (input: { employeeId: string; type: LeaveType; startDate: string; endDate: string; hours: number; note?: string }) => {
+      const { data: sessionData } = await supabase.auth.getSession()
+      const ownerId = sessionData.session?.user.id
+      const { error } = await supabase.from('leave_requests').insert({
+        employee_id: input.employeeId,
+        type: input.type,
+        start_date: input.startDate,
+        end_date: input.endDate,
+        hours: input.hours,
+        note: input.note ?? '',
+        status: 'approved',
+        reviewed_by: ownerId ?? null,
+        reviewed_at: new Date().toISOString(),
+      })
+      if (error) throw new Error(error.message)
+      refresh()
+    },
+    [refresh]
+  )
+
   const reviewRequest = useCallback(
     async (id: string, approve: boolean) => {
       const { error } = await supabase.rpc('review_leave_request', { p_request_id: id, p_approve: approve })
@@ -170,8 +192,8 @@ export function LeaveProvider({ children }: { children: ReactNode }) {
   )
 
   const value = useMemo(
-    () => ({ employees, requests, loading, getBalance, requestLeave, reviewRequest, refresh }),
-    [employees, requests, loading, getBalance, requestLeave, reviewRequest, refresh]
+    () => ({ employees, requests, loading, getBalance, requestLeave, logLeave, reviewRequest, refresh }),
+    [employees, requests, loading, getBalance, requestLeave, logLeave, reviewRequest, refresh]
   )
 
   return <LeaveContext.Provider value={value}>{children}</LeaveContext.Provider>
