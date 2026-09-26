@@ -93,16 +93,18 @@ function OwnerApp() {
 
 function EmployeeApp() {
   return (
-    <FieldJobsProvider>
-      <Routes>
-        <Route element={<FieldShell />}>
-          <Route index element={<FieldToday />} />
-          <Route path="jobs" element={<FieldJobs />} />
-          <Route path="jobs/:id" element={<FieldJobDetail />} />
-          <Route path="leave" element={<FieldLeave />} />
-        </Route>
-      </Routes>
-    </FieldJobsProvider>
+    <BusinessSettingsProvider>
+      <FieldJobsProvider>
+        <Routes>
+          <Route element={<FieldShell />}>
+            <Route index element={<FieldToday />} />
+            <Route path="jobs" element={<FieldJobs />} />
+            <Route path="jobs/:id" element={<FieldJobDetail />} />
+            <Route path="leave" element={<FieldLeave />} />
+          </Route>
+        </Routes>
+      </FieldJobsProvider>
+    </BusinessSettingsProvider>
   )
 }
 

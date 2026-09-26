@@ -1,14 +1,23 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Navigation, MapPin, Bell, X } from 'lucide-react'
+import { Navigation, MapPin, Bell, X, Users } from 'lucide-react'
 import { StatusBadge } from '@/components/ui/badge'
 import { useAuth } from '@/lib/auth/AuthProvider'
-import { useFieldJobsStore } from '@/lib/store/field-jobs-store'
+import { useBusinessSettings } from '@/lib/store/business-settings-store'
+import { useFieldJobsStore, type FieldCrewMember } from '@/lib/store/field-jobs-store'
 import { toDateKey } from '@/lib/utils'
 import { getExistingSubscription, isPushSupported, subscribeToPush } from '@/lib/push/subscribe'
 
 const DISMISS_KEY = 'field-notif-banner-dismissed'
+
+/** Free-text scheduled times (e.g. "9:00 AM – 11:00 AM") sort by their start time; jobs with no time go last. */
+function timeSortValue(scheduledTime?: string) {
+  if (!scheduledTime) return Number.POSITIVE_INFINITY
+  const start = scheduledTime.split(/[-–—]/)[0].trim()
+  const parsed = new Date(`2000-01-01 ${start}`)
+  return Number.isNaN(parsed.getTime()) ? Number.POSITIVE_INFINITY : parsed.getTime()
+}
 
 function NotificationBanner() {
   const [visible, setVisible] = useState(false)
@@ -55,20 +64,34 @@ function NotificationBanner() {
 
 export default function FieldToday() {
   const navigate = useNavigate()
-  const { fullName } = useAuth()
+  const { session } = useAuth()
   const { jobs, loading } = useFieldJobsStore()
+  const { settings } = useBusinessSettings()
+  const myId = session?.user.id
 
   const todayKey = toDateKey(new Date())
-  const todaysJobs = useMemo(() => jobs.filter((j) => j.dueDate === todayKey), [jobs, todayKey])
+  const todaysJobs = useMemo(
+    () =>
+      jobs
+        .filter((j) => j.dueDate === todayKey)
+        .sort((a, b) => timeSortValue(a.scheduledTime) - timeSortValue(b.scheduledTime)),
+    [jobs, todayKey]
+  )
   const nextJob = todaysJobs.find((j) => j.status !== 'Completed' && j.status !== 'Cancelled') ?? todaysJobs[0]
 
-  const firstName = (fullName ?? 'there').split(' ')[0]
+  const otherCrew = (jobCrew: FieldCrewMember[]) => jobCrew.filter((c) => c.employeeId !== myId)
 
   return (
     <div className="space-y-5">
       <div className="bg-sidebar px-5 pb-6 pt-8 text-sidebar-foreground">
-        <h1 className="text-xl font-semibold">Good day, {firstName} 👋</h1>
-        <p className="mt-1 text-sm text-sidebar-muted">Here's your schedule for today.</p>
+        {settings.logoUrl ? (
+          <div className="inline-flex h-10 items-center rounded-lg bg-white/95 px-3">
+            <img src={settings.logoUrl} alt={settings.businessName} className="h-6 w-auto object-contain" />
+          </div>
+        ) : (
+          <h1 className="text-xl font-semibold">{settings.businessName}</h1>
+        )}
+        <p className="mt-2 text-sm text-sidebar-muted">Here's your schedule for today.</p>
 
         {nextJob && (
           <div className="mt-5 rounded-xl bg-white/10 p-4 backdrop-blur-sm">
@@ -76,6 +99,12 @@ export default function FieldToday() {
             <p className="mt-2 text-xs text-sidebar-muted">{nextJob.scheduledTime ?? 'Anytime today'}</p>
             <p className="mt-1 text-base font-semibold">{nextJob.customerName || nextJob.title}</p>
             <p className="text-sm text-sidebar-muted">{nextJob.title}</p>
+            {otherCrew(nextJob.crew).length > 0 && (
+              <p className="mt-1.5 flex items-center gap-1.5 text-xs text-sidebar-muted">
+                <Users className="size-3 shrink-0" />
+                With {otherCrew(nextJob.crew).map((c) => c.fullName).join(', ')}
+              </p>
+            )}
             <button
               onClick={() => navigate(`/field/jobs/${nextJob.id}`)}
               className="mt-3 flex w-full items-center justify-center gap-2 rounded-lg bg-primary py-2.5 text-sm font-medium text-primary-foreground"
@@ -107,11 +136,20 @@ export default function FieldToday() {
               >
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{job.customerName || job.title}</p>
-                  <p className="truncate text-xs text-muted-foreground">{job.title}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {job.scheduledTime ? `${job.scheduledTime} · ` : ''}
+                    {job.title}
+                  </p>
                   <p className="mt-1 flex items-center gap-1 truncate text-xs text-muted-foreground">
                     <MapPin className="size-3 shrink-0" />
                     {job.address}
                   </p>
+                  {otherCrew(job.crew).length > 0 && (
+                    <p className="mt-1 flex items-center gap-1 truncate text-xs text-muted-foreground">
+                      <Users className="size-3 shrink-0" />
+                      With {otherCrew(job.crew).map((c) => c.fullName).join(', ')}
+                    </p>
+                  )}
                 </div>
                 <StatusBadge status={job.status} />
               </button>
