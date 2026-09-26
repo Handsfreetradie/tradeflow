@@ -9,6 +9,7 @@ import {
   BarChart3,
   Calendar,
   CalendarDays,
+  Phone,
   Settings,
   ChevronsUpDown,
 } from 'lucide-react'
@@ -43,6 +44,7 @@ export function Sidebar() {
     { to: '/expenses', icon: Receipt, label: 'Expenses' },
     { to: '/products', icon: Package, label: 'Products & Services' },
     { to: '/leave', icon: CalendarDays, label: 'Leave', count: pendingLeave },
+    { to: '/on-call', icon: Phone, label: 'On-call roster' },
     { to: '/reports', icon: BarChart3, label: 'Reports' },
     { to: '/calendar', icon: Calendar, label: 'Calendar' },
   ]

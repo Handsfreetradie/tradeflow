@@ -1016,6 +1016,42 @@ export type Database = {
           },
         ]
       }
+      on_call_roster: {
+        Row: {
+          created_at: string
+          employee_id: string | null
+          id: string
+          week_start: string
+        }
+        Insert: {
+          created_at?: string
+          employee_id?: string | null
+          id?: string
+          week_start: string
+        }
+        Update: {
+          created_at?: string
+          employee_id?: string | null
+          id?: string
+          week_start?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "on_call_roster_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "on_call_roster_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "team_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payments: {
         Row: {
           amount: number

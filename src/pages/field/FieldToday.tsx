@@ -1,11 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Navigation, MapPin, Bell, X, Users } from 'lucide-react'
+import { Navigation, MapPin, Bell, Phone, X, Users } from 'lucide-react'
 import { StatusBadge } from '@/components/ui/badge'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { useBusinessSettings } from '@/lib/store/business-settings-store'
 import { useFieldJobsStore, type FieldCrewMember } from '@/lib/store/field-jobs-store'
+import { useOnCallStore } from '@/lib/store/on-call-store'
 import { toDateKey } from '@/lib/utils'
 import { getExistingSubscription, isPushSupported, subscribeToPush } from '@/lib/push/subscribe'
 
@@ -67,6 +68,7 @@ export default function FieldToday() {
   const { session } = useAuth()
   const { jobs, loading } = useFieldJobsStore()
   const { settings } = useBusinessSettings()
+  const { getOnCallFor } = useOnCallStore()
   const myId = session?.user.id
 
   const todayKey = toDateKey(new Date())
@@ -78,6 +80,7 @@ export default function FieldToday() {
     [jobs, todayKey]
   )
   const nextJob = todaysJobs.find((j) => j.status !== 'Completed' && j.status !== 'Cancelled') ?? todaysJobs[0]
+  const onCall = getOnCallFor(todayKey)
 
   const otherCrew = (jobCrew: FieldCrewMember[]) => jobCrew.filter((c) => c.employeeId !== myId)
 
@@ -117,6 +120,15 @@ export default function FieldToday() {
       </div>
 
       <NotificationBanner />
+
+      {onCall?.employeeName && (
+        <div className="mx-5 flex items-center gap-2 rounded-xl border border-border bg-card p-3.5 text-sm">
+          <Phone className="size-4 shrink-0 text-primary" />
+          <span>
+            On call this week: <span className="font-medium">{onCall.employeeId === myId ? 'you' : onCall.employeeName}</span>
+          </span>
+        </div>
+      )}
 
       <div className="space-y-3 px-5">
         <div className="flex items-center justify-between">
