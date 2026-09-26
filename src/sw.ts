@@ -6,8 +6,16 @@ declare let self: ServiceWorkerGlobalScope
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 
-self.skipWaiting()
-self.clients.claim()
+// Stay in the "waiting" state until the page explicitly asks us to take over (see the
+// "Update now" flow in main.tsx) — activating immediately would swap a signed-in tab's
+// JS/CSS out from under the user without warning.
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting()
+})
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim())
+})
 
 interface PushPayload {
   title: string

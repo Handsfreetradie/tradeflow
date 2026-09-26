@@ -7,7 +7,14 @@ export default defineConfig({
   plugins: [
     react(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // injectRegister: false — we register the service worker ourselves from
+      // public/pwa-update.js (a plain, unbundled script — see its top comment for why:
+      // this app's build was silently dropping equivalent logic when it lived in the
+      // bundled/tree-shaken app code, however it was structured) so we can show an
+      // "Update now" prompt instead of silently swapping a signed-in tab's JS/CSS out
+      // from under the user.
+      registerType: 'prompt',
+      injectRegister: false,
       strategies: 'injectManifest',
       srcDir: 'src',
       filename: 'sw.ts',
