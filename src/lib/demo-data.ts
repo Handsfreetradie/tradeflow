@@ -53,6 +53,24 @@ export interface JobCheckIn {
   note?: string
 }
 
+/**
+ * An optional job milestone (e.g. underground services → rough-in → fitoff on a new build).
+ * Only present when the owner added stages at job creation — most jobs have none. `claimAmount`
+ * is what this stage is worth toward a progress claim invoice; `claimedInvoiceId` is set once
+ * that amount has actually been invoiced, so it can't be claimed twice.
+ */
+export interface JobStage {
+  id: string
+  name: string
+  targetDate?: string
+  notes: string
+  claimAmount?: number
+  status: 'pending' | 'complete'
+  completedAt?: string
+  claimedInvoiceId?: string
+  sortOrder: number
+}
+
 export interface Customer {
   id: string
   name: string
@@ -91,6 +109,8 @@ export interface Job {
   cocStatus: CocStatus
   cocNumber?: string
   cocIssuedDate?: string
+  /** Optional milestones — empty unless the owner opted in at job creation. */
+  stages: JobStage[]
 }
 
 export interface Payment {

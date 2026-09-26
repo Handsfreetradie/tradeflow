@@ -5,7 +5,7 @@ import { useOnline } from '@/lib/offline/online'
 import { getCachedJobs, setCachedJobs } from '@/lib/offline/db'
 import { enqueue, usePendingSyncCount } from '@/lib/offline/queue'
 import { flushQueue } from '@/lib/offline/flush'
-import type { JobCheckIn, JobNote, JobStatus } from '@/lib/demo-data'
+import type { JobCheckIn, JobNote, JobStage, JobStatus } from '@/lib/demo-data'
 
 export interface FieldLineItem {
   id: string
@@ -37,6 +37,7 @@ export interface FieldJob {
   notes: JobNote[]
   checkIns: JobCheckIn[]
   crew: FieldCrewMember[]
+  stages: JobStage[]
 }
 
 interface FieldJobsContextValue {
@@ -48,6 +49,7 @@ interface FieldJobsContextValue {
   addNote: (id: string, text: string) => Promise<void>
   startJob: (id: string) => Promise<void>
   finishJob: (id: string, note?: string, blocked?: boolean) => Promise<void>
+  updateStage: (stageId: string, jobId: string, patch: { complete?: boolean; notes?: string }) => Promise<void>
   refresh: () => void
 }
 
@@ -80,13 +82,15 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      const [{ data: customerRows }, { data: lineItemRows }, { data: noteRows }, { data: checkinRows }, { data: crewRows }] = await Promise.all([
-        supabase.from('customers_field_view').select('*'),
-        supabase.from('job_line_items_field_view').select('*').in('job_id', jobIds).order('sort_order'),
-        supabase.from('job_notes').select('*').in('job_id', jobIds).order('created_at'),
-        supabase.from('job_checkins').select('*').in('job_id', jobIds).order('check_in'),
-        supabase.rpc('get_job_crew', { p_job_ids: jobIds }),
-      ])
+      const [{ data: customerRows }, { data: lineItemRows }, { data: noteRows }, { data: checkinRows }, { data: crewRows }, { data: stageRows }] =
+        await Promise.all([
+          supabase.from('customers_field_view').select('*'),
+          supabase.from('job_line_items_field_view').select('*').in('job_id', jobIds).order('sort_order'),
+          supabase.from('job_notes').select('*').in('job_id', jobIds).order('created_at'),
+          supabase.from('job_checkins').select('*').in('job_id', jobIds).order('check_in'),
+          supabase.rpc('get_job_crew', { p_job_ids: jobIds }),
+          supabase.from('job_stages').select('*').in('job_id', jobIds).order('sort_order'),
+        ])
 
       const crewByJob = new Map<string, FieldCrewMember[]>()
       const crewNameById = new Map<string, string>()
@@ -124,6 +128,22 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
         })
         checkinsByJob.set(ci.job_id, arr)
       }
+      const stagesByJob = new Map<string, JobStage[]>()
+      for (const s of stageRows ?? []) {
+        const arr = stagesByJob.get(s.job_id) ?? []
+        arr.push({
+          id: s.id,
+          name: s.name,
+          targetDate: s.target_date ?? undefined,
+          notes: s.notes,
+          claimAmount: s.claim_amount ?? undefined,
+          status: s.status as JobStage['status'],
+          completedAt: s.completed_at ?? undefined,
+          claimedInvoiceId: s.claimed_invoice_id ?? undefined,
+          sortOrder: s.sort_order,
+        })
+        stagesByJob.set(s.job_id, arr)
+      }
 
       const assembled: FieldJob[] = (jobRows ?? []).map((row) => {
         const customer = row.customer_id ? customersById.get(row.customer_id) : undefined
@@ -143,6 +163,7 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
           notes: notesByJob.get(row.id!) ?? [],
           checkIns: checkinsByJob.get(row.id!) ?? [],
           crew: crewByJob.get(row.id!) ?? [],
+          stages: stagesByJob.get(row.id!) ?? [],
         }
       })
       setJobs(assembled)
@@ -248,9 +269,41 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
     [session, refresh]
   )
 
+  const updateStage = useCallback(
+    async (stageId: string, jobId: string, patch: { complete?: boolean; notes?: string }) => {
+      if (!navigator.onLine) {
+        setJobs((prev) =>
+          prev.map((j) =>
+            j.id === jobId
+              ? {
+                  ...j,
+                  stages: j.stages.map((s) =>
+                    s.id === stageId
+                      ? {
+                          ...s,
+                          status: patch.complete === undefined ? s.status : patch.complete ? 'complete' : 'pending',
+                          completedAt: patch.complete === undefined ? s.completedAt : patch.complete ? new Date().toISOString() : undefined,
+                          notes: patch.notes ?? s.notes,
+                        }
+                      : s
+                  ),
+                }
+              : j
+          )
+        )
+        await enqueue({ kind: 'update_stage', stageId, jobId, complete: patch.complete, notes: patch.notes })
+        return
+      }
+      const { error } = await supabase.rpc('employee_update_stage', { p_stage_id: stageId, p_complete: patch.complete, p_notes: patch.notes })
+      if (error) throw new Error(error.message)
+      refresh()
+    },
+    [refresh]
+  )
+
   const value = useMemo(
-    () => ({ jobs, loading, offline: !online, pendingSyncCount, getJob, addNote, startJob, finishJob, refresh }),
-    [jobs, loading, online, pendingSyncCount, getJob, addNote, startJob, finishJob, refresh]
+    () => ({ jobs, loading, offline: !online, pendingSyncCount, getJob, addNote, startJob, finishJob, updateStage, refresh }),
+    [jobs, loading, online, pendingSyncCount, getJob, addNote, startJob, finishJob, updateStage, refresh]
   )
 
   return <FieldJobsContext.Provider value={value}>{children}</FieldJobsContext.Provider>

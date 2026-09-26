@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Checkbox } from '@/components/ui/checkbox'
 import { AddFromCatalog } from '@/components/shared/AddFromCatalog'
 import { useInvoicesStore } from '@/lib/store/invoices-store'
 import { useCustomersStore } from '@/lib/store/customers-store'
@@ -50,7 +51,7 @@ export default function InvoiceNew() {
   const [searchParams] = useSearchParams()
   const { invoices, addInvoice, markSent } = useInvoicesStore()
   const { customers } = useCustomersStore()
-  const { getJob } = useJobsStore()
+  const { getJob, claimStages } = useJobsStore()
   const { team } = useTeamStore()
 
   const linkedJob = getJob(searchParams.get('jobId') ?? '')
@@ -75,6 +76,9 @@ export default function InvoiceNew() {
   })
 
   const [claimPercent, setClaimPercent] = useState('')
+  const [selectedStageIds, setSelectedStageIds] = useState<string[]>([])
+
+  const claimableStages = linkedJob ? linkedJob.stages.filter((s) => s.claimAmount != null && !s.claimedInvoiceId) : []
 
   const customer = customers.find((c) => c.id === customerId)
   const subtotal = lineItems.reduce((sum, li) => sum + li.qty * li.unitPrice, 0)
@@ -90,6 +94,15 @@ export default function InvoiceNew() {
     setLineItems((prev) => [
       ...prev.filter((li) => li.id !== 'progress-claim'),
       { id: 'progress-claim', description: `Progress claim — ${claimPercent}% of ${linkedJob.number}`, qty: 1, unitPrice: claimAmount },
+    ])
+  }
+
+  const applyStageClaims = () => {
+    if (!linkedJob) return
+    const chosen = claimableStages.filter((s) => selectedStageIds.includes(s.id))
+    setLineItems((prev) => [
+      ...prev.filter((li) => !li.id.startsWith('stage-claim-')),
+      ...chosen.map((s) => ({ id: `stage-claim-${s.id}`, description: `Progress claim — ${s.name}`, qty: 1, unitPrice: s.claimAmount ?? 0 })),
     ])
   }
 
@@ -111,6 +124,8 @@ export default function InvoiceNew() {
       jobId: linkedJob?.id,
     })
     if (send) await markSent(invoice.id)
+    const claimedStageIds = selectedStageIds.filter((id) => lineItems.some((li) => li.id === `stage-claim-${id}`))
+    if (linkedJob && claimedStageIds.length > 0) await claimStages(linkedJob.id, claimedStageIds, invoice.id)
     navigate(`/invoices/${invoice.id}`)
   }
 
@@ -208,6 +223,28 @@ export default function InvoiceNew() {
                 Add as line item
               </Button>
             </div>
+
+            {claimableStages.length > 0 && (
+              <div className="space-y-2 border-t border-border pt-3">
+                <label className="text-xs font-medium text-muted-foreground">Or claim by completed stage</label>
+                {claimableStages.map((s) => (
+                  <label key={s.id} className="flex items-center justify-between gap-2 rounded-lg border border-border px-3 py-2 text-sm">
+                    <span className="flex items-center gap-2">
+                      <Checkbox
+                        checked={selectedStageIds.includes(s.id)}
+                        onCheckedChange={(v) => setSelectedStageIds((prev) => (v ? [...prev, s.id] : prev.filter((id) => id !== s.id)))}
+                      />
+                      {s.name}
+                      {s.status !== 'complete' && <span className="text-xs text-warning">(not marked complete)</span>}
+                    </span>
+                    <span className="font-medium">{formatCurrency(s.claimAmount ?? 0)}</span>
+                  </label>
+                ))}
+                <Button variant="secondary" size="sm" onClick={applyStageClaims} disabled={selectedStageIds.length === 0}>
+                  Add selected as line items
+                </Button>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

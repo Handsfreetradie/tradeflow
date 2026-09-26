@@ -1,13 +1,14 @@
 import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { ArrowLeft, ChevronDown, Plus, Trash2 } from 'lucide-react'
+import { ArrowLeft, ChevronDown, Plus, Trash2, ListChecks } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Checkbox } from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { AddFromCatalog } from '@/components/shared/AddFromCatalog'
-import { useJobsStore } from '@/lib/store/jobs-store'
+import { useJobsStore, type NewJobStageInput } from '@/lib/store/jobs-store'
 import { useCustomersStore } from '@/lib/store/customers-store'
 import { useTeamStore } from '@/lib/store/team-store'
 import type { LineItem, PricingType } from '@/lib/demo-data'
@@ -15,6 +16,10 @@ import { formatCurrency } from '@/lib/utils'
 
 let liSeq = 0
 const newLineItem = (): LineItem => ({ id: `new-${++liSeq}`, description: '', qty: 1, unitPrice: 0 })
+
+let stageSeq = 0
+type DraftStage = NewJobStageInput & { id: string }
+const newStage = (): DraftStage => ({ id: `stage-${++stageSeq}`, name: '', targetDate: undefined, claimAmount: undefined })
 
 const NEW_CUSTOMER = '__new__'
 
@@ -35,6 +40,8 @@ export default function JobNew() {
   const [assigneeIds, setAssigneeIds] = useState<string[]>([])
   const [pricingType, setPricingType] = useState<PricingType>('Time & Materials')
   const [lineItems, setLineItems] = useState<LineItem[]>([])
+  const [useStages, setUseStages] = useState(false)
+  const [stages, setStages] = useState<DraftStage[]>([newStage()])
   const [submitting, setSubmitting] = useState(false)
 
   const customer = customers.find((c) => c.id === customerId)
@@ -43,6 +50,9 @@ export default function JobNew() {
 
   const updateLine = (id: string, patch: Partial<LineItem>) =>
     setLineItems((prev) => prev.map((li) => (li.id === id ? { ...li, ...patch } : li)))
+
+  const updateStage = (id: string, patch: Partial<DraftStage>) =>
+    setStages((prev) => prev.map((s) => (s.id === id ? { ...s, ...patch } : s)))
 
   const canSubmit =
     title.trim() &&
@@ -67,6 +77,9 @@ export default function JobNew() {
         pricingType,
         lineItems: lineItems.filter((li) => li.description.trim() && li.unitPrice > 0),
         assigneeIds,
+        stages: useStages
+          ? stages.filter((s) => s.name.trim()).map((s) => ({ name: s.name.trim(), targetDate: s.targetDate, claimAmount: s.claimAmount }))
+          : undefined,
       })
       navigate(`/jobs/${job.id}`)
     } finally {
@@ -248,6 +261,65 @@ export default function JobNew() {
             <div className="flex items-center justify-between border-t border-border pt-3 text-sm">
               <span className="text-muted-foreground">{pricingType === 'Fixed Price' ? 'Quoted value' : 'Estimated value'}</span>
               <span className="text-base font-semibold">{formatCurrency(total)}</span>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ListChecks className="size-4 text-muted-foreground" />
+            Stages (optional)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <label className="flex items-center gap-2 text-sm">
+            <Checkbox checked={useStages} onCheckedChange={(v) => setUseStages(v === true)} />
+            This job happens in stages (e.g. underground services → rough-in → fitoff)
+          </label>
+          <p className="text-xs text-muted-foreground">
+            Most jobs don't need this. Use it for multi-visit jobs where you want to track and optionally bill progress by stage.
+          </p>
+
+          {useStages && (
+            <div className="space-y-3 border-t border-border pt-3">
+              {stages.map((s, i) => (
+                <div key={s.id} className="flex items-center gap-2">
+                  <span className="w-5 shrink-0 text-center text-xs text-muted-foreground">{i + 1}</span>
+                  <Input
+                    value={s.name}
+                    onChange={(e) => updateStage(s.id, { name: e.target.value })}
+                    placeholder="e.g. Rough-in"
+                    className="flex-1"
+                  />
+                  <Input
+                    type="date"
+                    value={s.targetDate ?? ''}
+                    onChange={(e) => updateStage(s.id, { targetDate: e.target.value || undefined })}
+                    className="w-40"
+                  />
+                  <Input
+                    type="number"
+                    min="0"
+                    value={s.claimAmount ?? ''}
+                    onChange={(e) => updateStage(s.id, { claimAmount: e.target.value ? Number(e.target.value) : undefined })}
+                    placeholder="Claim $"
+                    className="w-28"
+                  />
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => setStages((prev) => (prev.length > 1 ? prev.filter((x) => x.id !== s.id) : prev))}
+                  >
+                    <Trash2 className="text-muted-foreground" />
+                  </Button>
+                </div>
+              ))}
+              <Button variant="secondary" size="sm" onClick={() => setStages((prev) => [...prev, newStage()])}>
+                <Plus />
+                Add stage
+              </Button>
             </div>
           )}
         </CardContent>

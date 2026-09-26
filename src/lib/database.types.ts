@@ -489,6 +489,56 @@ export type Database = {
         }
         Relationships: []
       }
+      job_stages: {
+        Row: {
+          id: string
+          job_id: string
+          name: string
+          target_date: string | null
+          notes: string
+          claim_amount: number | null
+          status: string
+          completed_at: string | null
+          claimed_invoice_id: string | null
+          sort_order: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          job_id: string
+          name: string
+          target_date?: string | null
+          notes?: string
+          claim_amount?: number | null
+          status?: string
+          completed_at?: string | null
+          claimed_invoice_id?: string | null
+          sort_order?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          job_id?: string
+          name?: string
+          target_date?: string | null
+          notes?: string
+          claim_amount?: number | null
+          status?: string
+          completed_at?: string | null
+          claimed_invoice_id?: string | null
+          sort_order?: number
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_stages_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_notes: {
         Row: {
           author_id: string | null
@@ -1016,6 +1066,22 @@ export type Database = {
       }
     }
     Functions: {
+      employee_update_stage: {
+        Args: { p_stage_id: string; p_complete?: boolean; p_notes?: string }
+        Returns: {
+          id: string
+          job_id: string
+          name: string
+          target_date: string | null
+          notes: string
+          claim_amount: number | null
+          status: string
+          completed_at: string | null
+          claimed_invoice_id: string | null
+          sort_order: number
+          created_at: string
+        }
+      }
       request_leave: {
         Args: { p_type: string; p_start_date: string; p_end_date: string; p_hours: number; p_note?: string }
         Returns: {

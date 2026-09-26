@@ -1,7 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth/AuthProvider'
-import type { CocStatus, Job, JobCheckIn, JobCost, JobNote, JobStatus, LineItem, PricingType } from '@/lib/demo-data'
+import type { CocStatus, Job, JobCheckIn, JobCost, JobNote, JobStage, JobStatus, LineItem, PricingType } from '@/lib/demo-data'
+
+export interface NewJobStageInput {
+  name: string
+  targetDate?: string
+  claimAmount?: number
+}
 
 export interface NewJobInput {
   title: string
@@ -15,6 +21,8 @@ export interface NewJobInput {
   quoteId?: string
   /** Profile ids of the employees to assign, or omit/empty for unassigned. */
   assigneeIds?: string[]
+  /** Optional milestones — only set when the owner opts in at job creation. */
+  stages?: NewJobStageInput[]
 }
 
 interface JobsContextValue {
@@ -30,6 +38,11 @@ interface JobsContextValue {
   addCost: (id: string, cost: Omit<JobCost, 'id'>) => Promise<void>
   startJob: (id: string) => Promise<void>
   finishJob: (id: string, note?: string) => Promise<void>
+  addStage: (jobId: string, stage: NewJobStageInput) => Promise<void>
+  updateStage: (stageId: string, jobId: string, patch: { name?: string; targetDate?: string | null; claimAmount?: number | null; notes?: string }) => Promise<void>
+  toggleStage: (stageId: string, jobId: string, complete: boolean) => Promise<void>
+  deleteStage: (stageId: string, jobId: string) => Promise<void>
+  claimStages: (jobId: string, stageIds: string[], invoiceId: string) => Promise<void>
 }
 
 const JobsContext = createContext<JobsContextValue | null>(null)
@@ -57,13 +70,41 @@ type JobRow = {
   customer: { name: string; address: string } | null
 }
 
+type StageRow = {
+  id: string
+  job_id: string
+  name: string
+  target_date: string | null
+  notes: string
+  claim_amount: number | null
+  status: string
+  completed_at: string | null
+  claimed_invoice_id: string | null
+  sort_order: number
+}
+
+function stageFromRow(row: StageRow): JobStage {
+  return {
+    id: row.id,
+    name: row.name,
+    targetDate: row.target_date ?? undefined,
+    notes: row.notes,
+    claimAmount: row.claim_amount ?? undefined,
+    status: row.status as JobStage['status'],
+    completedAt: row.completed_at ?? undefined,
+    claimedInvoiceId: row.claimed_invoice_id ?? undefined,
+    sortOrder: row.sort_order,
+  }
+}
+
 function assembleJob(
   row: JobRow,
   lineItems: LineItem[],
   costs: JobCost[],
   notes: JobNote[],
   checkIns: JobCheckIn[],
-  assignees: { id: string; fullName: string }[]
+  assignees: { id: string; fullName: string }[],
+  stages: JobStage[]
 ): Job {
   return {
     id: row.id,
@@ -88,6 +129,7 @@ function assembleJob(
     cocStatus: row.coc_status as CocStatus,
     cocNumber: row.coc_number ?? undefined,
     cocIssuedDate: row.coc_issued_date ?? undefined,
+    stages,
   }
 }
 
@@ -113,12 +155,13 @@ async function fetchJobs(): Promise<Job[]> {
   const jobIds = rows.map((r) => r.id)
   if (jobIds.length === 0) return []
 
-  const [{ data: lineItemRows }, { data: costRows }, { data: noteRows }, { data: checkinRows }, assigneesByJob] = await Promise.all([
+  const [{ data: lineItemRows }, { data: costRows }, { data: noteRows }, { data: checkinRows }, assigneesByJob, { data: stageRows }] = await Promise.all([
     supabase.from('job_line_items').select('*').in('job_id', jobIds).order('sort_order'),
     supabase.from('job_costs').select('*').in('job_id', jobIds).order('date'),
     supabase.from('job_notes').select('*').in('job_id', jobIds).order('created_at'),
     supabase.from('job_checkins').select('*, employee:profiles(full_name)').in('job_id', jobIds).order('check_in'),
     fetchAssigneesByJob(jobIds),
+    supabase.from('job_stages').select('*').in('job_id', jobIds).order('sort_order'),
   ])
 
   const lineItemsByJob = new Map<string, LineItem[]>()
@@ -168,6 +211,12 @@ async function fetchJobs(): Promise<Job[]> {
     })
     checkinsByJob.set(ci.job_id, arr)
   }
+  const stagesByJob = new Map<string, JobStage[]>()
+  for (const s of (stageRows ?? []) as StageRow[]) {
+    const arr = stagesByJob.get(s.job_id) ?? []
+    arr.push(stageFromRow(s))
+    stagesByJob.set(s.job_id, arr)
+  }
 
   return rows.map((row) =>
     assembleJob(
@@ -176,7 +225,8 @@ async function fetchJobs(): Promise<Job[]> {
       costsByJob.get(row.id) ?? [],
       notesByJob.get(row.id) ?? [],
       checkinsByJob.get(row.id) ?? [],
-      assigneesByJob.get(row.id) ?? []
+      assigneesByJob.get(row.id) ?? [],
+      stagesByJob.get(row.id) ?? []
     )
   )
 }
@@ -205,12 +255,13 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   const refreshJob = useCallback(async (id: string) => {
     const { data: row, error } = await supabase.from('jobs').select(JOB_SELECT).eq('id', id).single()
     if (error || !row) return
-    const [{ data: lineItemRows }, { data: costRows }, { data: noteRows }, { data: checkinRows }, assigneesByJob] = await Promise.all([
+    const [{ data: lineItemRows }, { data: costRows }, { data: noteRows }, { data: checkinRows }, assigneesByJob, { data: stageRows }] = await Promise.all([
       supabase.from('job_line_items').select('*').eq('job_id', id).order('sort_order'),
       supabase.from('job_costs').select('*').eq('job_id', id).order('date'),
       supabase.from('job_notes').select('*').eq('job_id', id).order('created_at'),
       supabase.from('job_checkins').select('*, employee:profiles(full_name)').eq('job_id', id).order('check_in'),
       fetchAssigneesByJob([id]),
+      supabase.from('job_stages').select('*').eq('job_id', id).order('sort_order'),
     ])
     const lineItems = (lineItemRows ?? []).map((li) => ({ id: li.id, description: li.description, qty: li.qty, unitPrice: li.unit_price }))
     const costs = (costRows ?? []).map((c) => ({
@@ -245,7 +296,8 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       checkOut: ci.check_out,
       note: ci.note ?? undefined,
     }))
-    const updated = assembleJob(row as unknown as JobRow, lineItems, costs, notes, checkIns, assigneesByJob.get(id) ?? [])
+    const stages = ((stageRows ?? []) as StageRow[]).map(stageFromRow)
+    const updated = assembleJob(row as unknown as JobRow, lineItems, costs, notes, checkIns, assigneesByJob.get(id) ?? [], stages)
     setJobs((prev) => prev.map((j) => (j.id === id ? updated : j)))
   }, [])
 
@@ -298,9 +350,28 @@ export function JobsProvider({ children }: { children: ReactNode }) {
         text: 'Job created and scheduled',
       })
 
+      const stageInputs = input.stages ?? []
+      let stages: JobStage[] = []
+      if (stageInputs.length > 0) {
+        const { data: stageRows, error: stageError } = await supabase
+          .from('job_stages')
+          .insert(
+            stageInputs.map((s, i) => ({
+              job_id: jobRow.id,
+              name: s.name,
+              target_date: s.targetDate || null,
+              claim_amount: s.claimAmount ?? null,
+              sort_order: i,
+            }))
+          )
+          .select('*')
+        if (stageError) throw new Error(stageError.message)
+        stages = ((stageRows ?? []) as StageRow[]).map(stageFromRow)
+      }
+
       const created = assembleJob(jobRow as unknown as JobRow, items, [], [
         { id: 'temp', type: 'status_change', author: fullName ?? 'Owner', text: 'Job created and scheduled', timestamp: formatTimestamp(new Date().toISOString()) },
-      ], [], assignees)
+      ], [], assignees, stages)
       setJobs((prev) => [created, ...prev])
       return created
     },
@@ -375,6 +446,67 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     [refreshJob]
   )
 
+  const addStage = useCallback(
+    async (jobId: string, stage: NewJobStageInput) => {
+      const job = jobs.find((j) => j.id === jobId)
+      const nextSort = (job?.stages.length ?? 0)
+      const { error } = await supabase
+        .from('job_stages')
+        .insert({ job_id: jobId, name: stage.name, target_date: stage.targetDate || null, claim_amount: stage.claimAmount ?? null, sort_order: nextSort })
+      if (error) throw new Error(error.message)
+      await refreshJob(jobId)
+    },
+    [jobs, refreshJob]
+  )
+
+  const updateStage = useCallback(
+    async (stageId: string, jobId: string, patch: { name?: string; targetDate?: string | null; claimAmount?: number | null; notes?: string }) => {
+      const { error } = await supabase
+        .from('job_stages')
+        .update({
+          ...(patch.name !== undefined ? { name: patch.name } : {}),
+          ...(patch.targetDate !== undefined ? { target_date: patch.targetDate } : {}),
+          ...(patch.claimAmount !== undefined ? { claim_amount: patch.claimAmount } : {}),
+          ...(patch.notes !== undefined ? { notes: patch.notes } : {}),
+        })
+        .eq('id', stageId)
+      if (error) throw new Error(error.message)
+      await refreshJob(jobId)
+    },
+    [refreshJob]
+  )
+
+  const toggleStage = useCallback(
+    async (stageId: string, jobId: string, complete: boolean) => {
+      const { error } = await supabase
+        .from('job_stages')
+        .update({ status: complete ? 'complete' : 'pending', completed_at: complete ? new Date().toISOString() : null })
+        .eq('id', stageId)
+      if (error) throw new Error(error.message)
+      await refreshJob(jobId)
+    },
+    [refreshJob]
+  )
+
+  const deleteStage = useCallback(
+    async (stageId: string, jobId: string) => {
+      const { error } = await supabase.from('job_stages').delete().eq('id', stageId)
+      if (error) throw new Error(error.message)
+      await refreshJob(jobId)
+    },
+    [refreshJob]
+  )
+
+  const claimStages = useCallback(
+    async (jobId: string, stageIds: string[], invoiceId: string) => {
+      if (stageIds.length === 0) return
+      const { error } = await supabase.from('job_stages').update({ claimed_invoice_id: invoiceId }).in('id', stageIds)
+      if (error) throw new Error(error.message)
+      await refreshJob(jobId)
+    },
+    [refreshJob]
+  )
+
   const startJob = useCallback(
     async (id: string) => {
       const { data: session } = await supabase.auth.getSession()
@@ -421,8 +553,44 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   )
 
   const value = useMemo(
-    () => ({ jobs, loading, getJob, addJob, updateJobStatus, updateDueDate, setAssignees, updateCoc, addNote, addCost, startJob, finishJob }),
-    [jobs, loading, getJob, addJob, updateJobStatus, updateDueDate, setAssignees, updateCoc, addNote, addCost, startJob, finishJob]
+    () => ({
+      jobs,
+      loading,
+      getJob,
+      addJob,
+      updateJobStatus,
+      updateDueDate,
+      setAssignees,
+      updateCoc,
+      addNote,
+      addCost,
+      startJob,
+      finishJob,
+      addStage,
+      updateStage,
+      toggleStage,
+      deleteStage,
+      claimStages,
+    }),
+    [
+      jobs,
+      loading,
+      getJob,
+      addJob,
+      updateJobStatus,
+      updateDueDate,
+      setAssignees,
+      updateCoc,
+      addNote,
+      addCost,
+      startJob,
+      finishJob,
+      addStage,
+      updateStage,
+      toggleStage,
+      deleteStage,
+      claimStages,
+    ]
   )
 
   return <JobsContext.Provider value={value}>{children}</JobsContext.Provider>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowLeft, Navigation, Phone, MapPin, Play, Square, Send, AlertTriangle, Users } from 'lucide-react'
+import { ArrowLeft, Navigation, Phone, MapPin, Play, Square, Send, AlertTriangle, Users, ListChecks } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -11,6 +11,7 @@ import { JobPhotosCard } from '@/components/jobs/JobPhotosCard'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { useFieldJobsStore } from '@/lib/store/field-jobs-store'
 import { formatDate } from '@/lib/utils'
+import type { JobStage } from '@/lib/demo-data'
 
 function formatDuration(ms: number) {
   const totalMinutes = Math.max(0, Math.floor(ms / 60000))
@@ -20,11 +21,45 @@ function formatDuration(ms: number) {
   return `${hours}h ${minutes}m`
 }
 
+function FieldStageRow({
+  jobId,
+  stage,
+  onUpdate,
+}: {
+  jobId: string
+  stage: JobStage
+  onUpdate: (stageId: string, jobId: string, patch: { complete?: boolean; notes?: string }) => Promise<void>
+}) {
+  const [notes, setNotes] = useState(stage.notes)
+
+  const saveNotes = () => {
+    if (notes === stage.notes) return
+    onUpdate(stage.id, jobId, { notes }).catch((e) => toast.error(e instanceof Error ? e.message : 'Failed to save note'))
+  }
+
+  return (
+    <div className="rounded-xl border border-border bg-card p-3.5">
+      <div className="flex items-start gap-2.5">
+        <Checkbox
+          checked={stage.status === 'complete'}
+          onCheckedChange={(v) => onUpdate(stage.id, jobId, { complete: v === true }).catch((e) => toast.error(e instanceof Error ? e.message : 'Failed to update'))}
+          className="mt-0.5"
+        />
+        <div className="min-w-0 flex-1 space-y-1.5">
+          <p className={stage.status === 'complete' ? 'text-sm font-medium line-through text-muted-foreground' : 'text-sm font-medium'}>{stage.name}</p>
+          {stage.targetDate && <p className="text-xs text-muted-foreground">Target {formatDate(stage.targetDate, { day: 'numeric', month: 'short' })}</p>}
+          <Input value={notes} onChange={(e) => setNotes(e.target.value)} onBlur={saveNotes} placeholder="Notes for this stage..." className="h-8 text-xs" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function FieldJobDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { session } = useAuth()
-  const { loading, getJob, addNote, startJob, finishJob } = useFieldJobsStore()
+  const { loading, getJob, addNote, startJob, finishJob, updateStage } = useFieldJobsStore()
   const [noteText, setNoteText] = useState('')
   const [finishOpen, setFinishOpen] = useState(false)
   const [finishNote, setFinishNote] = useState('')
@@ -173,6 +208,20 @@ export default function FieldJobDetail() {
                   <span className="shrink-0 text-xs text-muted-foreground">Not on site</span>
                 )}
               </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {job.stages.length > 0 && (
+        <div className="mx-5 space-y-2">
+          <p className="flex items-center gap-1.5 text-sm font-semibold">
+            <ListChecks className="size-4 text-muted-foreground" />
+            Stages
+          </p>
+          <div className="space-y-2">
+            {job.stages.map((stage) => (
+              <FieldStageRow key={stage.id} jobId={job.id} stage={stage} onUpdate={updateStage} />
             ))}
           </div>
         </div>

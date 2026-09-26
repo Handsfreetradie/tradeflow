@@ -6,6 +6,7 @@ type QueuedActionInput =
   | { kind: 'finish_job'; jobId: string; note?: string; blocked: boolean }
   | { kind: 'add_note'; jobId: string; text: string; authorName: string }
   | { kind: 'upload_photo'; jobId: string; blobKey: string; fileName: string; mimeType: string }
+  | { kind: 'update_stage'; stageId: string; jobId: string; complete?: boolean; notes?: string }
 
 export type QueuedAction = QueuedActionInput & { id: string }
 

@@ -64,6 +64,15 @@ async function runAction(action: QueuedAction): Promise<boolean> {
         await deletePhotoBlob(action.blobKey)
         return true
       }
+      case 'update_stage': {
+        const { error } = await supabase.rpc('employee_update_stage', {
+          p_stage_id: action.stageId,
+          p_complete: action.complete,
+          p_notes: action.notes,
+        })
+        if (error) throw new Error(error.message)
+        return true
+      }
     }
   } catch (e) {
     console.error('Failed to sync offline action', action, e)
