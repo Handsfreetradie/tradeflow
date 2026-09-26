@@ -69,7 +69,7 @@ export default function FieldJobDetail() {
 
   const job = id ? getJob(id) : undefined
   if (!loading && !job) return <Navigate to="/field/jobs" replace />
-  if (!job) return null
+  if (!job) return <p className="p-5 text-sm text-muted-foreground">Loading…</p>
 
   const myId = session?.user.id
   const openSession = [...job.checkIns].reverse().find((c) => c.employeeId === myId && c.checkOut === null)

@@ -337,10 +337,12 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
     async (jobId: string) => {
       const { error } = await supabase.rpc('employee_join_job', { p_job_id: jobId })
       if (error) throw new Error(error.message)
-      refresh()
+      // Wait for the fresh job list (now including this job) before the caller navigates to it —
+      // otherwise the detail page renders before the store knows the job exists.
+      await load()
       loadJoinable()
     },
-    [refresh, loadJoinable]
+    [load, loadJoinable]
   )
 
   const value = useMemo(
