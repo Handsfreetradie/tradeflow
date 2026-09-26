@@ -441,18 +441,27 @@ function TradeRoleSelect({ member }: { member: TeamMember }) {
   )
 }
 
+function daysFromHours(hours: number, weeklyHours: number) {
+  const hoursPerDay = weeklyHours / 5
+  return hoursPerDay > 0 ? hours / hoursPerDay : 0
+}
+
 function EmploymentDialog({ member }: { member: TeamMember }) {
   const { updateEmployment } = useTeamStore()
   const [open, setOpen] = useState(false)
   const [employmentType, setEmploymentType] = useState(member.employmentType)
   const [weeklyHours, setWeeklyHours] = useState(member.weeklyHours.toString())
   const [startDate, setStartDate] = useState(member.employmentStartDate ?? '')
+  const [annualOpeningDays, setAnnualOpeningDays] = useState(String(daysFromHours(member.annualLeaveOpeningHours, member.weeklyHours)))
+  const [sickOpeningDays, setSickOpeningDays] = useState(String(daysFromHours(member.sickLeaveOpeningHours, member.weeklyHours)))
   const [saving, setSaving] = useState(false)
 
   const openDialog = () => {
     setEmploymentType(member.employmentType)
     setWeeklyHours(member.weeklyHours.toString())
     setStartDate(member.employmentStartDate ?? '')
+    setAnnualOpeningDays(String(daysFromHours(member.annualLeaveOpeningHours, member.weeklyHours)))
+    setSickOpeningDays(String(daysFromHours(member.sickLeaveOpeningHours, member.weeklyHours)))
     setOpen(true)
   }
 
@@ -462,9 +471,22 @@ function EmploymentDialog({ member }: { member: TeamMember }) {
       toast.error('Enter valid weekly hours')
       return
     }
+    const annualDays = Number(annualOpeningDays)
+    const sickDays = Number(sickOpeningDays)
+    if (Number.isNaN(annualDays) || annualDays < 0 || Number.isNaN(sickDays) || sickDays < 0) {
+      toast.error('Enter valid opening leave balances')
+      return
+    }
+    const hoursPerDay = hours / 5
     setSaving(true)
     try {
-      await updateEmployment(member.id, { employmentType, weeklyHours: hours, employmentStartDate: startDate || null })
+      await updateEmployment(member.id, {
+        employmentType,
+        weeklyHours: hours,
+        employmentStartDate: startDate || null,
+        annualLeaveOpeningHours: annualDays * hoursPerDay,
+        sickLeaveOpeningHours: sickDays * hoursPerDay,
+      })
       toast.success('Employment details updated')
       setOpen(false)
     } catch (e) {
@@ -510,6 +532,35 @@ function EmploymentDialog({ member }: { member: TeamMember }) {
               <Input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="mt-1" />
               <p className="mt-1 text-xs text-muted-foreground">Used to calculate accrued leave to date.</p>
             </div>
+            {employmentType !== 'casual' && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Opening annual leave (days)</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={annualOpeningDays}
+                    onChange={(e) => setAnnualOpeningDays(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground">Opening sick leave (days)</label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="0.5"
+                    value={sickOpeningDays}
+                    onChange={(e) => setSickOpeningDays(e.target.value)}
+                    className="mt-1"
+                  />
+                </div>
+                <p className="col-span-2 -mt-1 text-xs text-muted-foreground">
+                  Leave they already had before this app tracked it — e.g. from a previous system. Added on top of what accrues from their start date.
+                </p>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="secondary" onClick={() => setOpen(false)}>

@@ -12,6 +12,8 @@ export interface LeaveEmployee {
   employmentType: EmploymentType
   weeklyHours: number
   employmentStartDate: string | null
+  annualLeaveOpeningHours: number
+  sickLeaveOpeningHours: number
 }
 
 export interface LeaveRequest {
@@ -48,13 +50,15 @@ interface LeaveContextValue {
 
 const LeaveContext = createContext<LeaveContextValue | null>(null)
 
-/** Standard NES pro-rata entitlement, accrued daily since employment start. Annual = 4 weeks/yr, personal/sick = 2 weeks/yr. */
+/** Standard NES pro-rata entitlement, accrued daily since employment start, plus whatever opening
+ * balance the owner set for leave the employee already had before this app tracked it. Annual = 4
+ * weeks/yr, personal/sick = 2 weeks/yr. */
 function computeBalance(employee: LeaveEmployee, requests: LeaveRequest[]): LeaveBalance | null {
   if (employee.employmentType === 'casual' || !employee.employmentStartDate) return null
   const daysEmployed = Math.max(0, (Date.now() - new Date(employee.employmentStartDate).getTime()) / 86_400_000)
   const yearsEmployed = daysEmployed / 365
-  const annualAccruedHours = employee.weeklyHours * 4 * yearsEmployed
-  const sickAccruedHours = employee.weeklyHours * 2 * yearsEmployed
+  const annualAccruedHours = employee.weeklyHours * 4 * yearsEmployed + employee.annualLeaveOpeningHours
+  const sickAccruedHours = employee.weeklyHours * 2 * yearsEmployed + employee.sickLeaveOpeningHours
   const own = requests.filter((r) => r.employeeId === employee.id && r.status === 'approved')
   const annualTakenHours = own.filter((r) => r.type === 'annual').reduce((sum, r) => sum + r.hours, 0)
   const sickTakenHours = own.filter((r) => r.type === 'sick').reduce((sum, r) => sum + r.hours, 0)
@@ -78,7 +82,9 @@ export function LeaveProvider({ children }: { children: ReactNode }) {
   const load = useCallback(async () => {
     setLoading(true)
     const [{ data: profileRows }, { data: requestRows }] = await Promise.all([
-      supabase.from('profiles').select('id, full_name, employment_type, weekly_hours, employment_start_date'),
+      supabase
+        .from('profiles')
+        .select('id, full_name, employment_type, weekly_hours, employment_start_date, annual_leave_opening_hours, sick_leave_opening_hours'),
       supabase
         .from('leave_requests')
         .select('*, employee:profiles!leave_requests_employee_id_fkey(full_name)')
@@ -92,6 +98,8 @@ export function LeaveProvider({ children }: { children: ReactNode }) {
         employmentType: p.employment_type as EmploymentType,
         weeklyHours: p.weekly_hours,
         employmentStartDate: p.employment_start_date,
+        annualLeaveOpeningHours: p.annual_leave_opening_hours,
+        sickLeaveOpeningHours: p.sick_leave_opening_hours,
       }))
     )
     setRequests(

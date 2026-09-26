@@ -13,6 +13,10 @@ export interface TeamMember {
   employmentType: EmploymentType
   weeklyHours: number
   employmentStartDate: string | null
+  /** Leave balance carried in from before this app tracked leave (e.g. migrating from another
+   * system) — added to the NES accrual so employees don't have to start back at zero. */
+  annualLeaveOpeningHours: number
+  sickLeaveOpeningHours: number
 }
 
 interface TeamContextValue {
@@ -21,7 +25,16 @@ interface TeamContextValue {
   refresh: () => void
   updateRate: (id: string, hourlyRate: number | null) => Promise<void>
   updateTradeRole: (id: string, tradeRole: string) => Promise<void>
-  updateEmployment: (id: string, patch: Partial<{ employmentType: EmploymentType; weeklyHours: number; employmentStartDate: string | null }>) => Promise<void>
+  updateEmployment: (
+    id: string,
+    patch: Partial<{
+      employmentType: EmploymentType
+      weeklyHours: number
+      employmentStartDate: string | null
+      annualLeaveOpeningHours: number
+      sickLeaveOpeningHours: number
+    }>
+  ) => Promise<void>
 }
 
 const TeamContext = createContext<TeamContextValue | null>(null)
@@ -36,7 +49,9 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     setLoading(true)
     supabase
       .from('profiles')
-      .select('id, full_name, role, email, hourly_rate, trade_role, employment_type, weekly_hours, employment_start_date')
+      .select(
+        'id, full_name, role, email, hourly_rate, trade_role, employment_type, weekly_hours, employment_start_date, annual_leave_opening_hours, sick_leave_opening_hours'
+      )
       .order('full_name')
       .then(({ data, error }) => {
         if (cancelled) return
@@ -52,6 +67,8 @@ export function TeamProvider({ children }: { children: ReactNode }) {
               employmentType: p.employment_type as EmploymentType,
               weeklyHours: p.weekly_hours,
               employmentStartDate: p.employment_start_date,
+              annualLeaveOpeningHours: p.annual_leave_opening_hours,
+              sickLeaveOpeningHours: p.sick_leave_opening_hours,
             }))
           )
         }
@@ -77,13 +94,24 @@ export function TeamProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const updateEmployment = useCallback(
-    async (id: string, patch: Partial<{ employmentType: EmploymentType; weeklyHours: number; employmentStartDate: string | null }>) => {
+    async (
+      id: string,
+      patch: Partial<{
+        employmentType: EmploymentType
+        weeklyHours: number
+        employmentStartDate: string | null
+        annualLeaveOpeningHours: number
+        sickLeaveOpeningHours: number
+      }>
+    ) => {
       const { error } = await supabase
         .from('profiles')
         .update({
           ...(patch.employmentType !== undefined ? { employment_type: patch.employmentType } : {}),
           ...(patch.weeklyHours !== undefined ? { weekly_hours: patch.weeklyHours } : {}),
           ...(patch.employmentStartDate !== undefined ? { employment_start_date: patch.employmentStartDate } : {}),
+          ...(patch.annualLeaveOpeningHours !== undefined ? { annual_leave_opening_hours: patch.annualLeaveOpeningHours } : {}),
+          ...(patch.sickLeaveOpeningHours !== undefined ? { sick_leave_opening_hours: patch.sickLeaveOpeningHours } : {}),
         })
         .eq('id', id)
       if (error) throw new Error(error.message)

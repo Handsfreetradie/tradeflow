@@ -1080,6 +1080,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          annual_leave_opening_hours: number
           created_at: string
           email: string
           employment_start_date: string | null
@@ -1088,10 +1089,12 @@ export type Database = {
           hourly_rate: number | null
           id: string
           role: string
+          sick_leave_opening_hours: number
           trade_role: string
           weekly_hours: number
         }
         Insert: {
+          annual_leave_opening_hours?: number
           created_at?: string
           email: string
           employment_start_date?: string | null
@@ -1100,10 +1103,12 @@ export type Database = {
           hourly_rate?: number | null
           id: string
           role: string
+          sick_leave_opening_hours?: number
           trade_role?: string
           weekly_hours?: number
         }
         Update: {
+          annual_leave_opening_hours?: number
           created_at?: string
           email?: string
           employment_start_date?: string | null
@@ -1112,6 +1117,7 @@ export type Database = {
           hourly_rate?: number | null
           id?: string
           role?: string
+          sick_leave_opening_hours?: number
           trade_role?: string
           weekly_hours?: number
         }
