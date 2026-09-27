@@ -18,7 +18,7 @@ export function LineItemsTable({ lineItems, includeGst = true }: { lineItems: Li
                 {li.qty} × {formatCurrency(li.unitPrice)}
               </p>
             </div>
-            <p className="shrink-0 text-sm font-medium">{formatCurrency(li.qty * li.unitPrice)}</p>
+            <p className="shrink-0 text-xs font-medium">{formatCurrency(li.qty * li.unitPrice)}</p>
           </div>
         ))}
       </div>
