@@ -1,7 +1,7 @@
 import { useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowLeft, Send, DollarSign, Briefcase, Link as LinkIcon, Eye, Download, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, Send, DollarSign, Briefcase, Link as LinkIcon, Eye, Download, Pencil, Trash2, Check } from 'lucide-react'
 import { LogoMark } from '@/components/shared/Logo'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -220,6 +220,15 @@ export default function InvoiceDetail() {
     }
   }
 
+  const markAsSent = async () => {
+    try {
+      await markSent(invoice.id)
+      toast.success(`${invoice.number} marked as sent`)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to update status')
+    }
+  }
+
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -260,6 +269,12 @@ export default function InvoiceDetail() {
             <Send />
             {invoice.status === 'Draft' ? 'Send invoice' : 'Email invoice'}
           </Button>
+          {invoice.status === 'Draft' && (
+            <Button variant="secondary" onClick={markAsSent}>
+              <Check />
+              Mark as sent
+            </Button>
+          )}
           {invoice.status !== 'Draft' && balanceDue > 0 && (
             <Button onClick={() => setPaymentOpen(true)}>
               <DollarSign />
