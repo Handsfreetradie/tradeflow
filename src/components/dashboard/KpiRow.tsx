@@ -10,8 +10,8 @@ import { useInvoicesStore, invoiceTotal } from '@/lib/store/invoices-store'
 function Sparkline({ tone }: { tone: 'primary' | 'success' | 'warning' | 'muted' }) {
   const points = [4, 7, 5, 9, 8, 12, 10, 14, 13, 17]
   const max = Math.max(...points)
-  const w = 64
-  const h = 20
+  const w = 100
+  const h = 24
   const path = points
     .map((p, i) => `${(i / (points.length - 1)) * w},${h - (p / max) * h}`)
     .join(' ')
@@ -22,8 +22,15 @@ function Sparkline({ tone }: { tone: 'primary' | 'success' | 'warning' | 'muted'
     muted: 'stroke-muted-foreground',
   }[tone]
   return (
-    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} fill="none" className="shrink-0">
-      <polyline points={path} className={cn(stroke)} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    <svg viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" fill="none" className="h-6 w-full">
+      <polyline
+        points={path}
+        className={cn(stroke)}
+        strokeWidth={2}
+        vectorEffect="non-scaling-stroke"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
     </svg>
   )
 }
@@ -53,8 +60,8 @@ function KpiCard({
       </div>
       <div className="mt-3">
         <p className="truncate text-2xl font-semibold tracking-tight">{value}</p>
-        <div className="mt-1.5 flex items-center justify-between gap-2">
-          <span className="min-w-0 truncate text-xs text-muted-foreground">{supporting}</span>
+        <p className="mt-1 truncate text-xs text-muted-foreground">{supporting}</p>
+        <div className="mt-2.5">
           <Sparkline tone={sparkTone} />
         </div>
       </div>
