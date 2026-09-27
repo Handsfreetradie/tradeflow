@@ -10,8 +10,8 @@ import { useInvoicesStore, invoiceTotal } from '@/lib/store/invoices-store'
 function Sparkline({ tone }: { tone: 'primary' | 'success' | 'warning' | 'muted' }) {
   const points = [4, 7, 5, 9, 8, 12, 10, 14, 13, 17]
   const max = Math.max(...points)
-  const w = 88
-  const h = 28
+  const w = 64
+  const h = 20
   const path = points
     .map((p, i) => `${(i / (points.length - 1)) * w},${h - (p / max) * h}`)
     .join(' ')
@@ -51,14 +51,12 @@ function KpiCard({
         </div>
         <p className="text-sm font-medium text-muted-foreground">{label}</p>
       </div>
-      <div className="mt-3 flex items-end justify-between gap-2">
-        <div className="min-w-0">
-          <p className="truncate text-2xl font-semibold tracking-tight">{value}</p>
-          <div className="mt-1.5 flex items-center gap-1 text-xs">
-            <span className="truncate text-muted-foreground">{supporting}</span>
-          </div>
+      <div className="mt-3">
+        <p className="truncate text-2xl font-semibold tracking-tight">{value}</p>
+        <div className="mt-1.5 flex items-center justify-between gap-2">
+          <span className="min-w-0 truncate text-xs text-muted-foreground">{supporting}</span>
+          <Sparkline tone={sparkTone} />
         </div>
-        <Sparkline tone={sparkTone} />
       </div>
     </Card>
   )
