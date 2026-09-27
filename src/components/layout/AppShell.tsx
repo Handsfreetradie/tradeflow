@@ -12,7 +12,7 @@ export function AppShell() {
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col">
           <Header />
-          <main className="flex-1 overflow-y-auto pb-16 lg:pb-0">
+          <main className="flex-1 overflow-y-auto overscroll-contain pb-16 lg:pb-0">
             <Outlet />
           </main>
         </div>

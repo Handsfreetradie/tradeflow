@@ -60,6 +60,11 @@
 }
 
 @layer base {
+  html,
+  body {
+    overscroll-behavior: none;
+    -webkit-tap-highlight-color: transparent;
+  }
   * {
     @apply border-border;
   }
@@ -67,6 +72,7 @@
     @apply bg-background text-foreground antialiased;
     font-feature-settings: 'cv11', 'ss01';
     font-variation-settings: 'opsz' 32;
+    touch-action: manipulation;
   }
 }
 
