@@ -34,7 +34,7 @@ export default function AcceptInvite() {
 
   if (!session) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background p-6">
+      <div className="flex min-h-screen items-center justify-center bg-background px-6 pb-[calc(env(safe-area-inset-bottom)_+_1.5rem)] pt-[calc(env(safe-area-inset-top)_+_1.5rem)]">
         <div className="w-full max-w-sm text-center">
           <h1 className="text-lg font-semibold">This link isn't valid</h1>
           <p className="mt-2 text-sm text-muted-foreground">It may have already been used or expired. Request a new one and try again.</p>
@@ -44,7 +44,7 @@ export default function AcceptInvite() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background p-6">
+    <div className="flex min-h-screen items-center justify-center bg-background px-6 pb-[calc(env(safe-area-inset-bottom)_+_1.5rem)] pt-[calc(env(safe-area-inset-top)_+_1.5rem)]">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-2 text-center">
           <LogoMark className="size-11" />
