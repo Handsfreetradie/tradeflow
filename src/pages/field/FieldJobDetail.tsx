@@ -104,7 +104,7 @@ export default function FieldJobDetail() {
     setBusy(true)
     try {
       await finishJob(job.id, finishNote.trim() || undefined, cantComplete)
-      toast.success(cantComplete ? "Office has been notified you couldn't complete this job" : 'Job finished for now')
+      toast.success(cantComplete ? "Office has been notified you couldn't complete this job" : 'Job marked complete')
       setFinishNote('')
       setCantComplete(false)
       setFinishOpen(false)
@@ -296,7 +296,7 @@ export default function FieldJobDetail() {
       <Dialog open={finishOpen} onOpenChange={setFinishOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Finish on site</DialogTitle>
+            <DialogTitle>{cantComplete ? "Can't complete this job" : 'Complete this job?'}</DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
             <div>
@@ -310,7 +310,7 @@ export default function FieldJobDetail() {
                   <AlertTriangle className="size-3.5" />
                   Can't complete this job
                 </span>
-                <span className="text-xs text-muted-foreground">Notifies the office to follow up and reschedule.</span>
+                <span className="text-xs text-muted-foreground">Notifies the office to follow up and reschedule — leaves the job open instead of completing it.</span>
               </span>
             </label>
           </div>
@@ -318,8 +318,8 @@ export default function FieldJobDetail() {
             <Button variant="secondary" onClick={() => setFinishOpen(false)}>
               Cancel
             </Button>
-            <Button variant="danger" disabled={busy} onClick={handleFinish}>
-              Finish
+            <Button variant={cantComplete ? 'danger' : 'primary'} disabled={busy} onClick={handleFinish}>
+              {cantComplete ? 'Notify office' : 'Complete job'}
             </Button>
           </DialogFooter>
         </DialogContent>
