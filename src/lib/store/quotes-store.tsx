@@ -14,9 +14,13 @@ export interface NewQuoteInput {
 }
 
 export interface QuoteEditInput {
+  customerId?: string
+  includeGst?: boolean
+  validityDays?: number
   terms?: string
   exclusions?: string
   notes?: string
+  lineItems?: LineItem[]
 }
 
 interface QuotesContextValue {
@@ -26,6 +30,7 @@ interface QuotesContextValue {
   addQuote: (input: NewQuoteInput) => Promise<Quote>
   updateStatus: (id: string, status: QuoteStatus) => Promise<void>
   updateQuote: (id: string, patch: QuoteEditInput) => Promise<void>
+  deleteQuote: (id: string) => Promise<void>
   linkJob: (id: string, jobId: string) => Promise<void>
 }
 
@@ -141,16 +146,44 @@ export function QuotesProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const updateQuote = useCallback(async (id: string, patch: QuoteEditInput) => {
+    const amount = patch.lineItems ? patch.lineItems.reduce((sum, li) => sum + li.qty * li.unitPrice, 0) : undefined
     const { error } = await supabase
       .from('quotes')
       .update({
+        ...(patch.customerId !== undefined ? { customer_id: patch.customerId } : {}),
+        ...(patch.includeGst !== undefined ? { include_gst: patch.includeGst } : {}),
+        ...(patch.validityDays !== undefined ? { validity_days: patch.validityDays } : {}),
         ...(patch.terms !== undefined ? { terms: patch.terms } : {}),
         ...(patch.exclusions !== undefined ? { exclusions: patch.exclusions } : {}),
         ...(patch.notes !== undefined ? { notes: patch.notes } : {}),
+        ...(amount !== undefined ? { amount } : {}),
       })
       .eq('id', id)
     if (error) throw new Error(error.message)
+
+    if (patch.lineItems) {
+      const { error: deleteError } = await supabase.from('quote_line_items').delete().eq('quote_id', id)
+      if (deleteError) throw new Error(deleteError.message)
+      if (patch.lineItems.length > 0) {
+        const { error: liError } = await supabase
+          .from('quote_line_items')
+          .insert(patch.lineItems.map((li, i) => ({ quote_id: id, description: li.description, qty: li.qty, unit_price: li.unitPrice, sort_order: i })))
+        if (liError) throw new Error(liError.message)
+      }
+      const { data: row, error: refetchError } = await supabase.from('quotes').select(QUOTE_SELECT).eq('id', id).single()
+      if (refetchError || !row) throw new Error(refetchError?.message ?? 'Failed to reload quote')
+      const updated = fromRow(row as unknown as QuoteRow)
+      setQuotes((prev) => prev.map((q) => (q.id === id ? updated : q)))
+      return
+    }
+
     setQuotes((prev) => prev.map((q) => (q.id === id ? { ...q, ...patch } : q)))
+  }, [])
+
+  const deleteQuote = useCallback(async (id: string) => {
+    const { error } = await supabase.from('quotes').delete().eq('id', id)
+    if (error) throw new Error(error.message)
+    setQuotes((prev) => prev.filter((q) => q.id !== id))
   }, [])
 
   const linkJob = useCallback(async (id: string, jobId: string) => {
@@ -160,8 +193,8 @@ export function QuotesProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo(
-    () => ({ quotes, loading, getQuote, addQuote, updateStatus, updateQuote, linkJob }),
-    [quotes, loading, getQuote, addQuote, updateStatus, updateQuote, linkJob]
+    () => ({ quotes, loading, getQuote, addQuote, updateStatus, updateQuote, deleteQuote, linkJob }),
+    [quotes, loading, getQuote, addQuote, updateStatus, updateQuote, deleteQuote, linkJob]
   )
 
   return <QuotesContext.Provider value={value}>{children}</QuotesContext.Provider>

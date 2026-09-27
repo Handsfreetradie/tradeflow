@@ -1,12 +1,13 @@
 import { useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowLeft, Send, DollarSign, Briefcase, Link as LinkIcon, Eye, Download } from 'lucide-react'
+import { ArrowLeft, Send, DollarSign, Briefcase, Link as LinkIcon, Eye, Download, Pencil, Trash2 } from 'lucide-react'
 import { LogoMark } from '@/components/shared/Logo'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { StatusBadge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import {
   Dialog,
   DialogContent,
@@ -39,13 +40,13 @@ function InvoiceDocument({ invoice, customer, business }: { invoice: Invoice; cu
             <LogoMark className="size-11" />
           )}
           <div>
-            <p className="text-base font-bold leading-tight">{business.businessName}</p>
+            <p className="text-sm font-semibold leading-tight">{business.businessName}</p>
             {credentials && <p className="mt-0.5 text-xs text-muted-foreground">{credentials}</p>}
           </div>
         </div>
         <div className="text-right">
-          <h1 className="text-3xl font-bold tracking-tight text-primary">INVOICE</h1>
-          <p className="mt-1 text-sm font-medium text-muted-foreground">{invoice.number}</p>
+          <h1 className="text-xl font-semibold tracking-tight text-primary">INVOICE</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{invoice.number}</p>
         </div>
       </div>
 
@@ -53,8 +54,8 @@ function InvoiceDocument({ invoice, customer, business }: { invoice: Invoice; cu
 
       <div className="mt-8 grid grid-cols-2 gap-6 rounded-lg border border-border bg-secondary/20 p-5 text-sm">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Bill to</p>
-          <p className="mt-2 font-semibold">{invoice.customer}</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Bill to</p>
+          <p className="mt-2 font-medium">{invoice.customer}</p>
           {customer && (
             <>
               <p className="mt-0.5 text-muted-foreground">{customer.contact}</p>
@@ -63,12 +64,12 @@ function InvoiceDocument({ invoice, customer, business }: { invoice: Invoice; cu
           )}
         </div>
         <div className="text-right">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Details</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Details</p>
           <p className="mt-2 text-muted-foreground">
-            Date issued <span className="font-semibold text-foreground">{formatDate(invoice.date, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+            Date issued <span className="font-medium text-foreground">{formatDate(invoice.date, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
           </p>
           <p className="mt-0.5 text-muted-foreground">
-            Due <span className="font-semibold text-foreground">{formatDate(invoice.dueDate, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+            Due <span className="font-medium text-foreground">{formatDate(invoice.dueDate, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
           </p>
         </div>
       </div>
@@ -83,7 +84,7 @@ function InvoiceDocument({ invoice, customer, business }: { invoice: Invoice; cu
             <span className="text-muted-foreground">Paid to date</span>
             <span className="font-medium text-success">{formatCurrency(paidSoFar)}</span>
           </div>
-          <div className="mt-1.5 flex items-center justify-between text-base font-bold">
+          <div className="mt-1.5 flex items-center justify-between text-sm font-semibold">
             <span>Balance due</span>
             <span className={balanceDue > 0 ? 'text-destructive' : 'text-success'}>{formatCurrency(Math.max(balanceDue, 0))}</span>
           </div>
@@ -104,19 +105,19 @@ function InvoiceDocument({ invoice, customer, business }: { invoice: Invoice; cu
         <div className="mt-8 grid grid-cols-1 gap-4 rounded-lg border border-border p-5 text-sm sm:grid-cols-2">
           {invoice.notes && (
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Notes</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Notes</p>
               <p className="mt-1.5 text-muted-foreground">{invoice.notes}</p>
             </div>
           )}
           {invoice.paymentTerms && (
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Payment terms</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Payment terms</p>
               <p className="mt-1.5 text-muted-foreground">{invoice.paymentTerms}</p>
             </div>
           )}
           {balanceDue > 0 && business.bankAccountNumber && (
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Payment details</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Payment details</p>
               <p className="mt-1.5 text-muted-foreground">
                 {business.bankAccountName && <>Acc. name: {business.bankAccountName}<br /></>}
                 {business.bankBsb && <>BSB: {business.bankBsb}<br /></>}
@@ -135,7 +136,7 @@ function InvoiceDocument({ invoice, customer, business }: { invoice: Invoice; cu
 export default function InvoiceDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { loading, getInvoice, markSent, recordPayment } = useInvoicesStore()
+  const { loading, getInvoice, markSent, recordPayment, deleteInvoice } = useInvoicesStore()
   const { getCustomer } = useCustomersStore()
   const { settings: business } = useBusinessSettings()
   const [paymentOpen, setPaymentOpen] = useState(false)
@@ -144,6 +145,7 @@ export default function InvoiceDetail() {
   const [sendOpen, setSendOpen] = useState(false)
   const [previewing, setPreviewing] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const documentRef = useRef<HTMLDivElement>(null)
 
   const invoice = id ? getInvoice(id) : undefined
@@ -208,6 +210,16 @@ export default function InvoiceDetail() {
     }
   }
 
+  const removeInvoice = async () => {
+    try {
+      await deleteInvoice(invoice.id)
+      toast.success(`${invoice.number} deleted`)
+      navigate('/invoices')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to delete invoice')
+    }
+  }
+
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -224,6 +236,12 @@ export default function InvoiceDetail() {
             <Button variant="secondary" onClick={() => navigate(`/jobs/${invoice.jobId}`)}>
               <Briefcase />
               View linked job
+            </Button>
+          )}
+          {invoice.status === 'Draft' && (
+            <Button variant="secondary" onClick={() => navigate(`/invoices/${invoice.id}/edit`)}>
+              <Pencil />
+              Edit
             </Button>
           )}
           <Button variant="secondary" onClick={copyLink}>
@@ -246,6 +264,12 @@ export default function InvoiceDetail() {
             <Button onClick={() => setPaymentOpen(true)}>
               <DollarSign />
               Record payment
+            </Button>
+          )}
+          {invoice.status === 'Draft' && (
+            <Button variant="secondary" onClick={() => setDeleteOpen(true)}>
+              <Trash2 />
+              Delete
             </Button>
           )}
         </div>
@@ -317,6 +341,16 @@ export default function InvoiceDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title={`Delete ${invoice.number}?`}
+        description="This permanently deletes the draft invoice. This can't be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={removeInvoice}
+      />
     </div>
   )
 }

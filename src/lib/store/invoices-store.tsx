@@ -18,6 +18,8 @@ interface InvoicesContextValue {
   loading: boolean
   getInvoice: (id: string) => Invoice | undefined
   addInvoice: (input: NewInvoiceInput) => Promise<Invoice>
+  updateInvoice: (id: string, input: NewInvoiceInput) => Promise<Invoice>
+  deleteInvoice: (id: string) => Promise<void>
   markSent: (id: string) => Promise<void>
   recordPayment: (id: string, amount: number, method: PaymentMethod) => Promise<void>
 }
@@ -150,6 +152,43 @@ export function InvoicesProvider({ children }: { children: ReactNode }) {
     return created
   }, [])
 
+  const updateInvoice = useCallback(async (id: string, input: NewInvoiceInput) => {
+    const amount = input.lineItems.reduce((sum, li) => sum + li.qty * li.unitPrice, 0)
+    const { error } = await supabase
+      .from('invoices')
+      .update({
+        customer_id: input.customerId,
+        due_date: input.dueDate,
+        amount,
+        include_gst: input.includeGst,
+        notes: input.notes,
+        payment_terms: input.paymentTerms,
+      })
+      .eq('id', id)
+    if (error) throw new Error(error.message)
+
+    const { error: deleteError } = await supabase.from('invoice_line_items').delete().eq('invoice_id', id)
+    if (deleteError) throw new Error(deleteError.message)
+    if (input.lineItems.length > 0) {
+      const { error: liError } = await supabase
+        .from('invoice_line_items')
+        .insert(input.lineItems.map((li, i) => ({ invoice_id: id, description: li.description, qty: li.qty, unit_price: li.unitPrice, sort_order: i })))
+      if (liError) throw new Error(liError.message)
+    }
+
+    const { data: row, error: refetchError } = await supabase.from('invoices').select(INVOICE_SELECT).eq('id', id).single()
+    if (refetchError || !row) throw new Error(refetchError?.message ?? 'Failed to reload invoice')
+    const updated = fromRow(row as unknown as InvoiceRow)
+    setInvoices((prev) => prev.map((i) => (i.id === id ? updated : i)))
+    return updated
+  }, [])
+
+  const deleteInvoice = useCallback(async (id: string) => {
+    const { error } = await supabase.from('invoices').delete().eq('id', id)
+    if (error) throw new Error(error.message)
+    setInvoices((prev) => prev.filter((i) => i.id !== id))
+  }, [])
+
   const markSent = useCallback(async (id: string) => {
     const { error } = await supabase.from('invoices').update({ status: 'Sent' }).eq('id', id)
     if (error) throw new Error(error.message)
@@ -174,8 +213,8 @@ export function InvoicesProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const value = useMemo(
-    () => ({ invoices, loading, getInvoice, addInvoice, markSent, recordPayment }),
-    [invoices, loading, getInvoice, addInvoice, markSent, recordPayment]
+    () => ({ invoices, loading, getInvoice, addInvoice, updateInvoice, deleteInvoice, markSent, recordPayment }),
+    [invoices, loading, getInvoice, addInvoice, updateInvoice, deleteInvoice, markSent, recordPayment]
   )
 
   return <InvoicesContext.Provider value={value}>{children}</InvoicesContext.Provider>

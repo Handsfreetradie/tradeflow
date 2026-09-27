@@ -29,9 +29,11 @@ import CustomerNew from '@/pages/CustomerNew'
 import QuotesList from '@/pages/QuotesList'
 import QuoteDetail from '@/pages/QuoteDetail'
 import QuoteNew from '@/pages/QuoteNew'
+import QuoteEdit from '@/pages/QuoteEdit'
 import InvoicesList from '@/pages/InvoicesList'
 import InvoiceDetail from '@/pages/InvoiceDetail'
 import InvoiceNew from '@/pages/InvoiceNew'
+import InvoiceEdit from '@/pages/InvoiceEdit'
 import ExpensesList from '@/pages/ExpensesList'
 import ExpenseNew from '@/pages/ExpenseNew'
 import CalendarPage from '@/pages/Calendar'
@@ -67,9 +69,11 @@ function OwnerApp() {
                     <Route path="invoices" element={<InvoicesList />} />
                     <Route path="invoices/new" element={<InvoiceNew />} />
                     <Route path="invoices/:id" element={<InvoiceDetail />} />
+                    <Route path="invoices/:id/edit" element={<InvoiceEdit />} />
                     <Route path="quotes" element={<QuotesList />} />
                     <Route path="quotes/new" element={<QuoteNew />} />
                     <Route path="quotes/:id" element={<QuoteDetail />} />
+                    <Route path="quotes/:id/edit" element={<QuoteEdit />} />
                     <Route path="customers" element={<CustomersList />} />
                     <Route path="customers/new" element={<CustomerNew />} />
                     <Route path="customers/:id" element={<CustomerDetail />} />

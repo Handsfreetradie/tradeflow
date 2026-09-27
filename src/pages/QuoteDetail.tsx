@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowLeft, Briefcase, Send, Check, X, Link as LinkIcon, Eye, Download } from 'lucide-react'
+import { ArrowLeft, Briefcase, Send, Check, X, Link as LinkIcon, Eye, Download, Pencil, Trash2 } from 'lucide-react'
 import { LogoMark } from '@/components/shared/Logo'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { StatusBadge } from '@/components/ui/badge'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { LineItemsTable } from '@/components/shared/LineItemsTable'
 import { SendDocumentDialog } from '@/components/shared/SendDocumentDialog'
 import { useQuotesStore } from '@/lib/store/quotes-store'
@@ -31,13 +32,13 @@ function QuoteDocument({ quote, customer, business }: { quote: Quote; customer: 
             <LogoMark className="size-11" />
           )}
           <div>
-            <p className="text-base font-bold leading-tight">{business.businessName}</p>
+            <p className="text-sm font-semibold leading-tight">{business.businessName}</p>
             {credentials && <p className="mt-0.5 text-xs text-muted-foreground">{credentials}</p>}
           </div>
         </div>
         <div className="text-right">
-          <h1 className="text-3xl font-bold tracking-tight text-primary">QUOTE</h1>
-          <p className="mt-1 text-sm font-medium text-muted-foreground">{quote.number}</p>
+          <h1 className="text-xl font-semibold tracking-tight text-primary">QUOTE</h1>
+          <p className="mt-1 text-sm text-muted-foreground">{quote.number}</p>
           <div className="mt-2">
             <StatusBadge status={quote.status} />
           </div>
@@ -48,8 +49,8 @@ function QuoteDocument({ quote, customer, business }: { quote: Quote; customer: 
 
       <div className="mt-8 grid grid-cols-2 gap-6 rounded-lg border border-border bg-secondary/20 p-5 text-sm">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Quote for</p>
-          <p className="mt-2 font-semibold">{quote.customer}</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Quote for</p>
+          <p className="mt-2 font-medium">{quote.customer}</p>
           {customer && (
             <>
               <p className="mt-0.5 text-muted-foreground">{customer.contact}</p>
@@ -58,12 +59,12 @@ function QuoteDocument({ quote, customer, business }: { quote: Quote; customer: 
           )}
         </div>
         <div className="text-right">
-          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Details</p>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Details</p>
           <p className="mt-2 text-muted-foreground">
-            Date issued <span className="font-semibold text-foreground">{formatDate(quote.date, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+            Date issued <span className="font-medium text-foreground">{formatDate(quote.date, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
           </p>
           <p className="mt-0.5 text-muted-foreground">
-            Valid until <span className="font-semibold text-foreground">{formatDate(expiryDate, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+            Valid until <span className="font-medium text-foreground">{formatDate(expiryDate, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
           </p>
         </div>
       </div>
@@ -76,19 +77,19 @@ function QuoteDocument({ quote, customer, business }: { quote: Quote; customer: 
         <div className="mt-8 grid grid-cols-1 gap-4 rounded-lg border border-border p-5 text-sm sm:grid-cols-3">
           {quote.terms && (
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Terms</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Terms</p>
               <p className="mt-1.5 text-muted-foreground">{quote.terms}</p>
             </div>
           )}
           {quote.exclusions && (
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Exclusions</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Exclusions</p>
               <p className="mt-1.5 text-muted-foreground">{quote.exclusions}</p>
             </div>
           )}
           {quote.notes && (
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Notes</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Notes</p>
               <p className="mt-1.5 text-muted-foreground">{quote.notes}</p>
             </div>
           )}
@@ -102,24 +103,26 @@ function QuoteDocument({ quote, customer, business }: { quote: Quote; customer: 
 
 export default function QuoteDetail() {
   const { id } = useParams()
-  const { loading, getQuote, updateStatus, updateQuote, linkJob } = useQuotesStore()
+  const { loading, getQuote, updateStatus, updateQuote, deleteQuote, linkJob } = useQuotesStore()
 
   const quote = id ? getQuote(id) : undefined
   if (!loading && !quote) return <Navigate to="/quotes" replace />
   if (!quote) return null
 
-  return <QuoteDetailLoaded quote={quote} updateStatus={updateStatus} updateQuote={updateQuote} linkJob={linkJob} />
+  return <QuoteDetailLoaded quote={quote} updateStatus={updateStatus} updateQuote={updateQuote} deleteQuote={deleteQuote} linkJob={linkJob} />
 }
 
 function QuoteDetailLoaded({
   quote,
   updateStatus,
   updateQuote,
+  deleteQuote,
   linkJob,
 }: {
   quote: ReturnType<typeof useQuotesStore>['quotes'][number]
   updateStatus: ReturnType<typeof useQuotesStore>['updateStatus']
   updateQuote: ReturnType<typeof useQuotesStore>['updateQuote']
+  deleteQuote: ReturnType<typeof useQuotesStore>['deleteQuote']
   linkJob: ReturnType<typeof useQuotesStore>['linkJob']
 }) {
   const navigate = useNavigate()
@@ -134,6 +137,7 @@ function QuoteDetailLoaded({
   const [sendOpen, setSendOpen] = useState(false)
   const [previewing, setPreviewing] = useState(false)
   const [downloading, setDownloading] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const documentRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -221,6 +225,16 @@ function QuoteDetailLoaded({
     }
   }
 
+  const removeQuote = async () => {
+    try {
+      await deleteQuote(quote.id)
+      toast.success(`${quote.number} deleted`)
+      navigate('/quotes')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to delete quote')
+    }
+  }
+
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -230,6 +244,12 @@ function QuoteDetailLoaded({
         </Button>
 
         <div className="flex flex-wrap items-center gap-2">
+          {quote.status === 'Draft' && (
+            <Button variant="secondary" onClick={() => navigate(`/quotes/${quote.id}/edit`)}>
+              <Pencil />
+              Edit
+            </Button>
+          )}
           <Button variant="secondary" onClick={copyLink}>
             <LinkIcon />
             Copy link
@@ -246,6 +266,12 @@ function QuoteDetailLoaded({
             <Send />
             {quote.status === 'Draft' ? 'Send quote' : 'Email quote'}
           </Button>
+          {quote.status === 'Draft' && (
+            <Button variant="secondary" onClick={() => setDeleteOpen(true)}>
+              <Trash2 />
+              Delete
+            </Button>
+          )}
           {quote.status === 'Sent' && (
             <>
               <Button variant="secondary" onClick={() => updateStatus(quote.id, 'Declined')}>
@@ -389,6 +415,16 @@ function QuoteDetailLoaded({
           <QuoteDocument quote={{ ...quote, terms, exclusions, notes }} customer={customer} business={business} />
         </div>
       </div>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title={`Delete ${quote.number}?`}
+        description="This permanently deletes the draft quote. This can't be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={removeQuote}
+      />
     </div>
   )
 }
