@@ -13,7 +13,7 @@ export function LineItemsTable({ lineItems, includeGst = true }: { lineItems: Li
         {lineItems.map((li) => (
           <div key={li.id} className="flex items-start justify-between gap-3 p-3">
             <div className="min-w-0">
-              <p className="text-sm font-medium">{li.description}</p>
+              <p className="text-xs font-medium">{li.description}</p>
               <p className="text-xs text-muted-foreground">
                 {li.qty} × {formatCurrency(li.unitPrice)}
               </p>
@@ -30,14 +30,16 @@ export function LineItemsTable({ lineItems, includeGst = true }: { lineItems: Li
             <TableRow className="bg-secondary/60 hover:bg-secondary/60">
               <TableHead>Description</TableHead>
               <TableHead className="text-right">Qty</TableHead>
-              <TableHead className="text-right">Unit Price</TableHead>
+              <TableHead className="text-right">
+                <span className="inline-block -translate-y-0.5">Unit Price</span>
+              </TableHead>
               <TableHead className="text-right">Total</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {lineItems.map((li) => (
               <TableRow key={li.id}>
-                <TableCell className="font-medium">{li.description}</TableCell>
+                <TableCell className="text-xs font-medium">{li.description}</TableCell>
                 <TableCell className="text-right text-muted-foreground">{li.qty}</TableCell>
                 <TableCell className="text-right text-muted-foreground">{formatCurrency(li.unitPrice)}</TableCell>
                 <TableCell className="text-right font-medium">{formatCurrency(li.qty * li.unitPrice)}</TableCell>
@@ -49,7 +51,7 @@ export function LineItemsTable({ lineItems, includeGst = true }: { lineItems: Li
 
       <div className="space-y-1.5 border-t border-border bg-secondary/40 px-4 py-3">
         <div className="flex justify-between text-sm text-muted-foreground">
-          <span>Subtotal</span>
+          <span className="inline-block -translate-y-0.5">Subtotal</span>
           <span>{formatCurrency(subtotal)}</span>
         </div>
         {includeGst && (
