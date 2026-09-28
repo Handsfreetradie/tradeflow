@@ -7,6 +7,7 @@ import { StatusBadge } from '@/components/ui/badge'
 import { LineItemsTable } from '@/components/shared/LineItemsTable'
 import { LogoMark } from '@/components/shared/Logo'
 import { supabase } from '@/lib/supabase'
+import type { GstType } from '@/lib/demo-data'
 import { formatDate } from '@/lib/utils'
 
 interface PublicQuote {
@@ -15,7 +16,7 @@ interface PublicQuote {
   date: string
   amount: number
   status: string
-  includeGst: boolean
+  gstType: GstType
   validityDays: number
   terms: string
   exclusions: string
@@ -62,7 +63,7 @@ export default function QuotePublic() {
         date: row.date,
         amount: row.amount,
         status: row.status,
-        includeGst: row.include_gst,
+        gstType: row.gst_type as GstType,
         validityDays: row.validity_days,
         terms: row.terms,
         exclusions: row.exclusions,
@@ -185,7 +186,7 @@ export default function QuotePublic() {
               </div>
             </div>
 
-            <LineItemsTable lineItems={lineItems} includeGst={quote.includeGst} />
+            <LineItemsTable lineItems={lineItems} gstType={quote.gstType} />
 
             {(quote.notes || quote.terms || quote.exclusions) && (
               <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">

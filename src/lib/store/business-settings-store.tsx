@@ -6,6 +6,7 @@ export interface BusinessSettings {
   abn: string
   logoUrl: string | null
   licenceNumber: string
+  isGstRegistered: boolean
   bankAccountName: string
   bankBsb: string
   bankAccountNumber: string
@@ -27,6 +28,7 @@ const DEFAULTS: BusinessSettings = {
   abn: '',
   logoUrl: null,
   licenceNumber: '',
+  isGstRegistered: true,
   bankAccountName: '',
   bankBsb: '',
   bankAccountNumber: '',
@@ -55,6 +57,7 @@ export function BusinessSettingsProvider({ children }: { children: ReactNode }) 
             abn: data.abn,
             logoUrl: data.logo_url,
             licenceNumber: data.licence_number,
+            isGstRegistered: data.is_gst_registered,
             bankAccountName: data.bank_account_name,
             bankBsb: data.bank_bsb,
             bankAccountNumber: data.bank_account_number,
@@ -76,6 +79,7 @@ export function BusinessSettingsProvider({ children }: { children: ReactNode }) 
         ...(patch.businessName !== undefined ? { business_name: patch.businessName } : {}),
         ...(patch.abn !== undefined ? { abn: patch.abn } : {}),
         ...(patch.licenceNumber !== undefined ? { licence_number: patch.licenceNumber } : {}),
+        ...(patch.isGstRegistered !== undefined ? { is_gst_registered: patch.isGstRegistered } : {}),
         ...(patch.bankAccountName !== undefined ? { bank_account_name: patch.bankAccountName } : {}),
         ...(patch.bankBsb !== undefined ? { bank_bsb: patch.bankBsb } : {}),
         ...(patch.bankAccountNumber !== undefined ? { bank_account_number: patch.bankAccountNumber } : {}),

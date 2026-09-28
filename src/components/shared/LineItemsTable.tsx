@@ -1,10 +1,12 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { formatCurrency } from '@/lib/utils'
-import type { LineItem } from '@/lib/demo-data'
+import { gstComponent } from '@/lib/bas'
+import type { GstType, LineItem } from '@/lib/demo-data'
 
-export function LineItemsTable({ lineItems, includeGst = true }: { lineItems: LineItem[]; includeGst?: boolean }) {
+export function LineItemsTable({ lineItems, gstType = 'gst_inclusive' }: { lineItems: LineItem[]; gstType?: GstType }) {
   const subtotal = lineItems.reduce((sum, li) => sum + li.qty * li.unitPrice, 0)
-  const gst = includeGst ? subtotal * 0.1 : 0
+  const gst = gstComponent(subtotal, gstType)
+  const includeGst = gstType === 'gst_inclusive'
 
   return (
     <div className="overflow-hidden rounded-lg border border-border">

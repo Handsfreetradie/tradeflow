@@ -21,6 +21,7 @@ function BusinessCard() {
   const [name, setName] = useState(settings.businessName)
   const [abn, setAbn] = useState(settings.abn)
   const [licenceNumber, setLicenceNumber] = useState(settings.licenceNumber)
+  const [isGstRegistered, setIsGstRegistered] = useState(settings.isGstRegistered)
   const [bankAccountName, setBankAccountName] = useState(settings.bankAccountName)
   const [bankBsb, setBankBsb] = useState(settings.bankBsb)
   const [bankAccountNumber, setBankAccountNumber] = useState(settings.bankAccountNumber)
@@ -32,6 +33,7 @@ function BusinessCard() {
     setName(settings.businessName)
     setAbn(settings.abn)
     setLicenceNumber(settings.licenceNumber)
+    setIsGstRegistered(settings.isGstRegistered)
     setBankAccountName(settings.bankAccountName)
     setBankBsb(settings.bankBsb)
     setBankAccountNumber(settings.bankAccountNumber)
@@ -41,6 +43,7 @@ function BusinessCard() {
     name !== settings.businessName ||
     abn !== settings.abn ||
     licenceNumber !== settings.licenceNumber ||
+    isGstRegistered !== settings.isGstRegistered ||
     bankAccountName !== settings.bankAccountName ||
     bankBsb !== settings.bankBsb ||
     bankAccountNumber !== settings.bankAccountNumber
@@ -48,7 +51,7 @@ function BusinessCard() {
   const saveDetails = async () => {
     setSavingName(true)
     try {
-      await updateSettings({ businessName: name, abn, licenceNumber, bankAccountName, bankBsb, bankAccountNumber })
+      await updateSettings({ businessName: name, abn, licenceNumber, isGstRegistered, bankAccountName, bankBsb, bankAccountNumber })
       toast.success('Business details updated')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to save')
@@ -124,6 +127,19 @@ function BusinessCard() {
           <div>
             <label className="text-xs font-medium text-muted-foreground">Electrical licence number</label>
             <Input value={licenceNumber} onChange={(e) => setLicenceNumber(e.target.value)} placeholder="e.g. EC12345" className="mt-1" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">GST registered</label>
+            <Select value={isGstRegistered ? 'yes' : 'no'} onValueChange={(v) => setIsGstRegistered(v === 'yes')}>
+              <SelectTrigger className="mt-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="yes">Yes — registered for GST</SelectItem>
+                <SelectItem value="no">No — not registered</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="mt-1 text-xs text-muted-foreground">Controls whether invoices/quotes can charge GST, and whether BAS reporting shows up in Reports.</p>
           </div>
         </div>
 

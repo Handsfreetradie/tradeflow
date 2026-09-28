@@ -7,9 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AddFromCatalog } from '@/components/shared/AddFromCatalog'
+import { GstTypeSelect } from '@/components/shared/GstTypeSelect'
 import { useQuotesStore } from '@/lib/store/quotes-store'
 import { useCustomersStore } from '@/lib/store/customers-store'
-import type { LineItem, Quote } from '@/lib/demo-data'
+import { useBusinessSettings } from '@/lib/store/business-settings-store'
+import { gstComponent, gstInclusiveTotal } from '@/lib/bas'
+import type { GstType, LineItem, Quote } from '@/lib/demo-data'
 import { formatCurrency } from '@/lib/utils'
 
 export default function QuoteEdit() {
@@ -28,9 +31,10 @@ function QuoteEditForm({ quote }: { quote: Quote }) {
   const navigate = useNavigate()
   const { updateQuote } = useQuotesStore()
   const { customers } = useCustomersStore()
+  const { settings: business } = useBusinessSettings()
 
   const [customerId, setCustomerId] = useState(quote.customerId)
-  const [includeGst, setIncludeGst] = useState(quote.includeGst)
+  const [gstType, setGstType] = useState<GstType>(quote.gstType)
   const [validityDays, setValidityDays] = useState(String(quote.validityDays))
   const [terms, setTerms] = useState(quote.terms)
   const [exclusions, setExclusions] = useState(quote.exclusions)
@@ -39,7 +43,7 @@ function QuoteEditForm({ quote }: { quote: Quote }) {
   const [saving, setSaving] = useState(false)
 
   const subtotal = lineItems.reduce((sum, li) => sum + li.qty * li.unitPrice, 0)
-  const total = includeGst ? subtotal * 1.1 : subtotal
+  const total = gstInclusiveTotal(subtotal, gstType)
 
   const updateLine = (id: string, patch: Partial<LineItem>) =>
     setLineItems((prev) => prev.map((li) => (li.id === id ? { ...li, ...patch } : li)))
@@ -52,7 +56,7 @@ function QuoteEditForm({ quote }: { quote: Quote }) {
     try {
       await updateQuote(quote.id, {
         customerId,
-        includeGst,
+        gstType,
         validityDays: Number(validityDays) || 30,
         terms: terms.trim(),
         exclusions: exclusions.trim(),
@@ -108,15 +112,7 @@ function QuoteEditForm({ quote }: { quote: Quote }) {
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">GST</label>
-              <Select value={includeGst ? 'yes' : 'no'} onValueChange={(v) => setIncludeGst(v === 'yes')}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="yes">Include GST (10%)</SelectItem>
-                  <SelectItem value="no">No GST</SelectItem>
-                </SelectContent>
-              </Select>
+              <GstTypeSelect value={gstType} onChange={setGstType} allowInclusive={business.isGstRegistered} />
             </div>
           </div>
         </CardContent>
@@ -176,10 +172,10 @@ function QuoteEditForm({ quote }: { quote: Quote }) {
               <span>Subtotal</span>
               <span>{formatCurrency(subtotal)}</span>
             </div>
-            {includeGst && (
+            {gstType === 'gst_inclusive' && (
               <div className="flex justify-between text-muted-foreground">
                 <span>GST (10%)</span>
-                <span>{formatCurrency(subtotal * 0.1)}</span>
+                <span>{formatCurrency(gstComponent(subtotal, gstType))}</span>
               </div>
             )}
             <div className="flex justify-between text-base font-semibold">

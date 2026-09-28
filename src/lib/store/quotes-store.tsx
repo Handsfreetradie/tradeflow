@@ -1,11 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
-import type { LineItem, Quote, QuoteStatus } from '@/lib/demo-data'
+import { gstInclusiveTotal } from '@/lib/bas'
+import type { GstType, LineItem, Quote, QuoteStatus } from '@/lib/demo-data'
 
 export interface NewQuoteInput {
   customerId: string
   customer: string
-  includeGst: boolean
+  gstType: GstType
   validityDays: number
   terms: string
   exclusions: string
@@ -15,7 +16,7 @@ export interface NewQuoteInput {
 
 export interface QuoteEditInput {
   customerId?: string
-  includeGst?: boolean
+  gstType?: GstType
   validityDays?: number
   terms?: string
   exclusions?: string
@@ -36,6 +37,10 @@ interface QuotesContextValue {
 
 const QuotesContext = createContext<QuotesContextValue | null>(null)
 
+export function quoteTotal(quote: Pick<Quote, 'amount' | 'gstType'>) {
+  return gstInclusiveTotal(quote.amount, quote.gstType)
+}
+
 const QUOTE_SELECT = '*, customer:customers(name), quote_line_items(*)'
 
 type QuoteRow = {
@@ -47,7 +52,7 @@ type QuoteRow = {
   amount: number
   status: string
   job_id: string | null
-  include_gst: boolean
+  gst_type: string
   validity_days: number
   terms: string
   exclusions: string
@@ -69,7 +74,7 @@ function fromRow(row: QuoteRow): Quote {
     amount: row.amount,
     status: row.status as QuoteStatus,
     jobId: row.job_id ?? undefined,
-    includeGst: row.include_gst,
+    gstType: row.gst_type as GstType,
     validityDays: row.validity_days,
     terms: row.terms,
     exclusions: row.exclusions,
@@ -117,7 +122,7 @@ export function QuotesProvider({ children }: { children: ReactNode }) {
         date: new Date().toISOString().slice(0, 10),
         amount,
         status: 'Draft',
-        include_gst: input.includeGst,
+        gst_type: input.gstType,
         validity_days: input.validityDays,
         terms: input.terms,
         exclusions: input.exclusions,
@@ -151,7 +156,7 @@ export function QuotesProvider({ children }: { children: ReactNode }) {
       .from('quotes')
       .update({
         ...(patch.customerId !== undefined ? { customer_id: patch.customerId } : {}),
-        ...(patch.includeGst !== undefined ? { include_gst: patch.includeGst } : {}),
+        ...(patch.gstType !== undefined ? { gst_type: patch.gstType } : {}),
         ...(patch.validityDays !== undefined ? { validity_days: patch.validityDays } : {}),
         ...(patch.terms !== undefined ? { terms: patch.terms } : {}),
         ...(patch.exclusions !== undefined ? { exclusions: patch.exclusions } : {}),

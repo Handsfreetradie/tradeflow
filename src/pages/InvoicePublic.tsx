@@ -4,6 +4,8 @@ import { StatusBadge } from '@/components/ui/badge'
 import { LineItemsTable } from '@/components/shared/LineItemsTable'
 import { LogoMark } from '@/components/shared/Logo'
 import { supabase } from '@/lib/supabase'
+import { gstComponent } from '@/lib/bas'
+import type { GstType } from '@/lib/demo-data'
 import { formatCurrency, formatDate } from '@/lib/utils'
 
 interface PublicInvoice {
@@ -13,7 +15,7 @@ interface PublicInvoice {
   dueDate: string
   amount: number
   status: string
-  includeGst: boolean
+  gstType: GstType
   notes: string
   paymentTerms: string
   customerName: string
@@ -65,7 +67,7 @@ export default function InvoicePublic() {
         dueDate: row.due_date,
         amount: row.amount,
         status: row.status,
-        includeGst: row.include_gst,
+        gstType: row.gst_type as GstType,
         notes: row.notes,
         paymentTerms: row.payment_terms,
         customerName: row.customer_name,
@@ -103,7 +105,7 @@ export default function InvoicePublic() {
   }
 
   const subtotal = lineItems.reduce((sum, li) => sum + li.qty * li.unitPrice, 0)
-  const gst = invoice.includeGst ? subtotal * 0.1 : 0
+  const gst = gstComponent(subtotal, invoice.gstType)
   const total = subtotal + gst
   const balanceDue = Math.round((total - invoice.paidAmount) * 100) / 100
 
@@ -151,7 +153,7 @@ export default function InvoicePublic() {
             </div>
           </div>
 
-          <LineItemsTable lineItems={lineItems} includeGst={invoice.includeGst} />
+          <LineItemsTable lineItems={lineItems} gstType={invoice.gstType} />
 
           {invoice.paidAmount > 0 && (
             <div className="rounded-lg border border-border bg-secondary/40 p-4">

@@ -6,9 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { GstTypeSelect } from '@/components/shared/GstTypeSelect'
 import { useExpensesStore } from '@/lib/store/expenses-store'
 import { useJobsStore } from '@/lib/store/jobs-store'
-import type { ExpenseCategory } from '@/lib/demo-data'
+import { useBasPeriodsStore } from '@/lib/store/bas-periods-store'
+import { quarterFromDate } from '@/lib/bas'
+import type { ExpenseCategory, GstType } from '@/lib/demo-data'
 import { toDateKey } from '@/lib/utils'
 import { deleteReceipt, scanReceipt, uploadReceipt } from '@/lib/api/receipts'
 
@@ -19,13 +22,14 @@ export default function ExpenseNew() {
   const navigate = useNavigate()
   const { addExpense } = useExpensesStore()
   const { jobs } = useJobsStore()
+  const { isLocked } = useBasPeriodsStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState<ExpenseCategory>('Materials')
   const [amount, setAmount] = useState('')
   const [date, setDate] = useState(toDateKey(new Date()))
-  const [includesGst, setIncludesGst] = useState(true)
+  const [gstType, setGstType] = useState<GstType>('gst_inclusive')
   const [supplier, setSupplier] = useState('')
   const [jobId, setJobId] = useState<string>('none')
   const [scanning, setScanning] = useState(false)
@@ -51,7 +55,7 @@ export default function ExpenseNew() {
       if (scanned.date) setDate(scanned.date)
       if (scanned.description) setDescription(scanned.description)
       if (scanned.category) setCategory(scanned.category)
-      if (scanned.includesGst !== null) setIncludesGst(scanned.includesGst)
+      if (scanned.includesGst !== null) setGstType(scanned.includesGst ? 'gst_inclusive' : 'gst_free')
       toast.success('Receipt scanned — check the details below')
     } catch (e) {
       const message = e instanceof Error ? e.message : ''
@@ -74,12 +78,15 @@ export default function ExpenseNew() {
 
   const submit = async () => {
     if (!canSubmit) return
+    if (isLocked(quarterFromDate(new Date(date)))) {
+      toast.warning("This date falls in a BAS period you've already marked as lodged — it won't count toward that quarter's set-aside total.")
+    }
     await addExpense({
       description: description.trim(),
       category,
       amount: Number(amount),
       date,
-      includesGst,
+      gstType,
       supplier: supplier.trim() || undefined,
       jobId: jobId === 'none' ? undefined : jobId,
       receiptStoragePath: receiptPath ?? undefined,
@@ -177,15 +184,7 @@ export default function ExpenseNew() {
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">GST</label>
-              <Select value={includesGst ? 'yes' : 'no'} onValueChange={(v) => setIncludesGst(v === 'yes')}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="yes">Includes GST</SelectItem>
-                  <SelectItem value="no">No GST</SelectItem>
-                </SelectContent>
-              </Select>
+              <GstTypeSelect value={gstType} onChange={setGstType} />
             </div>
           </div>
 

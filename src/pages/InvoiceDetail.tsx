@@ -75,7 +75,7 @@ function InvoiceDocument({ invoice, customer, business }: { invoice: Invoice; cu
       </div>
 
       <div className="mt-8">
-        <LineItemsTable lineItems={invoice.lineItems} includeGst={invoice.includeGst} />
+        <LineItemsTable lineItems={invoice.lineItems} gstType={invoice.gstType} />
       </div>
 
       {paidSoFar > 0 && (

@@ -168,7 +168,7 @@ export default function ImportData() {
             amount,
             date,
             category,
-            includesGst: true,
+            gstType: 'gst_inclusive',
             supplier: getMapped(row, 'supplier') || undefined,
           })
         } else {

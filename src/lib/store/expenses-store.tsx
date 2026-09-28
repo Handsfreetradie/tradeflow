@@ -1,13 +1,13 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
-import type { Expense, ExpenseCategory } from '@/lib/demo-data'
+import type { Expense, ExpenseCategory, GstType } from '@/lib/demo-data'
 
 export interface NewExpenseInput {
   description: string
   category: ExpenseCategory
   amount: number
   date: string
-  includesGst: boolean
+  gstType: GstType
   jobId?: string
   supplier?: string
   receiptStoragePath?: string
@@ -27,7 +27,7 @@ type ExpenseRow = {
   category: string
   amount: number
   date: string
-  includes_gst: boolean
+  gst_type: string
   job_id: string | null
   supplier: string | null
   receipt_storage_path: string | null
@@ -40,7 +40,7 @@ function fromRow(row: ExpenseRow): Expense {
     category: row.category as ExpenseCategory,
     amount: row.amount,
     date: row.date,
-    includesGst: row.includes_gst,
+    gstType: row.gst_type as GstType,
     jobId: row.job_id ?? undefined,
     supplier: row.supplier ?? undefined,
     receiptStoragePath: row.receipt_storage_path ?? undefined,
@@ -75,7 +75,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
         category: input.category,
         amount: input.amount,
         date: input.date,
-        includes_gst: input.includesGst,
+        gst_type: input.gstType,
         job_id: input.jobId ?? null,
         supplier: input.supplier ?? null,
         receipt_storage_path: input.receiptStoragePath ?? null,

@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useCustomersStore } from '@/lib/store/customers-store'
 import { useJobsStore } from '@/lib/store/jobs-store'
-import { useQuotesStore } from '@/lib/store/quotes-store'
+import { useQuotesStore, quoteTotal } from '@/lib/store/quotes-store'
 import { useInvoicesStore, invoiceTotal } from '@/lib/store/invoices-store'
 import { formatCurrency, formatDate } from '@/lib/utils'
 
@@ -183,7 +183,7 @@ export default function CustomerDetail() {
                       </div>
                       <StatusBadge status={quote.status} />
                       <p className="w-20 shrink-0 text-right text-sm font-medium">
-                        {formatCurrency(quote.includeGst ? quote.amount * 1.1 : quote.amount)}
+                        {formatCurrency(quoteTotal(quote))}
                       </p>
                       <ChevronRight className="size-4 shrink-0 text-muted-foreground" />
                     </button>

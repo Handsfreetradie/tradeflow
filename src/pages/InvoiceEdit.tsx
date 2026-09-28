@@ -7,9 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AddFromCatalog } from '@/components/shared/AddFromCatalog'
+import { GstTypeSelect } from '@/components/shared/GstTypeSelect'
 import { useInvoicesStore, type NewInvoiceInput } from '@/lib/store/invoices-store'
 import { useCustomersStore } from '@/lib/store/customers-store'
-import type { Invoice, LineItem } from '@/lib/demo-data'
+import { useBusinessSettings } from '@/lib/store/business-settings-store'
+import { gstComponent, gstInclusiveTotal } from '@/lib/bas'
+import type { GstType, Invoice, LineItem } from '@/lib/demo-data'
 import { formatCurrency } from '@/lib/utils'
 
 export default function InvoiceEdit() {
@@ -28,9 +31,10 @@ function InvoiceEditForm({ invoice }: { invoice: Invoice }) {
   const navigate = useNavigate()
   const { updateInvoice } = useInvoicesStore()
   const { customers } = useCustomersStore()
+  const { settings: business } = useBusinessSettings()
 
   const [customerId, setCustomerId] = useState(invoice.customerId)
-  const [includeGst, setIncludeGst] = useState(invoice.includeGst)
+  const [gstType, setGstType] = useState<GstType>(invoice.gstType)
   const [dueDate, setDueDate] = useState(invoice.dueDate)
   const [notes, setNotes] = useState(invoice.notes)
   const [paymentTerms, setPaymentTerms] = useState(invoice.paymentTerms)
@@ -39,7 +43,7 @@ function InvoiceEditForm({ invoice }: { invoice: Invoice }) {
 
   const customer = customers.find((c) => c.id === customerId)
   const subtotal = lineItems.reduce((sum, li) => sum + li.qty * li.unitPrice, 0)
-  const total = includeGst ? subtotal * 1.1 : subtotal
+  const total = gstInclusiveTotal(subtotal, gstType)
 
   const updateLine = (id: string, patch: Partial<LineItem>) =>
     setLineItems((prev) => prev.map((li) => (li.id === id ? { ...li, ...patch } : li)))
@@ -53,7 +57,7 @@ function InvoiceEditForm({ invoice }: { invoice: Invoice }) {
       const input: NewInvoiceInput = {
         customerId,
         customer: customer.name,
-        includeGst,
+        gstType,
         dueDate,
         notes: notes.trim(),
         paymentTerms: paymentTerms.trim(),
@@ -110,15 +114,7 @@ function InvoiceEditForm({ invoice }: { invoice: Invoice }) {
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">GST</label>
-              <Select value={includeGst ? 'yes' : 'no'} onValueChange={(v) => setIncludeGst(v === 'yes')}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="yes">Include GST (10%)</SelectItem>
-                  <SelectItem value="no">No GST</SelectItem>
-                </SelectContent>
-              </Select>
+              <GstTypeSelect value={gstType} onChange={setGstType} allowInclusive={business.isGstRegistered} />
             </div>
           </div>
         </CardContent>
@@ -178,10 +174,10 @@ function InvoiceEditForm({ invoice }: { invoice: Invoice }) {
               <span>Subtotal</span>
               <span>{formatCurrency(subtotal)}</span>
             </div>
-            {includeGst && (
+            {gstType === 'gst_inclusive' && (
               <div className="flex justify-between text-muted-foreground">
                 <span>GST (10%)</span>
-                <span>{formatCurrency(subtotal * 0.1)}</span>
+                <span>{formatCurrency(gstComponent(subtotal, gstType))}</span>
               </div>
             )}
             <div className="flex justify-between text-base font-semibold">

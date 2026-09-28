@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Paperclip, Plus, Receipt, Search } from 'lucide-react'
+import { AlertTriangle, Paperclip, Plus, Receipt, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -107,7 +107,7 @@ export default function ExpensesList() {
                       <TableCell>
                         <p className="flex items-center gap-1.5 font-medium">
                           {expense.description}
-                          {expense.receiptStoragePath && (
+                          {expense.receiptStoragePath ? (
                             <button
                               onClick={() => openReceipt(expense.receiptStoragePath!)}
                               title="View receipt"
@@ -115,6 +115,10 @@ export default function ExpensesList() {
                             >
                               <Paperclip className="size-3.5" />
                             </button>
+                          ) : (
+                            <span title="No receipt attached — excluded from BAS GST claims until added">
+                              <AlertTriangle className="size-3.5 text-warning" />
+                            </span>
                           )}
                         </p>
                         <p className="text-xs text-muted-foreground">{expense.supplier ?? '—'}</p>

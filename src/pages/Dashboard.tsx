@@ -1,4 +1,5 @@
 import { DashboardGreeting } from '@/components/dashboard/DashboardGreeting'
+import { BasDueBanner } from '@/components/reports/BasDueBanner'
 import { KpiRow } from '@/components/dashboard/KpiRow'
 import { JobOverviewCard } from '@/components/dashboard/JobOverviewCard'
 import { EmployeePerformanceCard } from '@/components/dashboard/EmployeePerformanceCard'
@@ -14,6 +15,7 @@ export default function Dashboard() {
   return (
     <div className="mx-auto max-w-[1600px] space-y-6 p-6">
       <DashboardGreeting />
+      <BasDueBanner />
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_336px]">
         <div className="space-y-6">

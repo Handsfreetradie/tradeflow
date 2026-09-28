@@ -6,10 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { AddFromCatalog } from '@/components/shared/AddFromCatalog'
+import { GstTypeSelect } from '@/components/shared/GstTypeSelect'
 import { useQuotesStore } from '@/lib/store/quotes-store'
 import { useCustomersStore } from '@/lib/store/customers-store'
 import { useBusinessSettings } from '@/lib/store/business-settings-store'
-import type { LineItem } from '@/lib/demo-data'
+import { gstComponent, gstInclusiveTotal } from '@/lib/bas'
+import type { GstType, LineItem } from '@/lib/demo-data'
 import { formatCurrency } from '@/lib/utils'
 
 let liSeq = 0
@@ -22,7 +24,8 @@ export default function QuoteNew() {
   const { settings: business, loading: businessLoading } = useBusinessSettings()
 
   const [customerId, setCustomerId] = useState('')
-  const [includeGst, setIncludeGst] = useState(true)
+  const [gstType, setGstType] = useState<GstType>('gst_inclusive')
+  const [gstTypeTouched, setGstTypeTouched] = useState(false)
   const [validityDays, setValidityDays] = useState('30')
   const [terms, setTerms] = useState('50% deposit on acceptance, balance on completion.')
   const [exclusions, setExclusions] = useState('')
@@ -38,9 +41,13 @@ export default function QuoteNew() {
     }
   }, [businessLoading, defaultsSeeded, business])
 
+  useEffect(() => {
+    if (!businessLoading && !gstTypeTouched) setGstType(business.isGstRegistered ? 'gst_inclusive' : 'not_applicable')
+  }, [businessLoading, business.isGstRegistered, gstTypeTouched])
+
   const customer = customers.find((c) => c.id === customerId)
   const subtotal = lineItems.reduce((sum, li) => sum + li.qty * li.unitPrice, 0)
-  const total = includeGst ? subtotal * 1.1 : subtotal
+  const total = gstInclusiveTotal(subtotal, gstType)
 
   const updateLine = (id: string, patch: Partial<LineItem>) =>
     setLineItems((prev) => prev.map((li) => (li.id === id ? { ...li, ...patch } : li)))
@@ -52,7 +59,7 @@ export default function QuoteNew() {
     const quote = await addQuote({
       customerId,
       customer: customer.name,
-      includeGst,
+      gstType,
       validityDays: Number(validityDays) || 30,
       terms: terms.trim(),
       exclusions: exclusions.trim(),
@@ -103,15 +110,14 @@ export default function QuoteNew() {
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">GST</label>
-              <Select value={includeGst ? 'yes' : 'no'} onValueChange={(v) => setIncludeGst(v === 'yes')}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="yes">Include GST (10%)</SelectItem>
-                  <SelectItem value="no">No GST</SelectItem>
-                </SelectContent>
-              </Select>
+              <GstTypeSelect
+                value={gstType}
+                onChange={(v) => {
+                  setGstType(v)
+                  setGstTypeTouched(true)
+                }}
+                allowInclusive={business.isGstRegistered}
+              />
             </div>
           </div>
         </CardContent>
@@ -167,10 +173,10 @@ export default function QuoteNew() {
               <span>Subtotal</span>
               <span>{formatCurrency(subtotal)}</span>
             </div>
-            {includeGst && (
+            {gstType === 'gst_inclusive' && (
               <div className="flex justify-between text-muted-foreground">
                 <span>GST (10%)</span>
-                <span>{formatCurrency(subtotal * 0.1)}</span>
+                <span>{formatCurrency(gstComponent(subtotal, gstType))}</span>
               </div>
             )}
             <div className="flex justify-between text-base font-semibold">

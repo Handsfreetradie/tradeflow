@@ -38,6 +38,24 @@ export type Database = {
         }
         Relationships: []
       }
+      bas_periods: {
+        Row: {
+          lodged_at: string
+          quarter_index: number
+          year: number
+        }
+        Insert: {
+          lodged_at?: string
+          quarter_index: number
+          year: number
+        }
+        Update: {
+          lodged_at?: string
+          quarter_index?: number
+          year?: number
+        }
+        Relationships: []
+      }
       business_settings: {
         Row: {
           abn: string
@@ -48,6 +66,7 @@ export type Database = {
           default_quote_exclusions: string
           default_quote_terms: string
           id: boolean
+          is_gst_registered: boolean
           licence_number: string
           logo_url: string | null
           updated_at: string
@@ -61,6 +80,7 @@ export type Database = {
           default_quote_exclusions?: string
           default_quote_terms?: string
           id?: boolean
+          is_gst_registered?: boolean
           licence_number?: string
           logo_url?: string | null
           updated_at?: string
@@ -74,6 +94,7 @@ export type Database = {
           default_quote_exclusions?: string
           default_quote_terms?: string
           id?: boolean
+          is_gst_registered?: boolean
           licence_number?: string
           logo_url?: string | null
           updated_at?: string
@@ -234,6 +255,7 @@ export type Database = {
           created_at: string
           date: string
           description: string
+          gst_type: string
           id: string
           includes_gst: boolean
           job_id: string | null
@@ -246,6 +268,7 @@ export type Database = {
           created_at?: string
           date: string
           description: string
+          gst_type?: string
           id?: string
           includes_gst?: boolean
           job_id?: string | null
@@ -258,6 +281,7 @@ export type Database = {
           created_at?: string
           date?: string
           description?: string
+          gst_type?: string
           id?: string
           includes_gst?: boolean
           job_id?: string | null
@@ -324,6 +348,7 @@ export type Database = {
           date: string
           due_date: string
           first_viewed_at: string | null
+          gst_type: string
           id: string
           include_gst: boolean
           job_id: string | null
@@ -342,6 +367,7 @@ export type Database = {
           date: string
           due_date: string
           first_viewed_at?: string | null
+          gst_type?: string
           id?: string
           include_gst?: boolean
           job_id?: string | null
@@ -360,6 +386,7 @@ export type Database = {
           date?: string
           due_date?: string
           first_viewed_at?: string | null
+          gst_type?: string
           id?: string
           include_gst?: boolean
           job_id?: string | null
@@ -1244,6 +1271,7 @@ export type Database = {
           date: string
           exclusions: string
           first_viewed_at: string | null
+          gst_type: string
           id: string
           include_gst: boolean
           job_id: string | null
@@ -1263,6 +1291,7 @@ export type Database = {
           date: string
           exclusions?: string
           first_viewed_at?: string | null
+          gst_type?: string
           id?: string
           include_gst?: boolean
           job_id?: string | null
@@ -1282,6 +1311,7 @@ export type Database = {
           date?: string
           exclusions?: string
           first_viewed_at?: string | null
+          gst_type?: string
           id?: string
           include_gst?: boolean
           job_id?: string | null
@@ -1558,6 +1588,7 @@ export type Database = {
           customer_name: string
           date: string
           due_date: string
+          gst_type: string
           id: string
           include_gst: boolean
           notes: string
@@ -1589,6 +1620,7 @@ export type Database = {
           customer_name: string
           date: string
           exclusions: string
+          gst_type: string
           id: string
           include_gst: boolean
           notes: string

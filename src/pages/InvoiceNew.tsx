@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
@@ -8,11 +8,14 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { AddFromCatalog } from '@/components/shared/AddFromCatalog'
+import { GstTypeSelect } from '@/components/shared/GstTypeSelect'
 import { useInvoicesStore } from '@/lib/store/invoices-store'
 import { useCustomersStore } from '@/lib/store/customers-store'
 import { useJobsStore } from '@/lib/store/jobs-store'
 import { useTeamStore } from '@/lib/store/team-store'
-import type { Job, LineItem } from '@/lib/demo-data'
+import { useBusinessSettings } from '@/lib/store/business-settings-store'
+import { gstComponent, gstInclusiveTotal } from '@/lib/bas'
+import type { GstType, Job, LineItem } from '@/lib/demo-data'
 import { formatCurrency, toDateKey } from '@/lib/utils'
 
 let liSeq = 0
@@ -53,11 +56,13 @@ export default function InvoiceNew() {
   const { customers } = useCustomersStore()
   const { getJob, claimStages } = useJobsStore()
   const { team } = useTeamStore()
+  const { settings: business, loading: businessLoading } = useBusinessSettings()
 
   const linkedJob = getJob(searchParams.get('jobId') ?? '')
 
   const [customerId, setCustomerId] = useState(linkedJob?.customerId ?? '')
-  const [includeGst, setIncludeGst] = useState(true)
+  const [gstType, setGstType] = useState<GstType>('gst_inclusive')
+  const [gstTypeTouched, setGstTypeTouched] = useState(false)
   const [dueDate, setDueDate] = useState(defaultDueDate())
   const [notes, setNotes] = useState('')
   const [paymentTerms, setPaymentTerms] = useState('Payment due within 14 days.')
@@ -78,11 +83,15 @@ export default function InvoiceNew() {
   const [claimPercent, setClaimPercent] = useState('')
   const [selectedStageIds, setSelectedStageIds] = useState<string[]>([])
 
+  useEffect(() => {
+    if (!businessLoading && !gstTypeTouched) setGstType(business.isGstRegistered ? 'gst_inclusive' : 'not_applicable')
+  }, [businessLoading, business.isGstRegistered, gstTypeTouched])
+
   const claimableStages = linkedJob ? linkedJob.stages.filter((s) => s.claimAmount != null && !s.claimedInvoiceId) : []
 
   const customer = customers.find((c) => c.id === customerId)
   const subtotal = lineItems.reduce((sum, li) => sum + li.qty * li.unitPrice, 0)
-  const total = includeGst ? subtotal * 1.1 : subtotal
+  const total = gstInclusiveTotal(subtotal, gstType)
 
   const isProgressClaimEligible = !!linkedJob && linkedJob.pricingType === 'Fixed Price' && linkedJob.value > 0
   const priorClaims = linkedJob ? invoices.filter((i) => i.jobId === linkedJob.id).reduce((sum, i) => sum + i.amount, 0) : 0
@@ -116,7 +125,7 @@ export default function InvoiceNew() {
     const invoice = await addInvoice({
       customerId,
       customer: customer.name,
-      includeGst,
+      gstType,
       dueDate,
       notes: notes.trim(),
       paymentTerms: paymentTerms.trim(),
@@ -171,15 +180,14 @@ export default function InvoiceNew() {
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">GST</label>
-              <Select value={includeGst ? 'yes' : 'no'} onValueChange={(v) => setIncludeGst(v === 'yes')}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="yes">Include GST (10%)</SelectItem>
-                  <SelectItem value="no">No GST</SelectItem>
-                </SelectContent>
-              </Select>
+              <GstTypeSelect
+                value={gstType}
+                onChange={(v) => {
+                  setGstType(v)
+                  setGstTypeTouched(true)
+                }}
+                allowInclusive={business.isGstRegistered}
+              />
             </div>
           </div>
         </CardContent>
@@ -299,10 +307,10 @@ export default function InvoiceNew() {
               <span>Subtotal</span>
               <span>{formatCurrency(subtotal)}</span>
             </div>
-            {includeGst && (
+            {gstType === 'gst_inclusive' && (
               <div className="flex justify-between text-muted-foreground">
                 <span>GST (10%)</span>
-                <span>{formatCurrency(subtotal * 0.1)}</span>
+                <span>{formatCurrency(gstComponent(subtotal, gstType))}</span>
               </div>
             )}
             <div className="flex justify-between text-base font-semibold">

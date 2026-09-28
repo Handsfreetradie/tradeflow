@@ -1,11 +1,12 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
-import type { Invoice, InvoiceStatus, LineItem, PaymentMethod } from '@/lib/demo-data'
+import { gstInclusiveTotal } from '@/lib/bas'
+import type { GstType, Invoice, InvoiceStatus, LineItem, PaymentMethod } from '@/lib/demo-data'
 
 export interface NewInvoiceInput {
   customerId: string
   customer: string
-  includeGst: boolean
+  gstType: GstType
   dueDate: string
   notes: string
   paymentTerms: string
@@ -26,8 +27,8 @@ interface InvoicesContextValue {
 
 const InvoicesContext = createContext<InvoicesContextValue | null>(null)
 
-function invoiceTotal(invoice: Pick<Invoice, 'amount' | 'includeGst'>) {
-  return invoice.includeGst ? invoice.amount * 1.1 : invoice.amount
+function invoiceTotal(invoice: Pick<Invoice, 'amount' | 'gstType'>) {
+  return gstInclusiveTotal(invoice.amount, invoice.gstType)
 }
 
 /** Round to the nearest cent to avoid floating-point drift (e.g. 7200 * 1.1 !== 7920) affecting status comparisons. */
@@ -56,7 +57,7 @@ type InvoiceRow = {
   due_date: string
   amount: number
   status: string
-  include_gst: boolean
+  gst_type: string
   notes: string
   payment_terms: string
   job_id: string | null
@@ -78,7 +79,7 @@ function fromRow(row: InvoiceRow): Invoice {
     dueDate: row.due_date,
     amount: row.amount,
     status: row.status as InvoiceStatus,
-    includeGst: row.include_gst,
+    gstType: row.gst_type as GstType,
     notes: row.notes,
     paymentTerms: row.payment_terms,
     lineItems: row.invoice_line_items.map((li) => ({ id: li.id, description: li.description, qty: li.qty, unitPrice: li.unit_price })),
@@ -127,7 +128,7 @@ export function InvoicesProvider({ children }: { children: ReactNode }) {
         due_date: input.dueDate,
         amount,
         status: 'Draft',
-        include_gst: input.includeGst,
+        gst_type: input.gstType,
         notes: input.notes,
         payment_terms: input.paymentTerms,
         job_id: input.jobId ?? null,
@@ -160,7 +161,7 @@ export function InvoicesProvider({ children }: { children: ReactNode }) {
         customer_id: input.customerId,
         due_date: input.dueDate,
         amount,
-        include_gst: input.includeGst,
+        gst_type: input.gstType,
         notes: input.notes,
         payment_terms: input.paymentTerms,
       })

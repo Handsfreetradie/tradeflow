@@ -9,7 +9,7 @@ import { StatusBadge } from '@/components/ui/badge'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { LineItemsTable } from '@/components/shared/LineItemsTable'
 import { SendDocumentDialog } from '@/components/shared/SendDocumentDialog'
-import { useQuotesStore } from '@/lib/store/quotes-store'
+import { useQuotesStore, quoteTotal as calcQuoteTotal } from '@/lib/store/quotes-store'
 import { useJobsStore } from '@/lib/store/jobs-store'
 import { useCustomersStore } from '@/lib/store/customers-store'
 import { useBusinessSettings, type BusinessSettings } from '@/lib/store/business-settings-store'
@@ -70,7 +70,7 @@ function QuoteDocument({ quote, customer, business }: { quote: Quote; customer: 
       </div>
 
       <div className="mt-8">
-        <LineItemsTable lineItems={quote.lineItems} includeGst={quote.includeGst} />
+        <LineItemsTable lineItems={quote.lineItems} gstType={quote.gstType} />
       </div>
 
       {(quote.notes || quote.terms || quote.exclusions) && (
@@ -182,7 +182,7 @@ function QuoteDetailLoaded({
   }
 
   const shareUrl = `${window.location.origin}/q/${quote.shareToken}`
-  const quoteTotal = quote.includeGst ? quote.amount * 1.1 : quote.amount
+  const quoteTotal = calcQuoteTotal(quote)
 
   const copyLink = () => {
     navigator.clipboard.writeText(shareUrl)
@@ -353,7 +353,7 @@ function QuoteDetailLoaded({
             </div>
           </div>
 
-          <LineItemsTable lineItems={quote.lineItems} includeGst={quote.includeGst} />
+          <LineItemsTable lineItems={quote.lineItems} gstType={quote.gstType} />
 
           <div className="grid grid-cols-1 gap-4 text-sm sm:grid-cols-3">
             <div>

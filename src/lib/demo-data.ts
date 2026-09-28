@@ -9,6 +9,9 @@ export type InvoiceStatus = 'Draft' | 'Sent' | 'Partial' | 'Paid' | 'Overdue'
 export type QuoteStatus = 'Draft' | 'Sent' | 'Accepted' | 'Declined' | 'Expired'
 export type ExpenseCategory = 'Materials' | 'Fuel' | 'Tools & Equipment' | 'Subcontractor' | 'Vehicle' | 'Insurance' | 'Office' | 'Other'
 export type PaymentMethod = 'Bank Transfer' | 'Card' | 'Cash' | 'Cheque'
+/** GST-inclusive charges 10% (invoices/quotes) or claims a 10% credit (expenses); GST-free and Not
+ * applicable both contribute $0 GST but are kept distinct for the business's own records. */
+export type GstType = 'gst_inclusive' | 'gst_free' | 'not_applicable'
 
 export interface LineItem {
   id: string
@@ -132,7 +135,7 @@ export interface Invoice {
   amount: number
   status: InvoiceStatus
   lineItems: LineItem[]
-  includeGst: boolean
+  gstType: GstType
   notes: string
   paymentTerms: string
   payments: Payment[]
@@ -149,7 +152,7 @@ export interface Expense {
   category: ExpenseCategory
   amount: number
   date: string
-  includesGst: boolean
+  gstType: GstType
   jobId?: string
   supplier?: string
   receiptStoragePath?: string
@@ -164,7 +167,7 @@ export interface Quote {
   amount: number
   status: QuoteStatus
   lineItems: LineItem[]
-  includeGst: boolean
+  gstType: GstType
   validityDays: number
   terms: string
   exclusions: string

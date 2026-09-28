@@ -4,7 +4,7 @@ import { DollarSign, FileWarning, FileSpreadsheet, Hammer, PiggyBank } from 'luc
 import { Card } from '@/components/ui/card'
 import { cn, formatCurrency } from '@/lib/utils'
 import { useJobsStore } from '@/lib/store/jobs-store'
-import { useQuotesStore } from '@/lib/store/quotes-store'
+import { useQuotesStore, quoteTotal } from '@/lib/store/quotes-store'
 import { useInvoicesStore, invoiceTotal } from '@/lib/store/invoices-store'
 
 function Sparkline({ tone }: { tone: 'primary' | 'success' | 'warning' | 'muted' }) {
@@ -111,7 +111,7 @@ export function KpiRow() {
 
   const openQuotes = useMemo(() => {
     const open = quotes.filter((q) => q.status === 'Draft' || q.status === 'Sent')
-    const value = open.reduce((sum, q) => sum + (q.includeGst ? q.amount * 1.1 : q.amount), 0)
+    const value = open.reduce((sum, q) => sum + quoteTotal(q), 0)
     return { value, count: open.length }
   }, [quotes])
 

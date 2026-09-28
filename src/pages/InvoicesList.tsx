@@ -8,7 +8,7 @@ import { StatusBadge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { useInvoicesStore } from '@/lib/store/invoices-store'
+import { useInvoicesStore, invoiceTotal } from '@/lib/store/invoices-store'
 import type { InvoiceStatus } from '@/lib/demo-data'
 import { formatCurrency, formatDate } from '@/lib/utils'
 
@@ -89,7 +89,7 @@ export default function InvoicesList() {
                     <TableCell>
                       <StatusBadge status={invoice.status} />
                     </TableCell>
-                    <TableCell className="font-medium">{formatCurrency(invoice.includeGst ? invoice.amount * 1.1 : invoice.amount)}</TableCell>
+                    <TableCell className="font-medium">{formatCurrency(invoiceTotal(invoice))}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
