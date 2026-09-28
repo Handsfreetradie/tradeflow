@@ -40,17 +40,29 @@ export type Database = {
       }
       bas_periods: {
         Row: {
+          g1: number
           lodged_at: string
+          net_gst: number
+          one_a: number
+          one_b: number
           quarter_index: number
           year: number
         }
         Insert: {
+          g1?: number
           lodged_at?: string
+          net_gst?: number
+          one_a?: number
+          one_b?: number
           quarter_index: number
           year: number
         }
         Update: {
+          g1?: number
           lodged_at?: string
+          net_gst?: number
+          one_a?: number
+          one_b?: number
           quarter_index?: number
           year?: number
         }

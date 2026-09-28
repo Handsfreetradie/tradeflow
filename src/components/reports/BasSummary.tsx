@@ -80,7 +80,7 @@ export function BasSummary() {
   }
 
   const confirmLock = () => {
-    lockQuarter(quarter)
+    lockQuarter(quarter, { g1, oneA, oneB, netGst })
       .then(() => toast.success(`${quarter.label} marked as lodged`))
       .catch((e: Error) => toast.error(e.message))
   }

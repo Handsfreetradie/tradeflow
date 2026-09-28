@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { BasSummary } from '@/components/reports/BasSummary'
+import { BasHistory } from '@/components/reports/BasHistory'
 import { useJobsStore } from '@/lib/store/jobs-store'
 import { useCustomersStore } from '@/lib/store/customers-store'
 import { useInvoicesStore, invoiceTotal } from '@/lib/store/invoices-store'
@@ -132,6 +133,7 @@ export default function Reports() {
         <TabsList>
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="bas">BAS Summary</TabsTrigger>
+          <TabsTrigger value="bas-history">BAS History</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="space-y-6">
@@ -302,6 +304,10 @@ export default function Reports() {
 
         <TabsContent value="bas">
           <BasSummary />
+        </TabsContent>
+
+        <TabsContent value="bas-history">
+          <BasHistory />
         </TabsContent>
       </Tabs>
     </div>
