@@ -139,8 +139,11 @@ export default function QuoteNew() {
               <Input
                 type="number"
                 min="1"
-                value={li.qty}
-                onChange={(e) => updateLine(li.id, { qty: Number(e.target.value) || 1 })}
+                value={li.qty || ''}
+                onChange={(e) => updateLine(li.id, { qty: Number(e.target.value) || 0 })}
+                onBlur={(e) => {
+                  if (!Number(e.target.value)) updateLine(li.id, { qty: 1 })
+                }}
                 className="w-16"
               />
               <Input
