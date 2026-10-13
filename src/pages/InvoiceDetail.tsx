@@ -25,7 +25,19 @@ import type { Invoice, Customer, PaymentMethod } from '@/lib/demo-data'
 import { formatCurrency, formatDate } from '@/lib/utils'
 import { elementToPdfBlob, openPdfBlobInNewTab, downloadPdfBlob } from '@/lib/pdf'
 
-function InvoiceDocument({ invoice, customer, business }: { invoice: Invoice; customer: Customer | undefined; business: BusinessSettings }) {
+function InvoiceDocument({
+  invoice,
+  customer,
+  business,
+  forPdf = false,
+}: {
+  invoice: Invoice
+  customer: Customer | undefined
+  business: BusinessSettings
+  /** Renders a fixed desktop layout for PDF export, so the file looks the same regardless of the
+   * device (phone, tablet, desktop) it was generated on. */
+  forPdf?: boolean
+}) {
   const paidSoFar = invoice.payments.reduce((sum, p) => sum + p.amount, 0)
   const balanceDue = Math.round((invoiceTotal(invoice) - paidSoFar) * 100) / 100
   const credentials = [business.abn && `ABN ${business.abn}`, business.licenceNumber && `Lic. ${business.licenceNumber}`].filter(Boolean).join('  ·  ')
@@ -52,7 +64,7 @@ function InvoiceDocument({ invoice, customer, business }: { invoice: Invoice; cu
 
       <div className="mt-6 h-1 rounded-full bg-primary" />
 
-      <div className="mt-8 grid grid-cols-2 gap-6 rounded-lg border border-border bg-secondary/20 p-5 text-sm">
+      <div data-pdf-section className="mt-8 grid grid-cols-2 gap-6 rounded-lg border border-border bg-secondary/20 p-5 text-sm">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Bill to</p>
           <p className="mt-2 font-medium">{invoice.customer}</p>
@@ -74,12 +86,12 @@ function InvoiceDocument({ invoice, customer, business }: { invoice: Invoice; cu
         </div>
       </div>
 
-      <div className="mt-8">
-        <LineItemsTable lineItems={invoice.lineItems} gstType={invoice.gstType} />
+      <div data-pdf-section className="mt-8">
+        <LineItemsTable lineItems={invoice.lineItems} gstType={invoice.gstType} forceDesktop={forPdf} />
       </div>
 
       {paidSoFar > 0 && (
-        <div className="mt-6 rounded-lg border border-border bg-secondary/20 p-4">
+        <div data-pdf-section className="mt-6 rounded-lg border border-border bg-secondary/20 p-4">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Paid to date</span>
             <span className="font-medium text-success">{formatCurrency(paidSoFar)}</span>
@@ -102,7 +114,7 @@ function InvoiceDocument({ invoice, customer, business }: { invoice: Invoice; cu
       )}
 
       {(invoice.notes || invoice.paymentTerms || business.bankAccountNumber) && (
-        <div className="mt-8 grid grid-cols-1 gap-4 rounded-lg border border-border p-5 text-sm sm:grid-cols-2">
+        <div data-pdf-section className="mt-8 grid grid-cols-1 gap-4 rounded-lg border border-border p-5 text-sm sm:grid-cols-2">
           {invoice.notes && (
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Notes</p>
@@ -298,9 +310,17 @@ export default function InvoiceDetail() {
         </p>
       )}
 
-      <Card ref={documentRef} className="overflow-hidden">
+      <Card className="overflow-hidden">
         <InvoiceDocument invoice={invoice} customer={customer} business={business} />
       </Card>
+
+      {/* Off-screen: a fixed-width, forced-desktop clone used by Preview/Download/Email, so the PDF
+         renders identically whether it's generated on a phone on-site or at a desktop in the office. */}
+      <div className="pointer-events-none fixed left-[-9999px] top-0 w-[560px] bg-white">
+        <div ref={documentRef}>
+          <InvoiceDocument invoice={invoice} customer={customer} business={business} forPdf />
+        </div>
+      </div>
 
       <SendDocumentDialog
         open={sendOpen}
@@ -311,7 +331,7 @@ export default function InvoiceDetail() {
         defaultMessage={`Hi ${customer?.contact ?? invoice.customer},\n\nHere's your invoice ${invoice.number} for ${formatCurrency(total)} — see the attached PDF.\n\nYou can also view and pay it online: ${shareUrl}\n\nThanks,\n${business.businessName}`}
         mailtoFallbackUrl={mailtoFallbackUrl}
         filename={`Invoice-${invoice.number}.pdf`}
-        documentPreview={<InvoiceDocument invoice={invoice} customer={customer} business={business} />}
+        documentPreview={<InvoiceDocument invoice={invoice} customer={customer} business={business} forPdf />}
         onSent={handleSent}
       />
 

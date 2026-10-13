@@ -17,7 +17,19 @@ import type { Quote, Customer } from '@/lib/demo-data'
 import { formatCurrency, formatDate, toDateKey } from '@/lib/utils'
 import { elementToPdfBlob, openPdfBlobInNewTab, downloadPdfBlob } from '@/lib/pdf'
 
-function QuoteDocument({ quote, customer, business }: { quote: Quote; customer: Customer | undefined; business: BusinessSettings }) {
+function QuoteDocument({
+  quote,
+  customer,
+  business,
+  forPdf = false,
+}: {
+  quote: Quote
+  customer: Customer | undefined
+  business: BusinessSettings
+  /** Renders a fixed desktop layout for PDF export, so the file looks the same regardless of the
+   * device (phone, tablet, desktop) it was generated on. */
+  forPdf?: boolean
+}) {
   const expiryDate = new Date(quote.date)
   expiryDate.setDate(expiryDate.getDate() + quote.validityDays)
   const credentials = [business.abn && `ABN ${business.abn}`, business.licenceNumber && `Lic. ${business.licenceNumber}`].filter(Boolean).join('  ·  ')
@@ -47,7 +59,7 @@ function QuoteDocument({ quote, customer, business }: { quote: Quote; customer: 
 
       <div className="mt-6 h-1 rounded-full bg-primary" />
 
-      <div className="mt-8 grid grid-cols-2 gap-6 rounded-lg border border-border bg-secondary/20 p-5 text-sm">
+      <div data-pdf-section className="mt-8 grid grid-cols-2 gap-6 rounded-lg border border-border bg-secondary/20 p-5 text-sm">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Quote for</p>
           <p className="mt-2 font-medium">{quote.customer}</p>
@@ -69,12 +81,12 @@ function QuoteDocument({ quote, customer, business }: { quote: Quote; customer: 
         </div>
       </div>
 
-      <div className="mt-8">
-        <LineItemsTable lineItems={quote.lineItems} gstType={quote.gstType} />
+      <div data-pdf-section className="mt-8">
+        <LineItemsTable lineItems={quote.lineItems} gstType={quote.gstType} forceDesktop={forPdf} />
       </div>
 
       {(quote.notes || quote.terms || quote.exclusions) && (
-        <div className="mt-8 grid grid-cols-1 gap-4 rounded-lg border border-border p-5 text-sm sm:grid-cols-3">
+        <div data-pdf-section className="mt-8 grid grid-cols-1 gap-4 rounded-lg border border-border p-5 text-sm sm:grid-cols-3">
           {quote.terms && (
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Terms</p>
@@ -405,14 +417,16 @@ function QuoteDetailLoaded({
         defaultMessage={`Hi ${customer?.contact ?? quote.customer},\n\nHere's your quote ${quote.number} for ${formatCurrency(quoteTotal)} — see the attached PDF.\n\nYou can also view and respond online: ${shareUrl}\n\nThanks,\n${business.businessName}`}
         mailtoFallbackUrl={mailtoFallbackUrl}
         filename={`Quote-${quote.number}.pdf`}
-        documentPreview={<QuoteDocument quote={{ ...quote, terms, exclusions, notes }} customer={customer} business={business} />}
+        documentPreview={<QuoteDocument quote={{ ...quote, terms, exclusions, notes }} customer={customer} business={business} forPdf />}
         onSent={handleSent}
       />
 
-      {/* Off-screen: the clean read-only document used by Preview/Download (the on-page card above has editable term/exclusion/note fields). */}
+      {/* Off-screen: the clean read-only, forced-desktop document used by Preview/Download (the
+         on-page card above has editable term/exclusion/note fields, and must render identically
+         whether it's generated on a phone on-site or at a desktop in the office). */}
       <div className="pointer-events-none fixed left-[-9999px] top-0 w-[560px] bg-white">
         <div ref={documentRef}>
-          <QuoteDocument quote={{ ...quote, terms, exclusions, notes }} customer={customer} business={business} />
+          <QuoteDocument quote={{ ...quote, terms, exclusions, notes }} customer={customer} business={business} forPdf />
         </div>
       </div>
 
