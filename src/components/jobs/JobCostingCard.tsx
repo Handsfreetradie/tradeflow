@@ -1,5 +1,6 @@
-import { useState } from 'react'
-import { Plus, Mail } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { toast } from 'sonner'
+import { Loader2, Mail, Paperclip, Plus, Receipt as ReceiptIcon, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -14,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn, formatCurrency, formatDate, toDateKey } from '@/lib/utils'
 import { useJobsStore } from '@/lib/store/jobs-store'
+import { deleteReceipt, getReceiptUrl, uploadReceipt } from '@/lib/api/receipts'
 import type { Job, JobCost } from '@/lib/demo-data'
 
 const categoryTone: Record<JobCost['category'], string> = {
@@ -23,13 +25,20 @@ const categoryTone: Record<JobCost['category'], string> = {
   Other: 'bg-muted text-muted-foreground',
 }
 
+const MAX_RECEIPT_BYTES = 8 * 1024 * 1024
+
 export function JobCostingCard({ job }: { job: Job }) {
   const { addCost } = useJobsStore()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [open, setOpen] = useState(false)
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState<JobCost['category']>('Materials')
   const [amount, setAmount] = useState('')
   const [supplier, setSupplier] = useState('')
+  const [receiptPath, setReceiptPath] = useState<string | null>(null)
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
 
   const costsTotal = job.costs.reduce((sum, c) => sum + c.amount, 0)
   const target = job.value
@@ -37,22 +46,68 @@ export function JobCostingCard({ job }: { job: Job }) {
   const percentUsed = target > 0 ? Math.min(100, Math.round((costsTotal / target) * 100)) : 0
   const isOverBudget = costsTotal > target
 
-  const submit = () => {
-    const parsed = Number(amount)
-    if (!description.trim() || !parsed || parsed <= 0) return
-    addCost(job.id, {
-      description: description.trim(),
-      category,
-      amount: parsed,
-      date: toDateKey(new Date()),
-      supplier: supplier.trim() || undefined,
-      poNumber: job.number,
-    })
+  const resetForm = () => {
     setDescription('')
     setAmount('')
     setSupplier('')
     setCategory('Materials')
+    setReceiptPath(null)
+    setReceiptPreview(null)
+  }
+
+  const closeDialog = () => {
+    // Don't leave an uploaded-but-unused receipt orphaned in storage if the owner cancels.
+    if (receiptPath) deleteReceipt(receiptPath).catch(() => {})
+    resetForm()
     setOpen(false)
+  }
+
+  const handleReceiptSelected = async (file: File | undefined) => {
+    if (!file) return
+    if (file.size > MAX_RECEIPT_BYTES) {
+      toast.error('Receipt photo is too large (max 8MB)')
+      return
+    }
+    setReceiptPreview(URL.createObjectURL(file))
+    setUploading(true)
+    try {
+      setReceiptPath(await uploadReceipt(file))
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't upload that photo")
+      setReceiptPreview(null)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const removeReceipt = () => {
+    if (receiptPath) deleteReceipt(receiptPath).catch(() => {})
+    setReceiptPath(null)
+    setReceiptPreview(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const submit = async () => {
+    const parsed = Number(amount)
+    if (!description.trim() || !parsed || parsed <= 0) return
+    setSubmitting(true)
+    try {
+      await addCost(job.id, {
+        description: description.trim(),
+        category,
+        amount: parsed,
+        date: toDateKey(new Date()),
+        supplier: supplier.trim() || undefined,
+        poNumber: job.number,
+        receiptStoragePath: receiptPath ?? undefined,
+      })
+      resetForm()
+      setOpen(false)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to log cost')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -120,7 +175,21 @@ export function JobCostingCard({ job }: { job: Job }) {
                   {cost.category}
                 </Badge>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{cost.description}</p>
+                  <p className="flex items-center gap-1.5 truncate text-sm font-medium">
+                    {cost.description}
+                    {cost.receiptStoragePath && (
+                      <button
+                        onClick={async () => {
+                          const url = await getReceiptUrl(cost.receiptStoragePath!)
+                          if (url) window.open(url, '_blank', 'noopener,noreferrer')
+                        }}
+                        title="View receipt"
+                        className="text-muted-foreground hover:text-primary"
+                      >
+                        <Paperclip className="size-3.5" />
+                      </button>
+                    )}
+                  </p>
                   <p className="truncate text-xs text-muted-foreground">
                     {cost.supplier ? `${cost.supplier} · ` : ''}
                     {formatDate(cost.date)}
@@ -133,7 +202,7 @@ export function JobCostingCard({ job }: { job: Job }) {
         )}
       </CardContent>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : closeDialog())}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Log a cost</DialogTitle>
@@ -167,12 +236,48 @@ export function JobCostingCard({ job }: { job: Job }) {
               <label className="text-xs font-medium text-muted-foreground">Supplier (optional)</label>
               <Input value={supplier} onChange={(e) => setSupplier(e.target.value)} placeholder="e.g. CMI Electrical Wholesale" className="mt-1" />
             </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Receipt photo (optional)</label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                onChange={(e) => handleReceiptSelected(e.target.files?.[0])}
+              />
+              {receiptPreview ? (
+                <div className="mt-1 flex items-center gap-3">
+                  <img src={receiptPreview} alt="Receipt preview" className="h-14 w-14 rounded-lg border border-border object-cover" />
+                  <div className="flex-1 text-sm text-muted-foreground">
+                    {uploading ? (
+                      <span className="flex items-center gap-1.5">
+                        <Loader2 className="size-3.5 animate-spin" />
+                        Uploading...
+                      </span>
+                    ) : (
+                      'Photo attached'
+                    )}
+                  </div>
+                  <Button variant="ghost" size="icon" onClick={removeReceipt} disabled={uploading}>
+                    <X />
+                  </Button>
+                </div>
+              ) : (
+                <Button variant="secondary" size="sm" className="mt-1" onClick={() => fileInputRef.current?.click()}>
+                  <ReceiptIcon />
+                  Take or upload a photo
+                </Button>
+              )}
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="secondary" onClick={() => setOpen(false)}>
+            <Button variant="secondary" onClick={closeDialog}>
               Cancel
             </Button>
-            <Button onClick={submit}>Log cost</Button>
+            <Button disabled={submitting || uploading} onClick={submit}>
+              {submitting ? 'Logging…' : 'Log cost'}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

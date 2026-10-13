@@ -639,6 +639,7 @@ export type Database = {
           id: string
           job_id: string
           po_number: string | null
+          receipt_storage_path: string | null
           supplier: string | null
         }
         Insert: {
@@ -650,6 +651,7 @@ export type Database = {
           id?: string
           job_id: string
           po_number?: string | null
+          receipt_storage_path?: string | null
           supplier?: string | null
         }
         Update: {
@@ -661,6 +663,7 @@ export type Database = {
           id?: string
           job_id?: string
           po_number?: string | null
+          receipt_storage_path?: string | null
           supplier?: string | null
         }
         Relationships: [

@@ -32,6 +32,7 @@ export interface JobCost {
   supplier?: string
   /** PO / job number the supplier referenced — lets a future inbound-invoice pipeline auto-match to this job. */
   poNumber?: string
+  receiptStoragePath?: string
 }
 
 export interface JobNote {

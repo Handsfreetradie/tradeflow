@@ -185,6 +185,7 @@ async function fetchJobs(): Promise<Job[]> {
       date: c.date,
       supplier: c.supplier ?? undefined,
       poNumber: c.po_number ?? undefined,
+      receiptStoragePath: c.receipt_storage_path ?? undefined,
     })
     costsByJob.set(c.job_id, arr)
   }
@@ -276,6 +277,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       date: c.date,
       supplier: c.supplier ?? undefined,
       poNumber: c.po_number ?? undefined,
+      receiptStoragePath: c.receipt_storage_path ?? undefined,
     }))
     const notes = (noteRows ?? []).map((n) => ({
       id: n.id,
@@ -447,6 +449,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
         date: cost.date,
         supplier: cost.supplier ?? null,
         po_number: cost.poNumber ?? null,
+        receipt_storage_path: cost.receiptStoragePath ?? null,
       })
       if (error) throw new Error(error.message)
       await refreshJob(id)
