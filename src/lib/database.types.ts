@@ -245,6 +245,71 @@ export type Database = {
           },
         ]
       }
+      email_invoice_candidates: {
+        Row: {
+          amount: number | null
+          category: string | null
+          created_at: string
+          created_expense_id: string | null
+          date: string | null
+          description: string
+          from_address: string
+          gst_type: string
+          id: string
+          message_id: string
+          receipt_storage_path: string | null
+          received_at: string
+          status: string
+          subject: string
+          supplier: string | null
+          thread_id: string | null
+        }
+        Insert: {
+          amount?: number | null
+          category?: string | null
+          created_at?: string
+          created_expense_id?: string | null
+          date?: string | null
+          description?: string
+          from_address?: string
+          gst_type?: string
+          id?: string
+          message_id: string
+          receipt_storage_path?: string | null
+          received_at: string
+          status?: string
+          subject?: string
+          supplier?: string | null
+          thread_id?: string | null
+        }
+        Update: {
+          amount?: number | null
+          category?: string | null
+          created_at?: string
+          created_expense_id?: string | null
+          date?: string | null
+          description?: string
+          from_address?: string
+          gst_type?: string
+          id?: string
+          message_id?: string
+          receipt_storage_path?: string | null
+          received_at?: string
+          status?: string
+          subject?: string
+          supplier?: string | null
+          thread_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_invoice_candidates_created_expense_id_fkey"
+            columns: ["created_expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_processed_messages: {
         Row: {
           message_id: string

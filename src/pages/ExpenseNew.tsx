@@ -1,7 +1,7 @@
-import { useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowLeft, Loader2, Receipt, X } from 'lucide-react'
+import { ArrowLeft, FileText, Loader2, Receipt, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -14,12 +14,15 @@ import { quarterFromDate } from '@/lib/bas'
 import type { ExpenseCategory, GstType } from '@/lib/demo-data'
 import { toDateKey } from '@/lib/utils'
 import { deleteReceipt, scanReceipt, uploadReceipt } from '@/lib/api/receipts'
+import { claimEmailInvoiceReceipt, getEmailInvoiceCandidate, markEmailInvoiceCandidateAdded } from '@/lib/api/emailInvoices'
 
 const categories: ExpenseCategory[] = ['Materials', 'Fuel', 'Tools & Equipment', 'Subcontractor', 'Vehicle', 'Insurance', 'Office', 'Other']
 const MAX_RECEIPT_BYTES = 8 * 1024 * 1024
 
 export default function ExpenseNew() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const emailCandidateId = searchParams.get('emailCandidateId')
   const { addExpense } = useExpensesStore()
   const { jobs } = useJobsStore()
   const { isLocked } = useBasPeriodsStore()
@@ -35,6 +38,35 @@ export default function ExpenseNew() {
   const [scanning, setScanning] = useState(false)
   const [receiptPath, setReceiptPath] = useState<string | null>(null)
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null)
+  const [receiptFilename, setReceiptFilename] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (!emailCandidateId) return
+    setScanning(true)
+    getEmailInvoiceCandidate(emailCandidateId)
+      .then(async (candidate) => {
+        if (!candidate) {
+          toast.error('That inbox item is no longer available')
+          return
+        }
+        if (candidate.supplier) setSupplier(candidate.supplier)
+        if (candidate.amount != null) setAmount(String(candidate.amount))
+        if (candidate.date) setDate(candidate.date)
+        if (candidate.description) setDescription(candidate.description)
+        if (candidate.category) setCategory(candidate.category)
+        setGstType(candidate.gstType)
+
+        if (candidate.receiptStoragePath) {
+          const claimed = await claimEmailInvoiceReceipt(candidate.receiptStoragePath)
+          setReceiptPath(claimed.path)
+          setReceiptFilename(claimed.filename)
+          if (claimed.isImage) setReceiptPreview(URL.createObjectURL(claimed.blob))
+        }
+        toast.success('Filled in from the email — check the details below before saving')
+      })
+      .catch((e) => toast.error(e instanceof Error ? e.message : "Couldn't load that inbox item"))
+      .finally(() => setScanning(false))
+  }, [emailCandidateId])
 
   const canSubmit = description.trim() && Number(amount) > 0
 
@@ -73,6 +105,7 @@ export default function ExpenseNew() {
     if (receiptPath) deleteReceipt(receiptPath).catch(() => {})
     setReceiptPath(null)
     setReceiptPreview(null)
+    setReceiptFilename(null)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -81,7 +114,7 @@ export default function ExpenseNew() {
     if (isLocked(quarterFromDate(new Date(date)))) {
       toast.warning("This date falls in a BAS period you've already marked as lodged — it won't count toward that quarter's set-aside total.")
     }
-    await addExpense({
+    const expense = await addExpense({
       description: description.trim(),
       category,
       amount: Number(amount),
@@ -91,6 +124,7 @@ export default function ExpenseNew() {
       jobId: jobId === 'none' ? undefined : jobId,
       receiptStoragePath: receiptPath ?? undefined,
     })
+    if (emailCandidateId) await markEmailInvoiceCandidateAdded(emailCandidateId, expense.id)
     navigate('/expenses')
   }
 
@@ -119,17 +153,25 @@ export default function ExpenseNew() {
             className="hidden"
             onChange={(e) => handleReceiptSelected(e.target.files?.[0])}
           />
-          {receiptPreview ? (
+          {receiptPreview || receiptPath || (emailCandidateId && scanning) ? (
             <div className="flex items-center gap-3">
-              <img src={receiptPreview} alt="Receipt preview" className="h-16 w-16 rounded-lg border border-border object-cover" />
+              {receiptPreview ? (
+                <img src={receiptPreview} alt="Receipt preview" className="h-16 w-16 rounded-lg border border-border object-cover" />
+              ) : (
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-lg border border-border bg-secondary/40">
+                  <FileText className="size-6 text-muted-foreground" />
+                </div>
+              )}
               <div className="flex-1 text-sm">
                 {scanning ? (
                   <span className="flex items-center gap-1.5 text-muted-foreground">
                     <Loader2 className="size-3.5 animate-spin" />
-                    Reading receipt...
+                    {emailCandidateId ? 'Loading from your inbox...' : 'Reading receipt...'}
                   </span>
                 ) : (
-                  <span className="text-muted-foreground">Details filled in below — check them before saving.</span>
+                  <span className="text-muted-foreground">
+                    {receiptFilename ? `${receiptFilename} — ` : ''}Details filled in below — check them before saving.
+                  </span>
                 )}
               </div>
               <Button variant="ghost" size="sm" onClick={removeReceipt} disabled={scanning}>
