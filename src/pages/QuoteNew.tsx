@@ -129,38 +129,44 @@ export default function QuoteNew() {
         </CardHeader>
         <CardContent className="space-y-3">
           {lineItems.map((li) => (
-            <div key={li.id} className="flex items-center gap-2">
+            <div
+              key={li.id}
+              className="flex flex-col gap-2 rounded-lg border border-border p-2.5 sm:flex-row sm:items-center sm:rounded-none sm:border-0 sm:p-0"
+            >
               <Input
                 value={li.description}
                 onChange={(e) => updateLine(li.id, { description: e.target.value })}
                 placeholder="Description"
-                className="flex-1"
+                className="sm:flex-1"
               />
-              <Input
-                type="number"
-                min="1"
-                value={li.qty || ''}
-                onChange={(e) => updateLine(li.id, { qty: Number(e.target.value) || 0 })}
-                onBlur={(e) => {
-                  if (!Number(e.target.value)) updateLine(li.id, { qty: 1 })
-                }}
-                className="w-16"
-              />
-              <Input
-                type="number"
-                min="0"
-                value={li.unitPrice || ''}
-                onChange={(e) => updateLine(li.id, { unitPrice: Number(e.target.value) || 0 })}
-                placeholder="Unit $"
-                className="w-28"
-              />
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setLineItems((prev) => (prev.length > 1 ? prev.filter((x) => x.id !== li.id) : prev))}
-              >
-                <Trash2 className="text-muted-foreground" />
-              </Button>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="number"
+                  min="1"
+                  value={li.qty || ''}
+                  onChange={(e) => updateLine(li.id, { qty: Number(e.target.value) || 0 })}
+                  onBlur={(e) => {
+                    if (!Number(e.target.value)) updateLine(li.id, { qty: 1 })
+                  }}
+                  className="w-20 sm:w-16"
+                />
+                <Input
+                  type="number"
+                  min="0"
+                  value={li.unitPrice || ''}
+                  onChange={(e) => updateLine(li.id, { unitPrice: Number(e.target.value) || 0 })}
+                  placeholder="Unit $"
+                  className="flex-1 sm:w-28"
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0"
+                  onClick={() => setLineItems((prev) => (prev.length > 1 ? prev.filter((x) => x.id !== li.id) : prev))}
+                >
+                  <Trash2 className="text-muted-foreground" />
+                </Button>
+              </div>
             </div>
           ))}
           <div className="flex gap-2">

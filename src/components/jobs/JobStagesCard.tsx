@@ -141,16 +141,27 @@ export function JobStagesCard({ job }: { job: Job }) {
         ))}
 
         {adding && (
-          <div className="flex items-center gap-2 rounded-lg border border-dashed border-border p-3">
-            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Stage name" className="flex-1" autoFocus />
-            <Input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} className="w-40" />
-            <Input type="number" min="0" value={claimAmount} onChange={(e) => setClaimAmount(e.target.value)} placeholder="Claim $" className="w-28" />
-            <Button size="sm" disabled={busy || !name.trim()} onClick={submitAdd}>
-              Add
-            </Button>
-            <Button size="sm" variant="ghost" onClick={() => setAdding(false)}>
-              Cancel
-            </Button>
+          <div className="flex flex-col gap-2 rounded-lg border border-dashed border-border p-3 sm:flex-row sm:items-center">
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Stage name" className="sm:flex-1" autoFocus />
+            <div className="flex items-center gap-2">
+              <Input type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} className="flex-1 sm:w-40" />
+              <Input
+                type="number"
+                min="0"
+                value={claimAmount}
+                onChange={(e) => setClaimAmount(e.target.value)}
+                placeholder="Claim $"
+                className="w-24 sm:w-28"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Button size="sm" disabled={busy || !name.trim()} onClick={submitAdd} className="flex-1 sm:flex-none">
+                Add
+              </Button>
+              <Button size="sm" variant="ghost" onClick={() => setAdding(false)} className="flex-1 sm:flex-none">
+                Cancel
+              </Button>
+            </div>
           </div>
         )}
       </CardContent>

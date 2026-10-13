@@ -77,7 +77,7 @@ export default function JobDetail() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="secondary"
             onClick={() => window.open(`https://app.standaid.ai/setout?jobReference=${encodeURIComponent(job.number)}`, '_blank', 'noopener,noreferrer')}
@@ -114,7 +114,10 @@ export default function JobDetail() {
       <JobCheckInCard job={job} />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
-        <div className="space-y-6">
+        {/* On mobile this renders second, after Customer/Job Details below — those are the quick
+           on-site checks (who's assigned, due date) and shouldn't need scrolling past everything
+           else to reach. order-none on lg+ restores normal document order for the two-column desktop layout. */}
+        <div className="order-2 space-y-6 lg:order-none">
           <Card>
             <CardHeader>
               <CardTitle>Scope of Work</CardTitle>
@@ -186,7 +189,7 @@ export default function JobDetail() {
           </Card>
         </div>
 
-        <div className="space-y-6">
+        <div className="order-1 space-y-6 lg:order-none">
           <Card>
             <CardHeader>
               <CardTitle>Customer</CardTitle>
