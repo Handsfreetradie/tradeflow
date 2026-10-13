@@ -89,6 +89,17 @@
   }
 }
 
+/* iOS zooms the whole page in when a focused input/select/textarea computes under 16px, and in
+   the installed PWA (no browser chrome to pinch back out with) it often doesn't zoom back out —
+   so the app stays zoomed in instead of fitting the screen. Force 16px on mobile so it never triggers. */
+@media (max-width: 767px) {
+  input,
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
 @media print {
   aside,
   header,
