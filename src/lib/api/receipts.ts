@@ -18,6 +18,16 @@ export async function uploadReceipt(file: File): Promise<string> {
   return path
 }
 
+/** Same bucket as uploadReceipt, but path-prefixed with the job id — employees can only upload
+ * (and read back) receipts under a job they're assigned to; see the storage policies on `receipts`. */
+export async function uploadJobCostReceipt(jobId: string, file: File): Promise<string> {
+  const ext = file.name.split('.').pop() ?? 'jpg'
+  const path = `${jobId}/${crypto.randomUUID()}.${ext}`
+  const { error } = await supabase.storage.from('receipts').upload(path, file)
+  if (error) throw new Error(error.message)
+  return path
+}
+
 export async function scanReceipt(storagePath: string): Promise<ScannedReceipt> {
   const { data, error } = await supabase.functions.invoke('scan-receipt', { body: { storagePath } })
   if (error) throw new Error(error.message)

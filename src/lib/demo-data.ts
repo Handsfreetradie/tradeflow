@@ -28,11 +28,17 @@ export interface JobCost {
   category: 'Materials' | 'Labour' | 'Subcontractor' | 'Other'
   amount: number
   date: string
+  createdAt: string
   /** Supplier/source name — the hook a future auto-imported supplier invoice would populate. */
   supplier?: string
   /** PO / job number the supplier referenced — lets a future inbound-invoice pipeline auto-match to this job. */
   poNumber?: string
   receiptStoragePath?: string
+  /** Set when an employee logged this from the field app — the owner's own entries leave these unset. */
+  loggedByEmployeeId?: string
+  loggedByEmployeeName?: string
+  /** A signature captured at submission time, required for employee-logged costs. */
+  signatureDataUrl?: string
 }
 
 export interface JobNote {

@@ -35,7 +35,7 @@ interface JobsContextValue {
   setAssignees: (id: string, employeeIds: string[]) => Promise<void>
   updateCoc: (id: string, patch: { cocStatus?: CocStatus; cocNumber?: string; cocIssuedDate?: string }) => Promise<void>
   addNote: (id: string, text: string) => Promise<void>
-  addCost: (id: string, cost: Omit<JobCost, 'id'>) => Promise<void>
+  addCost: (id: string, cost: Omit<JobCost, 'id' | 'createdAt' | 'loggedByEmployeeId' | 'loggedByEmployeeName' | 'signatureDataUrl'>) => Promise<void>
   startJob: (id: string) => Promise<void>
   finishJob: (id: string, note?: string) => Promise<void>
   addStage: (jobId: string, stage: NewJobStageInput) => Promise<void>
@@ -183,9 +183,13 @@ async function fetchJobs(): Promise<Job[]> {
       category: c.category as JobCost['category'],
       amount: c.amount,
       date: c.date,
+      createdAt: c.created_at,
       supplier: c.supplier ?? undefined,
       poNumber: c.po_number ?? undefined,
       receiptStoragePath: c.receipt_storage_path ?? undefined,
+      loggedByEmployeeId: c.logged_by_employee_id ?? undefined,
+      loggedByEmployeeName: c.logged_by_employee_name ?? undefined,
+      signatureDataUrl: c.signature_data_url ?? undefined,
     })
     costsByJob.set(c.job_id, arr)
   }
@@ -275,9 +279,13 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       category: c.category as JobCost['category'],
       amount: c.amount,
       date: c.date,
+      createdAt: c.created_at,
       supplier: c.supplier ?? undefined,
       poNumber: c.po_number ?? undefined,
       receiptStoragePath: c.receipt_storage_path ?? undefined,
+      loggedByEmployeeId: c.logged_by_employee_id ?? undefined,
+      loggedByEmployeeName: c.logged_by_employee_name ?? undefined,
+      signatureDataUrl: c.signature_data_url ?? undefined,
     }))
     const notes = (noteRows ?? []).map((n) => ({
       id: n.id,
@@ -440,7 +448,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
   )
 
   const addCost = useCallback(
-    async (id: string, cost: Omit<JobCost, 'id'>) => {
+    async (id: string, cost: Omit<JobCost, 'id' | 'createdAt' | 'loggedByEmployeeId' | 'loggedByEmployeeName' | 'signatureDataUrl'>) => {
       const { error } = await supabase.from('job_costs').insert({
         job_id: id,
         description: cost.description,

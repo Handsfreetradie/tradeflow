@@ -21,6 +21,15 @@ export interface FieldCrewMember {
   checkInAt?: string
 }
 
+export interface NewFieldJobCostInput {
+  description: string
+  category: 'Materials' | 'Labour' | 'Subcontractor' | 'Other'
+  amount: number
+  supplier?: string
+  receiptStoragePath?: string
+  signatureDataUrl: string
+}
+
 export interface JoinableJob {
   id: string
   number: string
@@ -60,6 +69,7 @@ interface FieldJobsContextValue {
   startJob: (id: string) => Promise<void>
   finishJob: (id: string, note?: string, blocked?: boolean) => Promise<void>
   updateStage: (stageId: string, jobId: string, patch: { complete?: boolean; notes?: string }) => Promise<void>
+  addJobCost: (jobId: string, input: NewFieldJobCostInput) => Promise<void>
   joinJob: (jobId: string) => Promise<void>
   leaveJob: (jobId: string) => Promise<void>
   refresh: () => void
@@ -334,6 +344,20 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
     [refresh]
   )
 
+  const addJobCost = useCallback(async (jobId: string, input: NewFieldJobCostInput) => {
+    const { error } = await supabase.rpc('employee_add_job_cost', {
+      p_job_id: jobId,
+      p_description: input.description,
+      p_category: input.category,
+      p_amount: input.amount,
+      // The generated RPC arg types don't model nullable text params — null is valid at runtime.
+      p_supplier: (input.supplier ?? null) as string,
+      p_receipt_storage_path: (input.receiptStoragePath ?? null) as string,
+      p_signature_data_url: input.signatureDataUrl,
+    })
+    if (error) throw new Error(error.message)
+  }, [])
+
   const joinJob = useCallback(
     async (jobId: string) => {
       const { error } = await supabase.rpc('employee_join_job', { p_job_id: jobId })
@@ -368,11 +392,12 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
       startJob,
       finishJob,
       updateStage,
+      addJobCost,
       joinJob,
       leaveJob,
       refresh,
     }),
-    [jobs, loading, online, pendingSyncCount, joinableJobs, getJob, addNote, startJob, finishJob, updateStage, joinJob, leaveJob, refresh]
+    [jobs, loading, online, pendingSyncCount, joinableJobs, getJob, addNote, startJob, finishJob, updateStage, addJobCost, joinJob, leaveJob, refresh]
   )
 
   return <FieldJobsContext.Provider value={value}>{children}</FieldJobsContext.Provider>

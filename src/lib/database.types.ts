@@ -638,8 +638,11 @@ export type Database = {
           description: string
           id: string
           job_id: string
+          logged_by_employee_id: string | null
+          logged_by_employee_name: string | null
           po_number: string | null
           receipt_storage_path: string | null
+          signature_data_url: string | null
           supplier: string | null
         }
         Insert: {
@@ -650,8 +653,11 @@ export type Database = {
           description: string
           id?: string
           job_id: string
+          logged_by_employee_id?: string | null
+          logged_by_employee_name?: string | null
           po_number?: string | null
           receipt_storage_path?: string | null
+          signature_data_url?: string | null
           supplier?: string | null
         }
         Update: {
@@ -662,8 +668,11 @@ export type Database = {
           description?: string
           id?: string
           job_id?: string
+          logged_by_employee_id?: string | null
+          logged_by_employee_name?: string | null
           po_number?: string | null
           receipt_storage_path?: string | null
+          signature_data_url?: string | null
           supplier?: string | null
         }
         Relationships: [
@@ -679,6 +688,20 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_field_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_costs_logged_by_employee_id_fkey"
+            columns: ["logged_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_costs_logged_by_employee_id_fkey"
+            columns: ["logged_by_employee_id"]
+            isOneToOne: false
+            referencedRelation: "team_directory"
             referencedColumns: ["id"]
           },
         ]
@@ -1646,6 +1669,18 @@ export type Database = {
       }
     }
     Functions: {
+      employee_add_job_cost: {
+        Args: {
+          p_amount: number
+          p_category: string
+          p_description: string
+          p_job_id: string
+          p_receipt_storage_path: string
+          p_signature_data_url: string
+          p_supplier: string
+        }
+        Returns: undefined
+      }
       employee_finish_job: {
         Args: { p_blocked?: boolean; p_job_id: string; p_note?: string }
         Returns: {

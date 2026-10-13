@@ -1,17 +1,22 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowLeft, Navigation, Phone, MapPin, Play, Square, Send, AlertTriangle, Users, ListChecks } from 'lucide-react'
+import { ArrowLeft, Navigation, Phone, MapPin, Play, Square, Send, AlertTriangle, Users, ListChecks, Receipt, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { SignaturePad } from '@/components/shared/SignaturePad'
 import { JobPhotosCard } from '@/components/jobs/JobPhotosCard'
 import { useAuth } from '@/lib/auth/AuthProvider'
-import { useFieldJobsStore } from '@/lib/store/field-jobs-store'
+import { useFieldJobsStore, type NewFieldJobCostInput } from '@/lib/store/field-jobs-store'
+import { uploadJobCostReceipt } from '@/lib/api/receipts'
 import { formatDate } from '@/lib/utils'
 import type { JobStage } from '@/lib/demo-data'
+
+const MAX_RECEIPT_BYTES = 8 * 1024 * 1024
 
 function formatDuration(ms: number) {
   const totalMinutes = Math.max(0, Math.floor(ms / 60000))
@@ -55,11 +60,176 @@ function FieldStageRow({
   )
 }
 
+function FieldLogExpenseDialog({
+  jobId,
+  open,
+  onOpenChange,
+  onSubmit,
+}: {
+  jobId: string
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  onSubmit: (input: NewFieldJobCostInput) => Promise<void>
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [description, setDescription] = useState('')
+  const [category, setCategory] = useState<NewFieldJobCostInput['category']>('Materials')
+  const [amount, setAmount] = useState('')
+  const [supplier, setSupplier] = useState('')
+  const [receiptPath, setReceiptPath] = useState<string | null>(null)
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [signature, setSignature] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+
+  const reset = () => {
+    setDescription('')
+    setCategory('Materials')
+    setAmount('')
+    setSupplier('')
+    setReceiptPath(null)
+    setReceiptPreview(null)
+    setSignature(null)
+  }
+
+  const handleReceiptSelected = async (file: File | undefined) => {
+    if (!file) return
+    if (file.size > MAX_RECEIPT_BYTES) {
+      toast.error('Receipt photo is too large (max 8MB)')
+      return
+    }
+    setReceiptPreview(URL.createObjectURL(file))
+    setUploading(true)
+    try {
+      setReceiptPath(await uploadJobCostReceipt(jobId, file))
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't upload that photo")
+      setReceiptPreview(null)
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  const removeReceipt = () => {
+    setReceiptPath(null)
+    setReceiptPreview(null)
+    if (fileInputRef.current) fileInputRef.current.value = ''
+  }
+
+  const canSubmit = description.trim() && Number(amount) > 0 && !!signature
+
+  const closeDialog = () => {
+    reset()
+    onOpenChange(false)
+  }
+
+  const submit = async () => {
+    if (!canSubmit || !signature) return
+    setSubmitting(true)
+    try {
+      await onSubmit({
+        description: description.trim(),
+        category,
+        amount: Number(amount),
+        supplier: supplier.trim() || undefined,
+        receiptStoragePath: receiptPath ?? undefined,
+        signatureDataUrl: signature,
+      })
+      toast.success('Expense logged')
+      reset()
+      onOpenChange(false)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to log expense')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(next) => (next ? onOpenChange(true) : closeDialog())}>
+      <DialogContent className="max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Log an expense</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">What did you buy?</label>
+            <Input value={description} onChange={(e) => setDescription(e.target.value)} placeholder="e.g. Cable & fittings" className="mt-1" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Category</label>
+              <Select value={category} onValueChange={(v) => setCategory(v as NewFieldJobCostInput['category'])}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Materials">Materials</SelectItem>
+                  <SelectItem value="Labour">Labour</SelectItem>
+                  <SelectItem value="Subcontractor">Subcontractor</SelectItem>
+                  <SelectItem value="Other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Amount ($)</label>
+              <Input type="number" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="mt-1" />
+            </div>
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Supplier (optional)</label>
+            <Input value={supplier} onChange={(e) => setSupplier(e.target.value)} placeholder="e.g. CMI Electrical Wholesale" className="mt-1" />
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Receipt photo (optional)</label>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={(e) => handleReceiptSelected(e.target.files?.[0])}
+            />
+            {receiptPreview ? (
+              <div className="mt-1 flex items-center gap-3">
+                <img src={receiptPreview} alt="Receipt preview" className="h-14 w-14 rounded-lg border border-border object-cover" />
+                <p className="flex-1 text-sm text-muted-foreground">{uploading ? 'Uploading...' : 'Photo attached'}</p>
+                <Button variant="ghost" size="icon" onClick={removeReceipt} disabled={uploading}>
+                  <X />
+                </Button>
+              </div>
+            ) : (
+              <Button variant="secondary" size="sm" className="mt-1" onClick={() => fileInputRef.current?.click()}>
+                <Receipt />
+                Take a photo
+              </Button>
+            )}
+          </div>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Your signature</label>
+            <div className="mt-1">
+              <SignaturePad value={signature} onChange={setSignature} />
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="secondary" onClick={closeDialog}>
+            Cancel
+          </Button>
+          <Button disabled={!canSubmit || submitting || uploading} onClick={submit}>
+            {submitting ? 'Logging…' : 'Log expense'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export default function FieldJobDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { session } = useAuth()
-  const { loading, getJob, addNote, startJob, finishJob, updateStage, leaveJob } = useFieldJobsStore()
+  const { loading, getJob, addNote, startJob, finishJob, updateStage, addJobCost, leaveJob } = useFieldJobsStore()
   const [leaving, setLeaving] = useState(false)
   const [noteText, setNoteText] = useState('')
   const [finishOpen, setFinishOpen] = useState(false)
@@ -67,6 +237,7 @@ export default function FieldJobDetail() {
   const [cantComplete, setCantComplete] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const [busy, setBusy] = useState(false)
+  const [expenseOpen, setExpenseOpen] = useState(false)
 
   const job = id ? getJob(id) : undefined
   const myId = session?.user.id
@@ -263,6 +434,14 @@ export default function FieldJobDetail() {
       )}
 
       <div className="mx-5">
+        <p className="text-sm font-semibold">Expenses</p>
+        <Button variant="secondary" className="mt-2 w-full" onClick={() => setExpenseOpen(true)}>
+          <Receipt />
+          Log an expense
+        </Button>
+      </div>
+
+      <div className="mx-5">
         <JobPhotosCard jobId={job.id} offlineCapable />
       </div>
 
@@ -324,6 +503,8 @@ export default function FieldJobDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <FieldLogExpenseDialog jobId={job.id} open={expenseOpen} onOpenChange={setExpenseOpen} onSubmit={(input) => addJobCost(job.id, input)} />
     </div>
   )
 }

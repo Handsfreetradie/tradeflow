@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
-import { Loader2, Mail, Paperclip, Plus, Receipt as ReceiptIcon, X } from 'lucide-react'
+import { Loader2, Mail, Paperclip, PenLine, Plus, Receipt as ReceiptIcon, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -39,6 +39,7 @@ export function JobCostingCard({ job }: { job: Job }) {
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null)
   const [uploading, setUploading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
+  const [viewingSignature, setViewingSignature] = useState<JobCost | null>(null)
 
   const costsTotal = job.costs.reduce((sum, c) => sum + c.amount, 0)
   const target = job.value
@@ -189,10 +190,16 @@ export function JobCostingCard({ job }: { job: Job }) {
                         <Paperclip className="size-3.5" />
                       </button>
                     )}
+                    {cost.signatureDataUrl && (
+                      <button onClick={() => setViewingSignature(cost)} title="View signature" className="text-muted-foreground hover:text-primary">
+                        <PenLine className="size-3.5" />
+                      </button>
+                    )}
                   </p>
                   <p className="truncate text-xs text-muted-foreground">
-                    {cost.supplier ? `${cost.supplier} · ` : ''}
-                    {formatDate(cost.date)}
+                    {cost.loggedByEmployeeName
+                      ? `Logged by ${cost.loggedByEmployeeName} · ${formatDate(cost.createdAt, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}`
+                      : `${cost.supplier ? `${cost.supplier} · ` : ''}${formatDate(cost.date)}`}
                   </p>
                 </div>
                 <p className="shrink-0 text-sm font-medium">{formatCurrency(cost.amount)}</p>
@@ -279,6 +286,22 @@ export function JobCostingCard({ job }: { job: Job }) {
               {submitting ? 'Logging…' : 'Log cost'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!viewingSignature} onOpenChange={(next) => !next && setViewingSignature(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Signed off by {viewingSignature?.loggedByEmployeeName}</DialogTitle>
+          </DialogHeader>
+          {viewingSignature && (
+            <div className="space-y-2">
+              <img src={viewingSignature.signatureDataUrl} alt="Signature" className="w-full rounded-lg border border-border bg-white" />
+              <p className="text-xs text-muted-foreground">
+                {formatDate(viewingSignature.createdAt, { day: 'numeric', month: 'short', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
+              </p>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </Card>
