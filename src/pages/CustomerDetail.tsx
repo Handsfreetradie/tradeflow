@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowLeft, Mail, Phone, MapPin, Plus, Pencil, Briefcase, FileSpreadsheet, FileText, ChevronRight } from 'lucide-react'
+import { ArrowLeft, Mail, Phone, MapPin, Plus, Pencil, Trash2, Briefcase, FileSpreadsheet, FileText, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
@@ -9,6 +9,7 @@ import { StatusBadge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useCustomersStore } from '@/lib/store/customers-store'
 import { useJobsStore } from '@/lib/store/jobs-store'
 import { useQuotesStore, quoteTotal } from '@/lib/store/quotes-store'
@@ -18,12 +19,13 @@ import { formatCurrency, formatDate } from '@/lib/utils'
 export default function CustomerDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { loading, getCustomer, updateCustomer, updateNotes } = useCustomersStore()
+  const { loading, getCustomer, updateCustomer, updateNotes, deleteCustomer } = useCustomersStore()
   const { jobs } = useJobsStore()
   const { quotes } = useQuotesStore()
   const { invoices } = useInvoicesStore()
   const [notesDraft, setNotesDraft] = useState<string | null>(null)
   const [editOpen, setEditOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   const [editSaving, setEditSaving] = useState(false)
   const [editName, setEditName] = useState('')
   const [editContact, setEditContact] = useState('')
@@ -64,6 +66,16 @@ export default function CustomerDetail() {
     }
   }
 
+  const removeCustomer = async () => {
+    try {
+      await deleteCustomer(customer.id)
+      toast.success(`${customer.name} deleted`)
+      navigate('/customers')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to delete customer')
+    }
+  }
+
   const customerJobs = jobs.filter((j) => j.customerId === customer.id)
   const customerQuotes = quotes.filter((q) => q.customerId === customer.id)
   const customerInvoices = invoices.filter((i) => i.customerId === customer.id)
@@ -96,6 +108,10 @@ export default function CustomerDetail() {
           <Button variant="secondary" onClick={openEdit}>
             <Pencil />
             Edit details
+          </Button>
+          <Button variant="secondary" onClick={() => setDeleteOpen(true)}>
+            <Trash2 />
+            Delete
           </Button>
           <Button onClick={() => navigate(`/jobs/new?customerId=${customer.id}`)}>
             <Plus />
@@ -312,6 +328,16 @@ export default function CustomerDetail() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title={`Delete ${customer.name}?`}
+        description="This permanently deletes the customer. This can't be undone. If they have any jobs, quotes or invoices on file, delete those first."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={removeCustomer}
+      />
     </div>
   )
 }

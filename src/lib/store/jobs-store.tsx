@@ -44,6 +44,7 @@ interface JobsContextValue {
   deleteStage: (stageId: string, jobId: string) => Promise<void>
   claimStages: (jobId: string, stageIds: string[], invoiceId: string) => Promise<void>
   reorderJobs: (orderedIds: string[]) => Promise<void>
+  deleteJob: (id: string) => Promise<void>
 }
 
 const JobsContext = createContext<JobsContextValue | null>(null)
@@ -567,6 +568,14 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     if (failed?.error) throw new Error(failed.error.message)
   }, [])
 
+  // Job notes, check-ins, stages, photos and assignees cascade-delete in the database; any linked
+  // quote, invoice or expense is unlinked (its job_id/quote_id set to null), not deleted.
+  const deleteJob = useCallback(async (id: string) => {
+    const { error } = await supabase.from('jobs').delete().eq('id', id)
+    if (error) throw new Error(error.message)
+    setJobs((prev) => prev.filter((j) => j.id !== id))
+  }, [])
+
   const value = useMemo(
     () => ({
       jobs,
@@ -587,6 +596,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       deleteStage,
       claimStages,
       reorderJobs,
+      deleteJob,
     }),
     [
       jobs,
@@ -607,6 +617,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       deleteStage,
       claimStages,
       reorderJobs,
+      deleteJob,
     ]
   )
 

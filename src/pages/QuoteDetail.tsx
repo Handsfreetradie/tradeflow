@@ -278,12 +278,10 @@ function QuoteDetailLoaded({
             <Send />
             {quote.status === 'Draft' ? 'Send quote' : 'Email quote'}
           </Button>
-          {quote.status === 'Draft' && (
-            <Button variant="secondary" onClick={() => setDeleteOpen(true)}>
-              <Trash2 />
-              Delete
-            </Button>
-          )}
+          <Button variant="secondary" onClick={() => setDeleteOpen(true)}>
+            <Trash2 />
+            Delete
+          </Button>
           {quote.status === 'Sent' && (
             <>
               <Button variant="secondary" onClick={() => updateStatus(quote.id, 'Declined')}>
@@ -434,7 +432,11 @@ function QuoteDetailLoaded({
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         title={`Delete ${quote.number}?`}
-        description="This permanently deletes the draft quote. This can't be undone."
+        description={
+          quote.status === 'Draft'
+            ? "This permanently deletes the draft quote. This can't be undone."
+            : `This quote has been ${quote.status.toLowerCase()} — deleting it permanently removes it from your records. ${quote.jobId ? 'The job it was converted to will be kept, just unlinked. ' : ''}This can't be undone.`
+        }
         confirmLabel="Delete"
         variant="danger"
         onConfirm={removeQuote}

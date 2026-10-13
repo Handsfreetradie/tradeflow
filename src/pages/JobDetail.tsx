@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, MapPin, CalendarDays, Phone, Mail, Send, Zap } from 'lucide-react'
+import { toast } from 'sonner'
+import { ArrowLeft, MapPin, CalendarDays, Phone, Mail, Send, Zap, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { StatusBadge } from '@/components/ui/badge'
@@ -13,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { ChevronDown } from 'lucide-react'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { LineItemsTable } from '@/components/shared/LineItemsTable'
 import { JobCostingCard } from '@/components/jobs/JobCostingCard'
 import { JobPhotosCard } from '@/components/jobs/JobPhotosCard'
@@ -33,16 +35,27 @@ const allStatuses: JobStatus[] = ['Scheduled', 'In Progress', 'Completed', 'On H
 export default function JobDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
-  const { loading, getJob, updateJobStatus, updateDueDate, setAssignees, addNote } = useJobsStore()
+  const { loading, getJob, updateJobStatus, updateDueDate, setAssignees, addNote, deleteJob } = useJobsStore()
   const { getCustomer } = useCustomersStore()
   const { team } = useTeamStore()
   const [noteText, setNoteText] = useState('')
+  const [deleteOpen, setDeleteOpen] = useState(false)
 
   const job = id ? getJob(id) : undefined
   if (!loading && !job) return <Navigate to="/jobs" replace />
   if (!job) return null
 
   const customer = getCustomer(job.customerId)
+
+  const removeJob = async () => {
+    try {
+      await deleteJob(job.id)
+      toast.success(`${job.number} deleted`)
+      navigate('/jobs')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to delete job')
+    }
+  }
 
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6">
@@ -71,6 +84,11 @@ export default function JobDetail() {
           >
             <Zap />
             Rough-in plan in StandAId
+          </Button>
+
+          <Button variant="secondary" onClick={() => setDeleteOpen(true)}>
+            <Trash2 />
+            Delete
           </Button>
 
           <DropdownMenu>
@@ -285,6 +303,16 @@ export default function JobDetail() {
           </Card>
         </div>
       </div>
+
+      <ConfirmDialog
+        open={deleteOpen}
+        onOpenChange={setDeleteOpen}
+        title={`Delete ${job.number}?`}
+        description="This permanently deletes the job and all its stages, notes, check-ins and photos. Any linked quote, invoice or expense is kept, just unlinked from this job. This can't be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={removeJob}
+      />
     </div>
   )
 }

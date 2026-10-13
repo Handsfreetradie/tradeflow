@@ -293,12 +293,10 @@ export default function InvoiceDetail() {
               Record payment
             </Button>
           )}
-          {invoice.status === 'Draft' && (
-            <Button variant="secondary" onClick={() => setDeleteOpen(true)}>
-              <Trash2 />
-              Delete
-            </Button>
-          )}
+          <Button variant="secondary" onClick={() => setDeleteOpen(true)}>
+            <Trash2 />
+            Delete
+          </Button>
         </div>
       </div>
 
@@ -381,7 +379,11 @@ export default function InvoiceDetail() {
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         title={`Delete ${invoice.number}?`}
-        description="This permanently deletes the draft invoice. This can't be undone."
+        description={
+          invoice.status === 'Draft'
+            ? "This permanently deletes the draft invoice. This can't be undone."
+            : `This invoice has been ${invoice.status.toLowerCase()} — deleting it permanently removes it and any recorded payments from your records. This can't be undone.`
+        }
         confirmLabel="Delete"
         variant="danger"
         onConfirm={removeInvoice}

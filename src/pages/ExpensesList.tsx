@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, Paperclip, Plus, Receipt, Search } from 'lucide-react'
+import { toast } from 'sonner'
+import { AlertTriangle, Paperclip, Plus, Receipt, Search, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -8,6 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { EmailInvoiceCandidatesCard } from '@/components/expenses/EmailInvoiceCandidatesCard'
 import { useExpensesStore } from '@/lib/store/expenses-store'
 import { useJobsStore } from '@/lib/store/jobs-store'
 import type { ExpenseCategory } from '@/lib/demo-data'
@@ -27,11 +30,12 @@ const categories: (ExpenseCategory | 'All')[] = [
 ]
 
 export default function ExpensesList() {
-  const { expenses } = useExpensesStore()
+  const { expenses, deleteExpense } = useExpensesStore()
   const { getJob } = useJobsStore()
   const navigate = useNavigate()
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState<ExpenseCategory | 'All'>('All')
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null)
 
   const filtered = useMemo(() => {
     let result = expenses
@@ -50,6 +54,18 @@ export default function ExpensesList() {
     if (url) window.open(url, '_blank', 'noopener,noreferrer')
   }
 
+  const deleteTarget = filtered.find((e) => e.id === deleteTargetId)
+
+  const removeExpense = async () => {
+    if (!deleteTargetId) return
+    try {
+      await deleteExpense(deleteTargetId)
+      toast.success('Expense deleted')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to delete expense')
+    }
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-6 p-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
@@ -64,6 +80,8 @@ export default function ExpensesList() {
           Log Expense
         </Button>
       </div>
+
+      <EmailInvoiceCandidatesCard />
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[220px]">
@@ -97,6 +115,7 @@ export default function ExpensesList() {
                   <TableHead className="hidden lg:table-cell">Job</TableHead>
                   <TableHead className="hidden sm:table-cell">Date</TableHead>
                   <TableHead>Amount</TableHead>
+                  <TableHead className="w-10" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -137,6 +156,11 @@ export default function ExpensesList() {
                       </TableCell>
                       <TableCell className="hidden text-muted-foreground sm:table-cell">{formatDate(expense.date)}</TableCell>
                       <TableCell className="font-medium">{formatCurrency(expense.amount)}</TableCell>
+                      <TableCell>
+                        <Button variant="ghost" size="icon" onClick={() => setDeleteTargetId(expense.id)}>
+                          <Trash2 className="text-muted-foreground" />
+                        </Button>
+                      </TableCell>
                     </TableRow>
                   )
                 })}
@@ -145,6 +169,16 @@ export default function ExpensesList() {
           )}
         </CardContent>
       </Card>
+
+      <ConfirmDialog
+        open={!!deleteTargetId}
+        onOpenChange={(open) => !open && setDeleteTargetId(null)}
+        title={`Delete "${deleteTarget?.description}"?`}
+        description="This permanently deletes the expense, including its receipt. This can't be undone."
+        confirmLabel="Delete"
+        variant="danger"
+        onConfirm={removeExpense}
+      />
     </div>
   )
 }

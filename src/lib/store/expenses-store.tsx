@@ -17,6 +17,7 @@ interface ExpensesContextValue {
   expenses: Expense[]
   loading: boolean
   addExpense: (input: NewExpenseInput) => Promise<Expense>
+  deleteExpense: (id: string) => Promise<void>
 }
 
 const ExpensesContext = createContext<ExpensesContextValue | null>(null)
@@ -88,7 +89,21 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
     return created
   }, [])
 
-  const value = useMemo(() => ({ expenses, loading, addExpense }), [expenses, loading, addExpense])
+  const deleteExpense = useCallback(
+    async (id: string) => {
+      const expense = expenses.find((e) => e.id === id)
+      // Unlink any email-inbox candidate that created this expense first — it has a NO ACTION FK,
+      // so deleting the expense while one still points at it would fail.
+      await supabase.from('email_invoice_candidates').update({ created_expense_id: null }).eq('created_expense_id', id)
+      const { error } = await supabase.from('expenses').delete().eq('id', id)
+      if (error) throw new Error(error.message)
+      if (expense?.receiptStoragePath) await supabase.storage.from('receipts').remove([expense.receiptStoragePath])
+      setExpenses((prev) => prev.filter((e) => e.id !== id))
+    },
+    [expenses]
+  )
+
+  const value = useMemo(() => ({ expenses, loading, addExpense, deleteExpense }), [expenses, loading, addExpense, deleteExpense])
 
   return <ExpensesContext.Provider value={value}>{children}</ExpensesContext.Provider>
 }

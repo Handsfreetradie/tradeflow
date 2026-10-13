@@ -25,6 +25,7 @@ interface CustomersContextValue {
   addCustomer: (input: NewCustomerInput) => Promise<Customer>
   updateCustomer: (id: string, patch: CustomerEditInput) => Promise<void>
   updateNotes: (id: string, notes: string) => Promise<void>
+  deleteCustomer: (id: string) => Promise<void>
 }
 
 const CustomersContext = createContext<CustomersContextValue | null>(null)
@@ -95,9 +96,19 @@ export function CustomersProvider({ children }: { children: ReactNode }) {
     setCustomers((prev) => prev.map((c) => (c.id === id ? { ...c, notes } : c)))
   }, [])
 
+  const deleteCustomer = useCallback(async (id: string) => {
+    const { error } = await supabase.from('customers').delete().eq('id', id)
+    if (error) {
+      // Postgres foreign_key_violation — this customer still has jobs, quotes or invoices linked to them.
+      if (error.code === '23503') throw new Error('This customer has jobs, quotes or invoices linked to them — delete those first.')
+      throw new Error(error.message)
+    }
+    setCustomers((prev) => prev.filter((c) => c.id !== id))
+  }, [])
+
   const value = useMemo(
-    () => ({ customers, loading, getCustomer, addCustomer, updateCustomer, updateNotes }),
-    [customers, loading, getCustomer, addCustomer, updateCustomer, updateNotes]
+    () => ({ customers, loading, getCustomer, addCustomer, updateCustomer, updateNotes, deleteCustomer }),
+    [customers, loading, getCustomer, addCustomer, updateCustomer, updateNotes, deleteCustomer]
   )
 
   return <CustomersContext.Provider value={value}>{children}</CustomersContext.Provider>
