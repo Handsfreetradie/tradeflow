@@ -7,6 +7,7 @@ import { CustomersProvider } from '@/lib/store/customers-store'
 import { QuotesProvider } from '@/lib/store/quotes-store'
 import { InvoicesProvider } from '@/lib/store/invoices-store'
 import { ExpensesProvider } from '@/lib/store/expenses-store'
+import { PurchaseOrdersProvider } from '@/lib/store/purchase-orders-store'
 import { BasPeriodsProvider } from '@/lib/store/bas-periods-store'
 import { TeamProvider } from '@/lib/store/team-store'
 import { LeaveProvider } from '@/lib/store/leave-store'
@@ -61,6 +62,7 @@ function OwnerApp() {
           <QuotesProvider>
             <InvoicesProvider>
               <ExpensesProvider>
+              <PurchaseOrdersProvider>
               <BasPeriodsProvider>
                 <Routes>
                   <Route element={<AppShell />}>
@@ -91,6 +93,7 @@ function OwnerApp() {
                   </Route>
                 </Routes>
               </BasPeriodsProvider>
+              </PurchaseOrdersProvider>
               </ExpensesProvider>
             </InvoicesProvider>
           </QuotesProvider>

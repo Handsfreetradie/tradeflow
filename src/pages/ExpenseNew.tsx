@@ -39,6 +39,7 @@ export default function ExpenseNew() {
   const [receiptPath, setReceiptPath] = useState<string | null>(null)
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null)
   const [receiptFilename, setReceiptFilename] = useState<string | null>(null)
+  const [matchedPoNumber, setMatchedPoNumber] = useState<string | null>(null)
 
   useEffect(() => {
     if (!emailCandidateId) return
@@ -62,7 +63,14 @@ export default function ExpenseNew() {
           setReceiptFilename(claimed.filename)
           if (claimed.isImage) setReceiptPreview(URL.createObjectURL(claimed.blob))
         }
-        toast.success('Filled in from the email — check the details below before saving')
+
+        if (candidate.jobId) {
+          setJobId(candidate.jobId)
+          setMatchedPoNumber(candidate.matchedPoNumber)
+          toast.success(`Filled in from the email — matched to this job via ${candidate.matchedPoNumber}`)
+        } else {
+          toast.success('Filled in from the email — check the details below before saving')
+        }
       })
       .catch((e) => toast.error(e instanceof Error ? e.message : "Couldn't load that inbox item"))
       .finally(() => setScanning(false))
@@ -124,7 +132,7 @@ export default function ExpenseNew() {
       jobId: jobId === 'none' ? undefined : jobId,
       receiptStoragePath: receiptPath ?? undefined,
     })
-    if (emailCandidateId) await markEmailInvoiceCandidateAdded(emailCandidateId, expense.id)
+    if (emailCandidateId) await markEmailInvoiceCandidateAdded(emailCandidateId, expense.id, matchedPoNumber)
     navigate('/expenses')
   }
 

@@ -74,6 +74,26 @@ export interface JobStage {
   sortOrder: number
 }
 
+export type PurchaseOrderStatus = 'open' | 'received' | 'cancelled'
+
+/**
+ * A PO number generated up front for a job, to hand to a supplier when ordering — so their
+ * invoice email can be matched back to this job automatically instead of sitting unassigned
+ * in the inbox review list. `receivedExpenseId` is set once a matching email candidate has
+ * actually been added as an expense.
+ */
+export interface PurchaseOrder {
+  id: string
+  number: string
+  jobId: string
+  supplier: string
+  description: string
+  amount?: number
+  status: PurchaseOrderStatus
+  receivedExpenseId?: string
+  createdAt: string
+}
+
 export interface Customer {
   id: string
   name: string

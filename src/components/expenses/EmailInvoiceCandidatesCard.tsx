@@ -1,13 +1,16 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Mail, X } from 'lucide-react'
+import { Link2, Mail, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { dismissEmailInvoiceCandidate, listEmailInvoiceCandidates, type EmailInvoiceCandidate } from '@/lib/api/emailInvoices'
+import { useJobsStore } from '@/lib/store/jobs-store'
 import { formatCurrency, formatDate } from '@/lib/utils'
 
 export function EmailInvoiceCandidatesCard() {
   const navigate = useNavigate()
+  const { getJob } = useJobsStore()
   const [candidates, setCandidates] = useState<EmailInvoiceCandidate[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -50,6 +53,12 @@ export function EmailInvoiceCandidatesCard() {
                   {c.amount != null ? formatCurrency(c.amount) : 'Amount unclear'} · {c.date ? formatDate(c.date) : formatDate(c.receivedAt)}
                 </p>
                 {c.description && <p className="mt-1 truncate text-xs text-muted-foreground">{c.description}</p>}
+                {c.jobId && (
+                  <Badge variant="info" className="mt-1.5">
+                    <Link2 className="size-3" />
+                    Matched to {getJob(c.jobId)?.title ?? 'a job'} via {c.matchedPoNumber}
+                  </Badge>
+                )}
               </div>
               <div className="flex shrink-0 items-center gap-1.5">
                 <Button size="sm" onClick={() => navigate(`/expenses/new?emailCandidateId=${c.id}`)}>

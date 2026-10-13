@@ -13,6 +13,9 @@ export interface EmailInvoiceCandidate {
   subject: string
   fromAddress: string
   receivedAt: string
+  /** Set when the email's subject/body contained an open PO number — the job it belongs to. */
+  jobId: string | null
+  matchedPoNumber: string | null
 }
 
 type CandidateRow = {
@@ -27,6 +30,8 @@ type CandidateRow = {
   subject: string
   from_address: string
   received_at: string
+  job_id: string | null
+  matched_po_number: string | null
 }
 
 function fromRow(row: CandidateRow): EmailInvoiceCandidate {
@@ -42,6 +47,8 @@ function fromRow(row: CandidateRow): EmailInvoiceCandidate {
     subject: row.subject,
     fromAddress: row.from_address,
     receivedAt: row.received_at,
+    jobId: row.job_id,
+    matchedPoNumber: row.matched_po_number,
   }
 }
 
@@ -66,9 +73,13 @@ export async function dismissEmailInvoiceCandidate(id: string): Promise<void> {
   if (error) throw new Error(error.message)
 }
 
-export async function markEmailInvoiceCandidateAdded(id: string, expenseId: string): Promise<void> {
+export async function markEmailInvoiceCandidateAdded(id: string, expenseId: string, matchedPoNumber?: string | null): Promise<void> {
   const { error } = await supabase.from('email_invoice_candidates').update({ status: 'added', created_expense_id: expenseId }).eq('id', id)
   if (error) throw new Error(error.message)
+  // Fulfils the PO so it drops off the "awaiting invoice" view — best-effort, doesn't block the expense.
+  if (matchedPoNumber) {
+    await supabase.from('purchase_orders').update({ status: 'received', received_expense_id: expenseId }).eq('number', matchedPoNumber)
+  }
 }
 
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif']

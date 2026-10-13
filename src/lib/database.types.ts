@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.5"
+    PostgrestVersion: "14.17"
   }
   public: {
     Tables: {
@@ -256,6 +256,8 @@ export type Database = {
           from_address: string
           gst_type: string
           id: string
+          job_id: string | null
+          matched_po_number: string | null
           message_id: string
           receipt_storage_path: string | null
           received_at: string
@@ -274,6 +276,8 @@ export type Database = {
           from_address?: string
           gst_type?: string
           id?: string
+          job_id?: string | null
+          matched_po_number?: string | null
           message_id: string
           receipt_storage_path?: string | null
           received_at: string
@@ -292,6 +296,8 @@ export type Database = {
           from_address?: string
           gst_type?: string
           id?: string
+          job_id?: string | null
+          matched_po_number?: string | null
           message_id?: string
           receipt_storage_path?: string | null
           received_at?: string
@@ -306,6 +312,20 @@ export type Database = {
             columns: ["created_expense_id"]
             isOneToOne: false
             referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_invoice_candidates_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_invoice_candidates_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_field_view"
             referencedColumns: ["id"]
           },
         ]
@@ -1263,6 +1283,64 @@ export type Database = {
         }
         Relationships: []
       }
+      purchase_orders: {
+        Row: {
+          amount: number | null
+          created_at: string
+          description: string
+          id: string
+          job_id: string
+          number: string
+          received_expense_id: string | null
+          status: string
+          supplier: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          description?: string
+          id?: string
+          job_id: string
+          number: string
+          received_expense_id?: string | null
+          status?: string
+          supplier?: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          description?: string
+          id?: string
+          job_id?: string
+          number?: string
+          received_expense_id?: string | null
+          status?: string
+          supplier?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_orders_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_field_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "purchase_orders_received_expense_id_fkey"
+            columns: ["received_expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       push_subscriptions: {
         Row: {
           auth: string
@@ -1721,6 +1799,7 @@ export type Database = {
       mark_quote_viewed: { Args: { p_token: string }; Returns: undefined }
       next_invoice_number: { Args: never; Returns: string }
       next_job_number: { Args: never; Returns: string }
+      next_po_number: { Args: never; Returns: string }
       next_quote_number: { Args: never; Returns: string }
       request_leave: {
         Args: {

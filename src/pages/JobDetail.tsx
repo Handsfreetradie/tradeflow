@@ -17,6 +17,7 @@ import { ChevronDown } from 'lucide-react'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { LineItemsTable } from '@/components/shared/LineItemsTable'
 import { JobCostingCard } from '@/components/jobs/JobCostingCard'
+import { JobPurchaseOrdersCard } from '@/components/jobs/JobPurchaseOrdersCard'
 import { JobPhotosCard } from '@/components/jobs/JobPhotosCard'
 import { JobCheckInCard } from '@/components/jobs/JobCheckInCard'
 import { JobWorkflow } from '@/components/jobs/JobWorkflow'
@@ -128,6 +129,8 @@ export default function JobDetail() {
           </Card>
 
           <JobCostingCard job={job} />
+
+          <JobPurchaseOrdersCard job={job} />
 
           <JobStagesCard job={job} />
 
