@@ -6,13 +6,9 @@ import type { GstType, LineItem } from '@/lib/demo-data'
 export function LineItemsTable({
   lineItems,
   gstType = 'gst_inclusive',
-  forceDesktop = false,
 }: {
   lineItems: LineItem[]
   gstType?: GstType
-  /** Skips the mobile stacked-card layout and always renders the full table — used for PDF export,
-   * where the document must look identical no matter which device generated it. */
-  forceDesktop?: boolean
 }) {
   const subtotal = lineItems.reduce((sum, li) => sum + li.qty * li.unitPrice, 0)
   const gst = gstComponent(subtotal, gstType)
@@ -21,24 +17,22 @@ export function LineItemsTable({
   return (
     <div className="overflow-hidden rounded-lg border border-border">
       {/* Mobile: stacked cards — a 4-column table has no room on a phone and was clipping the Total column. */}
-      {!forceDesktop && (
-        <div className="divide-y divide-border sm:hidden">
-          {lineItems.map((li) => (
-            <div key={li.id} className="flex items-start justify-between gap-3 p-3">
-              <div className="min-w-0">
-                <p className="text-xs font-medium">{li.description}</p>
-                <p className="text-xs text-muted-foreground">
-                  {li.qty} × {formatCurrency(li.unitPrice)}
-                </p>
-              </div>
-              <p className="shrink-0 text-xs font-medium">{formatCurrency(li.qty * li.unitPrice)}</p>
+      <div className="divide-y divide-border sm:hidden">
+        {lineItems.map((li) => (
+          <div key={li.id} className="flex items-start justify-between gap-3 p-3">
+            <div className="min-w-0">
+              <p className="text-xs font-medium">{li.description}</p>
+              <p className="text-xs text-muted-foreground">
+                {li.qty} × {formatCurrency(li.unitPrice)}
+              </p>
             </div>
-          ))}
-        </div>
-      )}
+            <p className="shrink-0 text-xs font-medium">{formatCurrency(li.qty * li.unitPrice)}</p>
+          </div>
+        ))}
+      </div>
 
       {/* Desktop / tablet: full table. */}
-      <div className={forceDesktop ? 'block' : 'hidden sm:block'}>
+      <div className="hidden sm:block">
         <Table>
           <TableHeader>
             <TableRow className="[&>th]:h-9">

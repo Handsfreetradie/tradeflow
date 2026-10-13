@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ArrowLeft, Send, DollarSign, Briefcase, Link as LinkIcon, Eye, Download, Pencil, Trash2, Check } from 'lucide-react'
@@ -23,20 +23,17 @@ import { useCustomersStore } from '@/lib/store/customers-store'
 import { useBusinessSettings, type BusinessSettings } from '@/lib/store/business-settings-store'
 import type { Invoice, Customer, PaymentMethod } from '@/lib/demo-data'
 import { formatCurrency, formatDate } from '@/lib/utils'
-import { elementToPdfBlob, openPdfBlobInNewTab, downloadPdfBlob } from '@/lib/pdf'
+import { openPdfBlobInNewTab, downloadPdfBlob } from '@/lib/pdf'
+import { buildInvoicePdf } from '@/lib/pdfDocument'
 
 function InvoiceDocument({
   invoice,
   customer,
   business,
-  forPdf = false,
 }: {
   invoice: Invoice
   customer: Customer | undefined
   business: BusinessSettings
-  /** Renders a fixed desktop layout for PDF export, so the file looks the same regardless of the
-   * device (phone, tablet, desktop) it was generated on. */
-  forPdf?: boolean
 }) {
   const paidSoFar = invoice.payments.reduce((sum, p) => sum + p.amount, 0)
   const balanceDue = Math.round((invoiceTotal(invoice) - paidSoFar) * 100) / 100
@@ -68,7 +65,7 @@ function InvoiceDocument({
 
       <div className="mt-6 border-b border-border" />
 
-      <div data-pdf-section className="mt-8 flex flex-wrap items-end justify-between gap-4">
+      <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{paidInFull ? 'Status' : 'Amount due'}</p>
           {paidInFull ? (
@@ -82,7 +79,7 @@ function InvoiceDocument({
         </p>
       </div>
 
-      <div data-pdf-section className="mt-8 grid grid-cols-2 gap-6 border-y border-border py-5 text-sm">
+      <div className="mt-8 grid grid-cols-2 gap-6 border-y border-border py-5 text-sm">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Bill to</p>
           <p className="mt-2 font-medium">{invoice.customer}</p>
@@ -99,12 +96,12 @@ function InvoiceDocument({
         </div>
       </div>
 
-      <div data-pdf-section className="mt-8">
-        <LineItemsTable lineItems={invoice.lineItems} gstType={invoice.gstType} forceDesktop={forPdf} />
+      <div className="mt-8">
+        <LineItemsTable lineItems={invoice.lineItems} gstType={invoice.gstType} />
       </div>
 
       {paidSoFar > 0 && (
-        <div data-pdf-section className="mt-6 border-t border-border pt-4 text-sm">
+        <div className="mt-6 border-t border-border pt-4 text-sm">
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Payments received</p>
           <div className="mt-2 space-y-1.5">
             {invoice.payments.map((p) => (
@@ -120,7 +117,7 @@ function InvoiceDocument({
       )}
 
       {(invoice.notes || invoice.paymentTerms || business.bankAccountNumber) && (
-        <div data-pdf-section className="mt-8 grid grid-cols-1 gap-4 border-t border-border pt-5 text-sm sm:grid-cols-2">
+        <div className="mt-8 grid grid-cols-1 gap-4 border-t border-border pt-5 text-sm sm:grid-cols-2">
           {invoice.notes && (
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Notes</p>
@@ -164,7 +161,6 @@ export default function InvoiceDetail() {
   const [previewing, setPreviewing] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const documentRef = useRef<HTMLDivElement>(null)
 
   const invoice = id ? getInvoice(id) : undefined
   if (!loading && !invoice) return <Navigate to="/invoices" replace />
@@ -203,11 +199,10 @@ export default function InvoiceDetail() {
   }
 
   const previewPdf = async () => {
-    if (!documentRef.current) return
     setPreviewing(true)
     try {
-      const blob = await elementToPdfBlob(documentRef.current)
-      openPdfBlobInNewTab(blob)
+      const doc = await buildInvoicePdf({ invoice, customer, business })
+      openPdfBlobInNewTab(doc.output('blob'))
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Could not generate the PDF')
     } finally {
@@ -216,11 +211,10 @@ export default function InvoiceDetail() {
   }
 
   const downloadPdf = async () => {
-    if (!documentRef.current) return
     setDownloading(true)
     try {
-      const blob = await elementToPdfBlob(documentRef.current)
-      downloadPdfBlob(blob, `Invoice-${invoice.number}.pdf`)
+      const doc = await buildInvoicePdf({ invoice, customer, business })
+      downloadPdfBlob(doc.output('blob'), `Invoice-${invoice.number}.pdf`)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Could not generate the PDF')
     } finally {
@@ -318,14 +312,6 @@ export default function InvoiceDetail() {
         <InvoiceDocument invoice={invoice} customer={customer} business={business} />
       </Card>
 
-      {/* Off-screen: a fixed-width, forced-desktop clone used by Preview/Download/Email, so the PDF
-         renders identically whether it's generated on a phone on-site or at a desktop in the office. */}
-      <div className="pointer-events-none fixed left-[-9999px] top-0 w-[560px] bg-white">
-        <div ref={documentRef}>
-          <InvoiceDocument invoice={invoice} customer={customer} business={business} forPdf />
-        </div>
-      </div>
-
       <SendDocumentDialog
         open={sendOpen}
         onOpenChange={setSendOpen}
@@ -335,7 +321,8 @@ export default function InvoiceDetail() {
         defaultMessage={`Hi ${customer?.contact ?? invoice.customer},\n\nHere's your invoice ${invoice.number} for ${formatCurrency(total)} — see the attached PDF.\n\nYou can also view and pay it online: ${shareUrl}\n\nThanks,\n${business.businessName}`}
         mailtoFallbackUrl={mailtoFallbackUrl}
         filename={`Invoice-${invoice.number}.pdf`}
-        documentPreview={<InvoiceDocument invoice={invoice} customer={customer} business={business} forPdf />}
+        documentPreview={<InvoiceDocument invoice={invoice} customer={customer} business={business} />}
+        buildPdf={() => buildInvoicePdf({ invoice, customer, business })}
         onSent={handleSent}
       />
 

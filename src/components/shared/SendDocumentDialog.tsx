@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
+import type { jsPDF } from 'jspdf'
 import { toast } from 'sonner'
 import { Mail, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -6,7 +7,6 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { getEmailConnectionStatus } from '@/lib/api/email'
 import { sendDocumentEmail } from '@/lib/api/email'
-import { elementToPdfBase64 } from '@/lib/pdf'
 
 interface SendDocumentDialogProps {
   open: boolean
@@ -17,7 +17,11 @@ interface SendDocumentDialogProps {
   defaultMessage: string
   mailtoFallbackUrl: string
   filename: string
+  /** What the dialog shows for a quick visual gut-check before sending — the actual attachment
+   * comes from buildPdf, not a screenshot of this, so the two can differ slightly in rendering. */
   documentPreview: ReactNode
+  /** Builds the real PDF that gets attached to the email. */
+  buildPdf: () => Promise<jsPDF>
   onSent: () => void | Promise<void>
 }
 
@@ -31,6 +35,7 @@ export function SendDocumentDialog({
   mailtoFallbackUrl,
   filename,
   documentPreview,
+  buildPdf,
   onSent,
 }: SendDocumentDialogProps) {
   const [toValue, setToValue] = useState(to)
@@ -38,7 +43,6 @@ export function SendDocumentDialog({
   const [message, setMessage] = useState(defaultMessage)
   const [connected, setConnected] = useState<boolean | null>(null)
   const [sending, setSending] = useState(false)
-  const previewRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!open) return
@@ -54,10 +58,10 @@ export function SendDocumentDialog({
       toast.error("Enter the customer's email address")
       return
     }
-    if (!previewRef.current) return
     setSending(true)
     try {
-      const pdfBase64 = await elementToPdfBase64(previewRef.current)
+      const doc = await buildPdf()
+      const pdfBase64 = doc.output('datauristring').split(',')[1]
       await sendDocumentEmail({ to: toValue.trim(), fromName, subject, message, pdfBase64, filename })
       toast.success(`Emailed to ${toValue.trim()}`)
       onOpenChange(false)
@@ -111,9 +115,7 @@ export function SendDocumentDialog({
           <div>
             <p className="mb-1.5 text-xs font-medium text-muted-foreground">Preview (attached as a PDF)</p>
             <div className="max-h-[40vh] overflow-y-auto rounded-lg border border-border bg-secondary/30 p-3">
-              <div ref={previewRef} className="mx-auto w-[560px] origin-top bg-white">
-                {documentPreview}
-              </div>
+              <div className="mx-auto w-[560px] origin-top bg-white">{documentPreview}</div>
             </div>
           </div>
         </div>

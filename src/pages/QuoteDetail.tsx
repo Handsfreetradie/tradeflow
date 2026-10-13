@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ArrowLeft, Briefcase, Send, Check, X, Link as LinkIcon, Eye, Download, Pencil, Trash2 } from 'lucide-react'
@@ -15,20 +15,17 @@ import { useCustomersStore } from '@/lib/store/customers-store'
 import { useBusinessSettings, type BusinessSettings } from '@/lib/store/business-settings-store'
 import type { Quote, Customer } from '@/lib/demo-data'
 import { formatCurrency, formatDate, toDateKey } from '@/lib/utils'
-import { elementToPdfBlob, openPdfBlobInNewTab, downloadPdfBlob } from '@/lib/pdf'
+import { openPdfBlobInNewTab, downloadPdfBlob } from '@/lib/pdf'
+import { buildQuotePdf } from '@/lib/pdfDocument'
 
 function QuoteDocument({
   quote,
   customer,
   business,
-  forPdf = false,
 }: {
   quote: Quote
   customer: Customer | undefined
   business: BusinessSettings
-  /** Renders a fixed desktop layout for PDF export, so the file looks the same regardless of the
-   * device (phone, tablet, desktop) it was generated on. */
-  forPdf?: boolean
 }) {
   const expiryDate = new Date(quote.date)
   expiryDate.setDate(expiryDate.getDate() + quote.validityDays)
@@ -60,7 +57,7 @@ function QuoteDocument({
 
       <div className="mt-6 border-b border-border" />
 
-      <div data-pdf-section className="mt-8 flex flex-wrap items-end justify-between gap-4">
+      <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Quote total</p>
           <p className="mt-1 text-4xl font-bold tracking-tight text-primary">{formatCurrency(total)}</p>
@@ -70,7 +67,7 @@ function QuoteDocument({
         </p>
       </div>
 
-      <div data-pdf-section className="mt-8 grid grid-cols-2 gap-6 border-y border-border py-5 text-sm">
+      <div className="mt-8 grid grid-cols-2 gap-6 border-y border-border py-5 text-sm">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Quote for</p>
           <p className="mt-2 font-medium">{quote.customer}</p>
@@ -87,12 +84,12 @@ function QuoteDocument({
         </div>
       </div>
 
-      <div data-pdf-section className="mt-8">
-        <LineItemsTable lineItems={quote.lineItems} gstType={quote.gstType} forceDesktop={forPdf} />
+      <div className="mt-8">
+        <LineItemsTable lineItems={quote.lineItems} gstType={quote.gstType} />
       </div>
 
       {(quote.notes || quote.terms || quote.exclusions) && (
-        <div data-pdf-section className="mt-8 grid grid-cols-1 gap-4 border-t border-border pt-5 text-sm sm:grid-cols-3">
+        <div className="mt-8 grid grid-cols-1 gap-4 border-t border-border pt-5 text-sm sm:grid-cols-3">
           {quote.terms && (
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Terms</p>
@@ -156,7 +153,6 @@ function QuoteDetailLoaded({
   const [previewing, setPreviewing] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
-  const documentRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setTerms(quote.terms)
@@ -217,12 +213,13 @@ function QuoteDetailLoaded({
     if (quote.status === 'Draft') await updateStatus(quote.id, 'Sent')
   }
 
+  const currentQuote = { ...quote, terms, exclusions, notes }
+
   const previewPdf = async () => {
-    if (!documentRef.current) return
     setPreviewing(true)
     try {
-      const blob = await elementToPdfBlob(documentRef.current)
-      openPdfBlobInNewTab(blob)
+      const doc = await buildQuotePdf({ quote: currentQuote, customer, business })
+      openPdfBlobInNewTab(doc.output('blob'))
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Could not generate the PDF')
     } finally {
@@ -231,11 +228,10 @@ function QuoteDetailLoaded({
   }
 
   const downloadPdf = async () => {
-    if (!documentRef.current) return
     setDownloading(true)
     try {
-      const blob = await elementToPdfBlob(documentRef.current)
-      downloadPdfBlob(blob, `Quote-${quote.number}.pdf`)
+      const doc = await buildQuotePdf({ quote: currentQuote, customer, business })
+      downloadPdfBlob(doc.output('blob'), `Quote-${quote.number}.pdf`)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Could not generate the PDF')
     } finally {
@@ -421,18 +417,10 @@ function QuoteDetailLoaded({
         defaultMessage={`Hi ${customer?.contact ?? quote.customer},\n\nHere's your quote ${quote.number} for ${formatCurrency(quoteTotal)} — see the attached PDF.\n\nYou can also view and respond online: ${shareUrl}\n\nThanks,\n${business.businessName}`}
         mailtoFallbackUrl={mailtoFallbackUrl}
         filename={`Quote-${quote.number}.pdf`}
-        documentPreview={<QuoteDocument quote={{ ...quote, terms, exclusions, notes }} customer={customer} business={business} forPdf />}
+        documentPreview={<QuoteDocument quote={currentQuote} customer={customer} business={business} />}
+        buildPdf={() => buildQuotePdf({ quote: currentQuote, customer, business })}
         onSent={handleSent}
       />
-
-      {/* Off-screen: the clean read-only, forced-desktop document used by Preview/Download (the
-         on-page card above has editable term/exclusion/note fields, and must render identically
-         whether it's generated on a phone on-site or at a desktop in the office). */}
-      <div className="pointer-events-none fixed left-[-9999px] top-0 w-[560px] bg-white">
-        <div ref={documentRef}>
-          <QuoteDocument quote={{ ...quote, terms, exclusions, notes }} customer={customer} business={business} forPdf />
-        </div>
-      </div>
 
       <ConfirmDialog
         open={deleteOpen}
