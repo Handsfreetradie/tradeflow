@@ -40,31 +40,49 @@ function InvoiceDocument({
 }) {
   const paidSoFar = invoice.payments.reduce((sum, p) => sum + p.amount, 0)
   const balanceDue = Math.round((invoiceTotal(invoice) - paidSoFar) * 100) / 100
+  const paidInFull = balanceDue <= 0 && paidSoFar > 0
   const credentials = [business.abn && `ABN ${business.abn}`, business.licenceNumber && `Lic. ${business.licenceNumber}`].filter(Boolean).join('  ·  ')
+  // A GST-registered business must head the document "Tax Invoice"; one that isn't registered
+  // must not use those words at all (ATO requirement) — so this isn't just a style choice.
+  const heading = business.isGstRegistered ? 'TAX INVOICE' : 'INVOICE'
 
   return (
     <div className="p-10">
       <div className="flex items-start justify-between gap-6">
         <div className="flex items-center gap-3">
           {business.logoUrl ? (
-            <img src={business.logoUrl} alt={business.businessName} className="size-11 rounded-lg object-contain" />
+            <img src={business.logoUrl} alt={business.businessName} className="size-12 rounded-lg object-contain" />
           ) : (
-            <LogoMark className="size-11" />
+            <LogoMark className="size-12" />
           )}
           <div>
-            <p className="text-sm font-semibold leading-tight">{business.businessName}</p>
+            <p className="text-lg font-bold leading-tight tracking-tight">{business.businessName}</p>
             {credentials && <p className="mt-0.5 text-xs text-muted-foreground">{credentials}</p>}
           </div>
         </div>
         <div className="text-right">
-          <h1 className="text-xl font-semibold tracking-tight text-primary">INVOICE</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{heading}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{invoice.number}</p>
         </div>
       </div>
 
-      <div className="mt-6 h-1 rounded-full bg-primary" />
+      <div className="mt-6 border-b border-border" />
 
-      <div data-pdf-section className="mt-8 grid grid-cols-2 gap-6 rounded-lg border border-border bg-secondary/20 p-5 text-sm">
+      <div data-pdf-section className="mt-8 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{paidInFull ? 'Status' : 'Amount due'}</p>
+          {paidInFull ? (
+            <p className="mt-1 text-3xl font-bold tracking-tight text-success">Paid in full</p>
+          ) : (
+            <p className="mt-1 text-4xl font-bold tracking-tight text-primary">{formatCurrency(Math.max(balanceDue, 0))}</p>
+          )}
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Due <span className="font-medium text-foreground">{formatDate(invoice.dueDate, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+        </p>
+      </div>
+
+      <div data-pdf-section className="mt-8 grid grid-cols-2 gap-6 border-y border-border py-5 text-sm">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Bill to</p>
           <p className="mt-2 font-medium">{invoice.customer}</p>
@@ -76,13 +94,8 @@ function InvoiceDocument({
           )}
         </div>
         <div className="text-right">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Details</p>
-          <p className="mt-2 text-muted-foreground">
-            Date issued <span className="font-medium text-foreground">{formatDate(invoice.date, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-          </p>
-          <p className="mt-0.5 text-muted-foreground">
-            Due <span className="font-medium text-foreground">{formatDate(invoice.dueDate, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-          </p>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Date issued</p>
+          <p className="mt-2 font-medium text-foreground">{formatDate(invoice.date, { day: 'numeric', month: 'short', year: 'numeric' })}</p>
         </div>
       </div>
 
@@ -91,22 +104,15 @@ function InvoiceDocument({
       </div>
 
       {paidSoFar > 0 && (
-        <div data-pdf-section className="mt-6 rounded-lg border border-border bg-secondary/20 p-4">
-          <div className="flex items-center justify-between text-sm">
-            <span className="text-muted-foreground">Paid to date</span>
-            <span className="font-medium text-success">{formatCurrency(paidSoFar)}</span>
-          </div>
-          <div className="mt-1.5 flex items-center justify-between text-sm font-semibold">
-            <span>Balance due</span>
-            <span className={balanceDue > 0 ? 'text-destructive' : 'text-success'}>{formatCurrency(Math.max(balanceDue, 0))}</span>
-          </div>
-          <div className="mt-3 space-y-1.5 border-t border-border pt-3">
+        <div data-pdf-section className="mt-6 border-t border-border pt-4 text-sm">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Payments received</p>
+          <div className="mt-2 space-y-1.5">
             {invoice.payments.map((p) => (
-              <div key={p.id} className="flex justify-between text-xs text-muted-foreground">
+              <div key={p.id} className="flex justify-between text-muted-foreground">
                 <span>
                   {formatDate(p.date)} · {p.method}
                 </span>
-                <span>{formatCurrency(p.amount)}</span>
+                <span className="font-medium text-foreground">{formatCurrency(p.amount)}</span>
               </div>
             ))}
           </div>
@@ -114,7 +120,7 @@ function InvoiceDocument({
       )}
 
       {(invoice.notes || invoice.paymentTerms || business.bankAccountNumber) && (
-        <div data-pdf-section className="mt-8 grid grid-cols-1 gap-4 rounded-lg border border-border p-5 text-sm sm:grid-cols-2">
+        <div data-pdf-section className="mt-8 grid grid-cols-1 gap-4 border-t border-border pt-5 text-sm sm:grid-cols-2">
           {invoice.notes && (
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Notes</p>

@@ -41,7 +41,7 @@ export function LineItemsTable({
       <div className={forceDesktop ? 'block' : 'hidden sm:block'}>
         <Table>
           <TableHeader>
-            <TableRow className="bg-secondary/60 hover:bg-secondary/60">
+            <TableRow className="[&>th]:h-9">
               <TableHead>Description</TableHead>
               <TableHead className="text-right">Qty</TableHead>
               <TableHead className="text-right">
@@ -63,7 +63,7 @@ export function LineItemsTable({
         </Table>
       </div>
 
-      <div className="space-y-1.5 border-t border-border bg-secondary/40 px-4 py-3">
+      <div className="space-y-1.5 border-t border-border px-4 py-3.5">
         <div className="flex justify-between text-sm text-muted-foreground">
           <span className="inline-block -translate-y-0.5">Subtotal</span>
           <span>{formatCurrency(subtotal)}</span>
@@ -74,7 +74,7 @@ export function LineItemsTable({
             <span>{formatCurrency(gst)}</span>
           </div>
         )}
-        <div className="flex justify-between border-t border-border pt-1.5 text-base font-semibold">
+        <div className="flex justify-between border-t border-border pt-2 text-lg font-semibold">
           <span>Total</span>
           <span>{formatCurrency(subtotal + gst)}</span>
         </div>

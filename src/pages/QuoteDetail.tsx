@@ -33,23 +33,24 @@ function QuoteDocument({
   const expiryDate = new Date(quote.date)
   expiryDate.setDate(expiryDate.getDate() + quote.validityDays)
   const credentials = [business.abn && `ABN ${business.abn}`, business.licenceNumber && `Lic. ${business.licenceNumber}`].filter(Boolean).join('  ·  ')
+  const total = calcQuoteTotal(quote)
 
   return (
     <div className="p-10">
       <div className="flex items-start justify-between gap-6">
         <div className="flex items-center gap-3">
           {business.logoUrl ? (
-            <img src={business.logoUrl} alt={business.businessName} className="size-11 rounded-lg object-contain" />
+            <img src={business.logoUrl} alt={business.businessName} className="size-12 rounded-lg object-contain" />
           ) : (
-            <LogoMark className="size-11" />
+            <LogoMark className="size-12" />
           )}
           <div>
-            <p className="text-sm font-semibold leading-tight">{business.businessName}</p>
+            <p className="text-lg font-bold leading-tight tracking-tight">{business.businessName}</p>
             {credentials && <p className="mt-0.5 text-xs text-muted-foreground">{credentials}</p>}
           </div>
         </div>
         <div className="text-right">
-          <h1 className="text-xl font-semibold tracking-tight text-primary">QUOTE</h1>
+          <h1 className="text-2xl font-bold tracking-tight">QUOTE</h1>
           <p className="mt-1 text-sm text-muted-foreground">{quote.number}</p>
           <div className="mt-2">
             <StatusBadge status={quote.status} />
@@ -57,9 +58,19 @@ function QuoteDocument({
         </div>
       </div>
 
-      <div className="mt-6 h-1 rounded-full bg-primary" />
+      <div className="mt-6 border-b border-border" />
 
-      <div data-pdf-section className="mt-8 grid grid-cols-2 gap-6 rounded-lg border border-border bg-secondary/20 p-5 text-sm">
+      <div data-pdf-section className="mt-8 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Quote total</p>
+          <p className="mt-1 text-4xl font-bold tracking-tight text-primary">{formatCurrency(total)}</p>
+        </div>
+        <p className="text-sm text-muted-foreground">
+          Valid until <span className="font-medium text-foreground">{formatDate(expiryDate, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+        </p>
+      </div>
+
+      <div data-pdf-section className="mt-8 grid grid-cols-2 gap-6 border-y border-border py-5 text-sm">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Quote for</p>
           <p className="mt-2 font-medium">{quote.customer}</p>
@@ -71,13 +82,8 @@ function QuoteDocument({
           )}
         </div>
         <div className="text-right">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Details</p>
-          <p className="mt-2 text-muted-foreground">
-            Date issued <span className="font-medium text-foreground">{formatDate(quote.date, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-          </p>
-          <p className="mt-0.5 text-muted-foreground">
-            Valid until <span className="font-medium text-foreground">{formatDate(expiryDate, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
-          </p>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Date issued</p>
+          <p className="mt-2 font-medium text-foreground">{formatDate(quote.date, { day: 'numeric', month: 'short', year: 'numeric' })}</p>
         </div>
       </div>
 
@@ -86,7 +92,7 @@ function QuoteDocument({
       </div>
 
       {(quote.notes || quote.terms || quote.exclusions) && (
-        <div data-pdf-section className="mt-8 grid grid-cols-1 gap-4 rounded-lg border border-border p-5 text-sm sm:grid-cols-3">
+        <div data-pdf-section className="mt-8 grid grid-cols-1 gap-4 border-t border-border pt-5 text-sm sm:grid-cols-3">
           {quote.terms && (
             <div>
               <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Terms</p>
