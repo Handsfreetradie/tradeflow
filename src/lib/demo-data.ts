@@ -207,18 +207,3 @@ export interface Quote {
   viewCount: number
 }
 
-export interface ActivityItem {
-  id: string
-  type: 'invoice_paid' | 'job_updated' | 'quote_accepted' | 'invoice_sent' | 'customer_added'
-  title: string
-  detail: string
-  timestamp: string
-}
-
-export const recentActivity: ActivityItem[] = [
-  { id: 'a-1', type: 'invoice_paid', title: 'Invoice #INV-1024 paid', detail: '$4,850 from Smith Residence', timestamp: '2 hours ago' },
-  { id: 'a-2', type: 'job_updated', title: 'Job J-1022 updated', detail: 'Status changed to In Progress', timestamp: '4 hours ago' },
-  { id: 'a-3', type: 'quote_accepted', title: 'Quote Q-1003 accepted', detail: '$9,800 from Coastal Constructions', timestamp: '6 hours ago' },
-  { id: 'a-4', type: 'invoice_sent', title: 'Invoice #INV-1021 sent', detail: '$9,800 to Coastal Constructions', timestamp: 'Yesterday' },
-  { id: 'a-5', type: 'customer_added', title: 'New customer added', detail: 'Lakeside Developments', timestamp: '2 days ago' },
-]
