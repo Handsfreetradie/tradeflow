@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { LogoMark } from '@/components/shared/Logo'
@@ -9,8 +9,6 @@ import { createUser } from '@/lib/api/createUser'
 export default function Setup() {
   const { signIn } = useAuth()
   const navigate = useNavigate()
-  const [searchParams] = useSearchParams()
-  const setupCode = searchParams.get('code') ?? undefined
   const [businessName, setBusinessName] = useState('')
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -22,7 +20,7 @@ export default function Setup() {
     e.preventDefault()
     setError(null)
     setSubmitting(true)
-    const { error } = await createUser({ email, password, full_name: fullName, role: 'owner', businessName, setupCode })
+    const { error } = await createUser({ email, password, full_name: fullName, role: 'owner', businessName })
     if (error) {
       setError(error)
       setSubmitting(false)
@@ -42,8 +40,8 @@ export default function Setup() {
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center gap-2 text-center">
           <LogoMark className="size-11" />
-          <h1 className="text-xl font-semibold tracking-tight">Create your owner account</h1>
-          <p className="text-sm text-muted-foreground">One-time setup — this becomes your TradeFlow login.</p>
+          <h1 className="text-xl font-semibold tracking-tight">Create your business account</h1>
+          <p className="text-sm text-muted-foreground">Set up your business on TradeFlow — jobs, quotes and invoices in one place.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-border bg-white p-6 shadow-subtle">

@@ -8,9 +8,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { businessName } from '@/lib/demo-data'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { useNotifications } from '@/lib/store/notifications-store'
+import { useBusinessSettings } from '@/lib/store/business-settings-store'
 import { cn } from '@/lib/utils'
 
 function formatRelativeTime(iso: string) {
@@ -27,6 +27,7 @@ export function Header() {
   const { fullName, signOut } = useAuth()
   const navigate = useNavigate()
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications()
+  const { settings } = useBusinessSettings()
   const displayName = fullName ?? 'Owner'
   const initials = displayName
     .split(' ')
@@ -122,7 +123,7 @@ export function Header() {
             </Avatar>
             <div className="hidden text-left sm:block">
               <p className="text-sm font-medium leading-none">{displayName}</p>
-              <p className="mt-1 text-xs leading-none text-muted-foreground">{businessName}</p>
+              <p className="mt-1 text-xs leading-none text-muted-foreground">{settings.businessName}</p>
             </div>
             <ChevronDown className="size-3.5 text-muted-foreground" />
           </DropdownMenuTrigger>

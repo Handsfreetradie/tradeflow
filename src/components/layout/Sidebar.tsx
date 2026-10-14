@@ -16,12 +16,12 @@ import {
 import { NavItem } from '@/components/ui/nav-item'
 import { LogoMark } from '@/components/shared/Logo'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { businessName } from '@/lib/demo-data'
 import { useJobsStore } from '@/lib/store/jobs-store'
 import { useQuotesStore } from '@/lib/store/quotes-store'
 import { useInvoicesStore } from '@/lib/store/invoices-store'
 import { useLeaveStore } from '@/lib/store/leave-store'
 import { useAuth } from '@/lib/auth/AuthProvider'
+import { useBusinessSettings } from '@/lib/store/business-settings-store'
 
 export function Sidebar() {
   const { jobs } = useJobsStore()
@@ -29,6 +29,7 @@ export function Sidebar() {
   const { invoices } = useInvoicesStore()
   const { requests: leaveRequests } = useLeaveStore()
   const { fullName, signOut } = useAuth()
+  const { settings } = useBusinessSettings()
 
   const openJobs = jobs.filter((j) => j.status === 'In Progress' || j.status === 'Scheduled').length
   const unpaidInvoices = invoices.filter((i) => i.status === 'Sent' || i.status === 'Partial' || i.status === 'Overdue').length
@@ -86,7 +87,7 @@ export function Sidebar() {
         </Avatar>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium leading-none text-white">{displayName}</p>
-          <p className="mt-1 truncate text-[11px] leading-none text-sidebar-muted">{businessName}</p>
+          <p className="mt-1 truncate text-[11px] leading-none text-sidebar-muted">{settings.businessName}</p>
         </div>
         <ChevronsUpDown className="size-3.5 shrink-0 text-sidebar-muted" />
       </button>

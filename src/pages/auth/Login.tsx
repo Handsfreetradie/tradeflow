@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { LogoMark } from '@/components/shared/Logo'
 import { useAuth } from '@/lib/auth/AuthProvider'
-import { businessName } from '@/lib/demo-data'
 import { supabase } from '@/lib/supabase'
 
 type Mode = 'signin' | 'reset' | 'sent'
@@ -53,7 +52,7 @@ export default function Login() {
         <div className="mb-8 flex flex-col items-center gap-2 text-center">
           <LogoMark className="size-11" />
           <h1 className="text-xl font-semibold tracking-tight">TradeFlow</h1>
-          <p className="text-sm text-muted-foreground">Sign in to {businessName}</p>
+          <p className="text-sm text-muted-foreground">Jobs, quotes and invoices for Australian tradies</p>
         </div>
 
         {mode === 'sent' ? (
@@ -145,9 +144,9 @@ export default function Login() {
 
         {mode === 'signin' && (
           <p className="mt-6 text-center text-xs text-muted-foreground">
-            Setting this up for the first time?{' '}
+            New to TradeFlow?{' '}
             <Link to="/auth/setup" className="text-primary hover:underline">
-              Create the owner account
+              Create your business account
             </Link>
           </p>
         )}

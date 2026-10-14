@@ -215,7 +215,6 @@ export interface ActivityItem {
   timestamp: string
 }
 
-export const businessName = 'Dixon Electrical'
 export const ownerFirstName = 'Kyle'
 
 export const recentActivity: ActivityItem[] = [
