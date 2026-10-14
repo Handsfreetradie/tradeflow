@@ -17,13 +17,16 @@ import { formatCurrency } from '@/lib/utils'
 let liSeq = 0
 const newLineItem = (): LineItem => ({ id: `new-${++liSeq}`, description: '', qty: 1, unitPrice: 0 })
 
+const NEW_CUSTOMER = '__new__'
+
 export default function QuoteNew() {
   const navigate = useNavigate()
   const { addQuote, updateStatus } = useQuotesStore()
-  const { customers } = useCustomersStore()
+  const { customers, addCustomer } = useCustomersStore()
   const { settings: business, loading: businessLoading } = useBusinessSettings()
 
   const [customerId, setCustomerId] = useState('')
+  const [newCustomerName, setNewCustomerName] = useState('')
   const [gstType, setGstType] = useState<GstType>('gst_inclusive')
   const [gstTypeTouched, setGstTypeTouched] = useState(false)
   const [validityDays, setValidityDays] = useState('30')
@@ -46,19 +49,30 @@ export default function QuoteNew() {
   }, [businessLoading, business.isGstRegistered, gstTypeTouched])
 
   const customer = customers.find((c) => c.id === customerId)
+  const usingNewCustomer = customerId === NEW_CUSTOMER
   const subtotal = lineItems.reduce((sum, li) => sum + li.qty * li.unitPrice, 0)
   const total = gstInclusiveTotal(subtotal, gstType)
 
   const updateLine = (id: string, patch: Partial<LineItem>) =>
     setLineItems((prev) => prev.map((li) => (li.id === id ? { ...li, ...patch } : li)))
 
-  const canSubmit = customerId && lineItems.some((li) => li.description.trim() && li.unitPrice > 0)
+  const canSubmit =
+    (usingNewCustomer ? newCustomerName.trim() : customerId) &&
+    lineItems.some((li) => li.description.trim() && li.unitPrice > 0)
 
   const submit = async (send: boolean) => {
-    if (!canSubmit || !customer) return
+    if (!canSubmit) return
+    if (!usingNewCustomer && !customer) return
+    let resolvedCustomerId = customerId
+    let resolvedCustomerName = customer?.name ?? ''
+    if (usingNewCustomer) {
+      const created = await addCustomer({ name: newCustomerName.trim() })
+      resolvedCustomerId = created.id
+      resolvedCustomerName = created.name
+    }
     const quote = await addQuote({
-      customerId,
-      customer: customer.name,
+      customerId: resolvedCustomerId,
+      customer: resolvedCustomerName,
       gstType,
       validityDays: Number(validityDays) || 30,
       terms: terms.trim(),
@@ -94,6 +108,7 @@ export default function QuoteNew() {
                 <SelectValue placeholder="Select a customer" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value={NEW_CUSTOMER}>+ Add new customer</SelectItem>
                 {customers.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.name}
@@ -101,6 +116,14 @@ export default function QuoteNew() {
                 ))}
               </SelectContent>
             </Select>
+            {usingNewCustomer && (
+              <Input
+                value={newCustomerName}
+                onChange={(e) => setNewCustomerName(e.target.value)}
+                placeholder="New customer name"
+                className="mt-2"
+              />
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">

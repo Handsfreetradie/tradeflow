@@ -21,6 +21,8 @@ import { formatCurrency, toDateKey } from '@/lib/utils'
 let liSeq = 0
 const newLineItem = (): LineItem => ({ id: `new-${++liSeq}`, description: '', qty: 1, unitPrice: 0 })
 
+const NEW_CUSTOMER = '__new__'
+
 function defaultDueDate() {
   const d = new Date()
   d.setDate(d.getDate() + 14)
@@ -53,7 +55,7 @@ export default function InvoiceNew() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const { invoices, addInvoice, markSent } = useInvoicesStore()
-  const { customers } = useCustomersStore()
+  const { customers, addCustomer } = useCustomersStore()
   const { getJob, claimStages } = useJobsStore()
   const { team } = useTeamStore()
   const { settings: business, loading: businessLoading } = useBusinessSettings()
@@ -61,6 +63,7 @@ export default function InvoiceNew() {
   const linkedJob = getJob(searchParams.get('jobId') ?? '')
 
   const [customerId, setCustomerId] = useState(linkedJob?.customerId ?? '')
+  const [newCustomerName, setNewCustomerName] = useState('')
   const [gstType, setGstType] = useState<GstType>('gst_inclusive')
   const [gstTypeTouched, setGstTypeTouched] = useState(false)
   const [dueDate, setDueDate] = useState(defaultDueDate())
@@ -90,6 +93,7 @@ export default function InvoiceNew() {
   const claimableStages = linkedJob ? linkedJob.stages.filter((s) => s.claimAmount != null && !s.claimedInvoiceId) : []
 
   const customer = customers.find((c) => c.id === customerId)
+  const usingNewCustomer = customerId === NEW_CUSTOMER
   const subtotal = lineItems.reduce((sum, li) => sum + li.qty * li.unitPrice, 0)
   const total = gstInclusiveTotal(subtotal, gstType)
 
@@ -118,13 +122,24 @@ export default function InvoiceNew() {
   const updateLine = (id: string, patch: Partial<LineItem>) =>
     setLineItems((prev) => prev.map((li) => (li.id === id ? { ...li, ...patch } : li)))
 
-  const canSubmit = customerId && dueDate && lineItems.some((li) => li.description.trim() && li.unitPrice > 0)
+  const canSubmit =
+    (usingNewCustomer ? newCustomerName.trim() : customerId) &&
+    dueDate &&
+    lineItems.some((li) => li.description.trim() && li.unitPrice > 0)
 
   const submit = async (send: boolean) => {
-    if (!canSubmit || !customer) return
+    if (!canSubmit) return
+    if (!usingNewCustomer && !customer) return
+    let resolvedCustomerId = customerId
+    let resolvedCustomerName = customer?.name ?? ''
+    if (usingNewCustomer) {
+      const created = await addCustomer({ name: newCustomerName.trim() })
+      resolvedCustomerId = created.id
+      resolvedCustomerName = created.name
+    }
     const invoice = await addInvoice({
-      customerId,
-      customer: customer.name,
+      customerId: resolvedCustomerId,
+      customer: resolvedCustomerName,
       gstType,
       dueDate,
       notes: notes.trim(),
@@ -164,6 +179,7 @@ export default function InvoiceNew() {
                 <SelectValue placeholder="Select a customer" />
               </SelectTrigger>
               <SelectContent>
+                <SelectItem value={NEW_CUSTOMER}>+ Add new customer</SelectItem>
                 {customers.map((c) => (
                   <SelectItem key={c.id} value={c.id}>
                     {c.name}
@@ -171,6 +187,14 @@ export default function InvoiceNew() {
                 ))}
               </SelectContent>
             </Select>
+            {usingNewCustomer && (
+              <Input
+                value={newCustomerName}
+                onChange={(e) => setNewCustomerName(e.target.value)}
+                placeholder="New customer name"
+                className="mt-2"
+              />
+            )}
           </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
