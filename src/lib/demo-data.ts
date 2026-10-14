@@ -215,8 +215,6 @@ export interface ActivityItem {
   timestamp: string
 }
 
-export const ownerFirstName = 'Kyle'
-
 export const recentActivity: ActivityItem[] = [
   { id: 'a-1', type: 'invoice_paid', title: 'Invoice #INV-1024 paid', detail: '$4,850 from Smith Residence', timestamp: '2 hours ago' },
   { id: 'a-2', type: 'job_updated', title: 'Job J-1022 updated', detail: 'Status changed to In Progress', timestamp: '4 hours ago' },

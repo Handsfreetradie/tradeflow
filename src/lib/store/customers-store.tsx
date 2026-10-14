@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth/AuthProvider'
 import type { Customer } from '@/lib/demo-data'
 
 export interface NewCustomerInput {
@@ -43,11 +44,19 @@ function fromRow(row: {
 }
 
 export function CustomersProvider({ children }: { children: ReactNode }) {
+  const { session } = useAuth()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!session) {
+      setCustomers([])
+      setLoading(false)
+      return
+    }
     let cancelled = false
+    setLoading(true)
+    setCustomers([])
     supabase
       .from('customers')
       .select('*')
@@ -60,7 +69,7 @@ export function CustomersProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [session])
 
   const getCustomer = useCallback((id: string) => customers.find((c) => c.id === id), [customers])
 

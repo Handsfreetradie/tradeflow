@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth/AuthProvider'
 
 export interface Notification {
   id: string
@@ -46,12 +47,20 @@ function fromRow(n: NotificationRow): Notification {
 }
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
+  const { session } = useAuth()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
   const [tick, setTick] = useState(0)
 
   useEffect(() => {
+    if (!session) {
+      setNotifications([])
+      setLoading(false)
+      return
+    }
     let cancelled = false
+    setLoading(true)
+    setNotifications([])
     supabase
       .from('notifications')
       .select(
@@ -67,7 +76,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [tick])
+  }, [session, tick])
 
   const refresh = useCallback(() => setTick((t) => t + 1), [])
 

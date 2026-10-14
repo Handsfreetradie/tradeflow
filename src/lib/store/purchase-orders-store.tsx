@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth/AuthProvider'
 import type { PurchaseOrder, PurchaseOrderStatus } from '@/lib/demo-data'
 
 export interface NewPurchaseOrderInput {
@@ -45,11 +46,19 @@ interface PurchaseOrdersContextValue {
 const PurchaseOrdersContext = createContext<PurchaseOrdersContextValue | null>(null)
 
 export function PurchaseOrdersProvider({ children }: { children: ReactNode }) {
+  const { session } = useAuth()
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!session) {
+      setPurchaseOrders([])
+      setLoading(false)
+      return
+    }
     let cancelled = false
+    setLoading(true)
+    setPurchaseOrders([])
     supabase
       .from('purchase_orders')
       .select('*')
@@ -62,7 +71,7 @@ export function PurchaseOrdersProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [session])
 
   const addPurchaseOrder = useCallback(async (input: NewPurchaseOrderInput) => {
     const { data: number, error: numberError } = await supabase.rpc('next_po_number')

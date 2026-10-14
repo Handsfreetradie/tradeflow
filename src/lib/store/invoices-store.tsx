@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth/AuthProvider'
 import { gstInclusiveTotal } from '@/lib/bas'
 import type { GstType, Invoice, InvoiceStatus, LineItem, PaymentMethod } from '@/lib/demo-data'
 
@@ -93,11 +94,19 @@ function fromRow(row: InvoiceRow): Invoice {
 }
 
 export function InvoicesProvider({ children }: { children: ReactNode }) {
+  const { session } = useAuth()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!session) {
+      setInvoices([])
+      setLoading(false)
+      return
+    }
     let cancelled = false
+    setLoading(true)
+    setInvoices([])
     supabase
       .from('invoices')
       .select(INVOICE_SELECT)
@@ -110,7 +119,7 @@ export function InvoicesProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [session])
 
   const getInvoice = useCallback((id: string) => invoices.find((i) => i.id === id), [invoices])
 

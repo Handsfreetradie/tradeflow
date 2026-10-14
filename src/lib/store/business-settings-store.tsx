@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth/AuthProvider'
 
 export interface BusinessSettings {
   businessName: string
@@ -39,6 +40,7 @@ const DEFAULTS: BusinessSettings = {
 const BusinessSettingsContext = createContext<BusinessSettingsContextValue | null>(null)
 
 export function BusinessSettingsProvider({ children }: { children: ReactNode }) {
+  const { session } = useAuth()
   const [settings, setSettings] = useState<BusinessSettings>(DEFAULTS)
   const [loading, setLoading] = useState(true)
   // business_profile is keyed by business_id (one row per business) rather than the old
@@ -46,7 +48,15 @@ export function BusinessSettingsProvider({ children }: { children: ReactNode }) 
   const businessIdRef = useRef<string | null>(null)
 
   useEffect(() => {
+    businessIdRef.current = null
+    if (!session) {
+      setSettings(DEFAULTS)
+      setLoading(false)
+      return
+    }
     let cancelled = false
+    setLoading(true)
+    setSettings(DEFAULTS)
     supabase
       .from('business_profile')
       .select('*')
@@ -73,7 +83,7 @@ export function BusinessSettingsProvider({ children }: { children: ReactNode }) 
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [session])
 
   const updateSettings = useCallback(async (patch: Partial<EditableFields>) => {
     if (!businessIdRef.current) throw new Error('Business settings not loaded yet')

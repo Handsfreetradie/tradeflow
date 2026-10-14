@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth/AuthProvider'
 import type { Expense, ExpenseCategory, GstType } from '@/lib/demo-data'
 
 export interface NewExpenseInput {
@@ -49,11 +50,19 @@ function fromRow(row: ExpenseRow): Expense {
 }
 
 export function ExpensesProvider({ children }: { children: ReactNode }) {
+  const { session } = useAuth()
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!session) {
+      setExpenses([])
+      setLoading(false)
+      return
+    }
     let cancelled = false
+    setLoading(true)
+    setExpenses([])
     supabase
       .from('expenses')
       .select('*')
@@ -66,7 +75,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [session])
 
   const addExpense = useCallback(async (input: NewExpenseInput) => {
     const { data: row, error } = await supabase

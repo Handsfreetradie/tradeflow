@@ -241,12 +241,19 @@ async function fetchJobs(): Promise<Job[]> {
 }
 
 export function JobsProvider({ children }: { children: ReactNode }) {
-  const { fullName } = useAuth()
+  const { fullName, session } = useAuth()
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!session) {
+      setJobs([])
+      setLoading(false)
+      return
+    }
     let cancelled = false
+    setLoading(true)
+    setJobs([])
     fetchJobs()
       .then((data) => {
         if (!cancelled) setJobs(data)
@@ -257,7 +264,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [session])
 
   const getJob = useCallback((id: string) => jobs.find((j) => j.id === id), [jobs])
 

@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth/AuthProvider'
 
 export interface Product {
   id: string
@@ -33,11 +34,19 @@ function fromRow(row: { id: string; name: string; description: string; category:
 }
 
 export function ProductsProvider({ children }: { children: ReactNode }) {
+  const { session } = useAuth()
   const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!session) {
+      setProducts([])
+      setLoading(false)
+      return
+    }
     let cancelled = false
+    setLoading(true)
+    setProducts([])
     supabase
       .from('products')
       .select('*')
@@ -50,7 +59,7 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [session])
 
   const addProduct = useCallback(async (input: NewProductInput) => {
     const { data, error } = await supabase

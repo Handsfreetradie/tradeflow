@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth/AuthProvider'
 import { quarterFromDate, type BasQuarter } from '@/lib/bas'
 
 export interface BasSnapshot {
@@ -31,11 +32,19 @@ function key(p: Pick<LodgedPeriod, 'year' | 'quarterIndex'>): string {
 }
 
 export function BasPeriodsProvider({ children }: { children: ReactNode }) {
+  const { session } = useAuth()
   const [lodgedPeriods, setLodgedPeriods] = useState<LodgedPeriod[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!session) {
+      setLodgedPeriods([])
+      setLoading(false)
+      return
+    }
     let cancelled = false
+    setLoading(true)
+    setLodgedPeriods([])
     supabase
       .from('bas_periods')
       .select('year, quarter_index, lodged_at, g1, one_a, one_b, net_gst')
@@ -59,7 +68,7 @@ export function BasPeriodsProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [session])
 
   const isLocked = useCallback(
     (quarter: Pick<BasQuarter, 'year' | 'quarterIndex'>) => lodgedPeriods.some((p) => key(p) === key(quarter)),

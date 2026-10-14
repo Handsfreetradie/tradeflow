@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth/AuthProvider'
 import { gstInclusiveTotal } from '@/lib/bas'
 import type { GstType, LineItem, Quote, QuoteStatus } from '@/lib/demo-data'
 
@@ -88,11 +89,19 @@ function fromRow(row: QuoteRow): Quote {
 }
 
 export function QuotesProvider({ children }: { children: ReactNode }) {
+  const { session } = useAuth()
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!session) {
+      setQuotes([])
+      setLoading(false)
+      return
+    }
     let cancelled = false
+    setLoading(true)
+    setQuotes([])
     supabase
       .from('quotes')
       .select(QUOTE_SELECT)
@@ -105,7 +114,7 @@ export function QuotesProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [session])
 
   const getQuote = useCallback((id: string) => quotes.find((q) => q.id === id), [quotes])
 
