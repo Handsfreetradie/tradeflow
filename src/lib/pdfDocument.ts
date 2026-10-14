@@ -143,7 +143,9 @@ function drawHeadline(ctx: Ctx, headlineLabel: string, value: string, valueColor
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9)
   doc.setTextColor(...COLOR.muted)
-  doc.text(dateLine, CONTENT_RIGHT, ctx.y + 8, { align: 'right' })
+  // Same baseline as the big value, matching the on-screen `items-end` row — the date sits level
+  // with the bottom of the dollar figure, not floating up near the "AMOUNT DUE" label.
+  doc.text(dateLine, CONTENT_RIGHT, ctx.y + 11, { align: 'right' })
 
   ctx.y += 20
   hairline(ctx)
