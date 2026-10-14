@@ -170,7 +170,10 @@ function drawTwoColumnDetails(ctx: Ctx, leftLabel: string, leftLines: string[], 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(10)
   doc.setTextColor(...COLOR.foreground)
-  doc.text(rightValue, CONTENT_RIGHT, startY + 6, { align: 'right' })
+  // Centre the single-line value against the left column's full height (which may run to 2-3
+  // lines for a customer's contact/address) instead of pinning it to the left column's top line.
+  const rightValueY = startY + 6 + ((leftLines.length - 1) * 5) / 2
+  doc.text(rightValue, CONTENT_RIGHT, rightValueY, { align: 'right' })
 
   ctx.y = Math.max(ly, startY + 11) + 6
   hairline(ctx)
