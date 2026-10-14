@@ -8,6 +8,9 @@ interface CreateOwnerInput {
   password: string
   full_name: string
   role: 'owner'
+  businessName: string
+  /** Only required when an owner already exists elsewhere — i.e. setting up a second business. */
+  setupCode?: string
 }
 
 interface InviteEmployeeInput {

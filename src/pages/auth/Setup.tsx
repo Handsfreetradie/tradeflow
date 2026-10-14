@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { LogoMark } from '@/components/shared/Logo'
@@ -9,6 +9,9 @@ import { createUser } from '@/lib/api/createUser'
 export default function Setup() {
   const { signIn } = useAuth()
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+  const setupCode = searchParams.get('code') ?? undefined
+  const [businessName, setBusinessName] = useState('')
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -19,7 +22,7 @@ export default function Setup() {
     e.preventDefault()
     setError(null)
     setSubmitting(true)
-    const { error } = await createUser({ email, password, full_name: fullName, role: 'owner' })
+    const { error } = await createUser({ email, password, full_name: fullName, role: 'owner', businessName, setupCode })
     if (error) {
       setError(error)
       setSubmitting(false)
@@ -44,6 +47,12 @@ export default function Setup() {
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4 rounded-xl border border-border bg-white p-6 shadow-subtle">
+          <div className="space-y-1.5">
+            <label htmlFor="businessName" className="text-sm font-medium">
+              Business name
+            </label>
+            <Input id="businessName" required value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="e.g. Zigg Electrical" />
+          </div>
           <div className="space-y-1.5">
             <label htmlFor="fullName" className="text-sm font-medium">
               Your name

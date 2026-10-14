@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 
 export interface BusinessSettings {
@@ -41,17 +41,20 @@ const BusinessSettingsContext = createContext<BusinessSettingsContextValue | nul
 export function BusinessSettingsProvider({ children }: { children: ReactNode }) {
   const [settings, setSettings] = useState<BusinessSettings>(DEFAULTS)
   const [loading, setLoading] = useState(true)
+  // business_profile is keyed by business_id (one row per business) rather than the old
+  // singleton "id = true" row, so every read/write needs to know which row is "mine".
+  const businessIdRef = useRef<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
     supabase
-      .from('business_settings')
+      .from('business_profile')
       .select('*')
-      .eq('id', true)
       .maybeSingle()
       .then(({ data }) => {
         if (cancelled) return
         if (data) {
+          businessIdRef.current = data.business_id
           setSettings({
             businessName: data.business_name,
             abn: data.abn,
@@ -73,8 +76,9 @@ export function BusinessSettingsProvider({ children }: { children: ReactNode }) 
   }, [])
 
   const updateSettings = useCallback(async (patch: Partial<EditableFields>) => {
+    if (!businessIdRef.current) throw new Error('Business settings not loaded yet')
     const { error } = await supabase
-      .from('business_settings')
+      .from('business_profile')
       .update({
         ...(patch.businessName !== undefined ? { business_name: patch.businessName } : {}),
         ...(patch.abn !== undefined ? { abn: patch.abn } : {}),
@@ -85,19 +89,21 @@ export function BusinessSettingsProvider({ children }: { children: ReactNode }) 
         ...(patch.bankAccountNumber !== undefined ? { bank_account_number: patch.bankAccountNumber } : {}),
         ...(patch.defaultQuoteTerms !== undefined ? { default_quote_terms: patch.defaultQuoteTerms } : {}),
         ...(patch.defaultQuoteExclusions !== undefined ? { default_quote_exclusions: patch.defaultQuoteExclusions } : {}),
+        updated_at: new Date().toISOString(),
       })
-      .eq('id', true)
+      .eq('business_id', businessIdRef.current)
     if (error) throw new Error(error.message)
     setSettings((prev) => ({ ...prev, ...patch }))
   }, [])
 
   const uploadLogo = useCallback(async (file: File) => {
+    if (!businessIdRef.current) throw new Error('Business settings not loaded yet')
     const ext = file.name.split('.').pop() ?? 'png'
-    const path = `logo-${Date.now()}.${ext}`
+    const path = `${businessIdRef.current}/logo-${Date.now()}.${ext}`
     const { error: uploadError } = await supabase.storage.from('business-assets').upload(path, file, { upsert: true })
     if (uploadError) throw new Error(uploadError.message)
     const { data } = supabase.storage.from('business-assets').getPublicUrl(path)
-    const { error } = await supabase.from('business_settings').update({ logo_url: data.publicUrl }).eq('id', true)
+    const { error } = await supabase.from('business_profile').update({ logo_url: data.publicUrl }).eq('business_id', businessIdRef.current)
     if (error) throw new Error(error.message)
     setSettings((prev) => ({ ...prev, logoUrl: data.publicUrl }))
   }, [])

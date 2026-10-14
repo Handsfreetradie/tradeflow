@@ -20,7 +20,7 @@ export interface EmailAlert {
 }
 
 export async function getEmailConnectionStatus(): Promise<EmailConnectionStatus> {
-  const { data } = await supabase.from('email_connections').select('google_email, connected_at, last_checked_at').eq('id', true).maybeSingle()
+  const { data } = await supabase.from('business_email_connection').select('google_email, connected_at, last_checked_at').maybeSingle()
   return {
     connected: !!data?.google_email,
     googleEmail: data?.google_email ?? null,

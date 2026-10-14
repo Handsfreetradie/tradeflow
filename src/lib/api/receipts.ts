@@ -10,9 +10,13 @@ export interface ScannedReceipt {
   category: ExpenseCategory | null
 }
 
+/** Path-prefixed with the owner's own business id so the storage RLS policy can scope it —
+ * matches the job-id-prefixed convention uploadJobCostReceipt uses for employee uploads below. */
 export async function uploadReceipt(file: File): Promise<string> {
+  const { data: businessId, error: businessIdError } = await supabase.rpc('current_business_id')
+  if (businessIdError || !businessId) throw new Error(businessIdError?.message ?? 'Could not resolve your business')
   const ext = file.name.split('.').pop() ?? 'jpg'
-  const path = `${crypto.randomUUID()}.${ext}`
+  const path = `${businessId}/${crypto.randomUUID()}.${ext}`
   const { error } = await supabase.storage.from('receipts').upload(path, file)
   if (error) throw new Error(error.message)
   return path
