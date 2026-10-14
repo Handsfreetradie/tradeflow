@@ -146,24 +146,24 @@ export default function QuotePublic() {
 
         <div className="overflow-hidden rounded-xl border border-border bg-white shadow-subtle">
           <div className="space-y-8 p-8">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-2.5">
-                {quote.businessLogoUrl ? (
-                  <img src={quote.businessLogoUrl} alt={quote.businessName} className="size-9 rounded-lg object-contain" />
-                ) : (
-                  <LogoMark className="size-9" />
-                )}
+            <div>
+              {quote.businessLogoUrl ? (
+                <img src={quote.businessLogoUrl} alt={quote.businessName} className="size-20 rounded-lg object-contain" />
+              ) : (
+                <LogoMark className="size-20" />
+              )}
+              <div className="mt-4 flex items-start justify-between">
                 <div>
                   <p className="text-sm font-semibold leading-none">{quote.businessName}</p>
                   {quote.businessAbn && <p className="mt-1 text-xs text-muted-foreground">ABN {quote.businessAbn}</p>}
                   {quote.businessLicenceNumber && <p className="text-xs text-muted-foreground">Lic. {quote.businessLicenceNumber}</p>}
                 </div>
-              </div>
-              <div className="text-right">
-                <h1 className="text-xl font-semibold tracking-tight">QUOTE</h1>
-                <p className="text-sm text-muted-foreground">{quote.number}</p>
-                <div className="mt-2">
-                  <StatusBadge status={quote.status} />
+                <div className="text-right">
+                  <h1 className="text-xl font-semibold tracking-tight">QUOTE</h1>
+                  <p className="text-sm text-muted-foreground">{quote.number}</p>
+                  <div className="mt-2">
+                    <StatusBadge status={quote.status} />
+                  </div>
                 </div>
               </div>
             </div>

@@ -34,17 +34,15 @@ function QuoteDocument({
 
   return (
     <div className="p-10">
-      <div className="flex items-start justify-between gap-6">
-        <div className="flex items-center gap-3">
-          {business.logoUrl ? (
-            <img src={business.logoUrl} alt={business.businessName} className="size-12 rounded-lg object-contain" />
-          ) : (
-            <LogoMark className="size-12" />
-          )}
-          <div>
-            <p className="text-lg font-bold leading-tight tracking-tight">{business.businessName}</p>
-            {credentials && <p className="mt-0.5 text-xs text-muted-foreground">{credentials}</p>}
-          </div>
+      {business.logoUrl ? (
+        <img src={business.logoUrl} alt={business.businessName} className="size-24 rounded-lg object-contain" />
+      ) : (
+        <LogoMark className="size-24" />
+      )}
+      <div className="mt-5 flex items-start justify-between gap-6">
+        <div>
+          <p className="text-lg font-bold leading-tight tracking-tight">{business.businessName}</p>
+          {credentials && <p className="mt-0.5 text-xs text-muted-foreground">{credentials}</p>}
         </div>
         <div className="text-right">
           <h1 className="text-2xl font-bold tracking-tight">QUOTE</h1>
@@ -321,24 +319,24 @@ function QuoteDetailLoaded({
 
       <Card className="overflow-hidden">
         <CardContent className="space-y-8 p-8">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-2.5">
-              {business.logoUrl ? (
-                <img src={business.logoUrl} alt={business.businessName} className="size-9 rounded-lg object-contain" />
-              ) : (
-                <LogoMark className="size-9" />
-              )}
+          <div>
+            {business.logoUrl ? (
+              <img src={business.logoUrl} alt={business.businessName} className="size-20 rounded-lg object-contain" />
+            ) : (
+              <LogoMark className="size-20" />
+            )}
+            <div className="mt-4 flex items-start justify-between">
               <div>
                 <p className="text-sm font-semibold leading-none">{business.businessName}</p>
                 {business.abn && <p className="mt-1 text-xs text-muted-foreground">ABN {business.abn}</p>}
                 {business.licenceNumber && <p className="text-xs text-muted-foreground">Lic. {business.licenceNumber}</p>}
               </div>
-            </div>
-            <div className="text-right">
-              <h1 className="text-xl font-semibold tracking-tight">QUOTE</h1>
-              <p className="text-sm text-muted-foreground">{quote.number}</p>
-              <div className="mt-2">
-                <StatusBadge status={quote.status} />
+              <div className="text-right">
+                <h1 className="text-xl font-semibold tracking-tight">QUOTE</h1>
+                <p className="text-sm text-muted-foreground">{quote.number}</p>
+                <div className="mt-2">
+                  <StatusBadge status={quote.status} />
+                </div>
               </div>
             </div>
           </div>

@@ -82,26 +82,26 @@ async function drawHeader(ctx: Ctx, business: BusinessSettings, heading: string,
     const logo = await fetchImageDataUrl(business.logoUrl)
     if (logo) {
       try {
-        doc.addImage(logo.dataUrl, logo.format, MARGIN, ctx.y, 14, 14)
+        doc.addImage(logo.dataUrl, logo.format, MARGIN, ctx.y, 28, 28)
         logoDrawn = true
       } catch {
         logoDrawn = false
       }
     }
   }
-  const textX = logoDrawn ? MARGIN + 18 : MARGIN
+  if (logoDrawn) ctx.y += 32
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(14)
   doc.setTextColor(...COLOR.foreground)
-  doc.text(business.businessName || 'Your business', textX, ctx.y + 6)
+  doc.text(business.businessName || 'Your business', MARGIN, ctx.y + 6)
 
   const credentials = [business.abn && `ABN ${business.abn}`, business.licenceNumber && `Lic. ${business.licenceNumber}`].filter(Boolean).join('   ·   ')
   if (credentials) {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(8)
     doc.setTextColor(...COLOR.muted)
-    doc.text(credentials, textX, ctx.y + 11)
+    doc.text(credentials, MARGIN, ctx.y + 11)
   }
 
   doc.setFont('helvetica', 'bold')

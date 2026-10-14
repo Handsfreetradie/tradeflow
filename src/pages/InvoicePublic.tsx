@@ -113,24 +113,24 @@ export default function InvoicePublic() {
     <div className="min-h-screen bg-background p-6">
       <div className="mx-auto max-w-2xl overflow-hidden rounded-xl border border-border bg-white shadow-subtle">
         <div className="space-y-8 p-8">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-2.5">
-              {invoice.businessLogoUrl ? (
-                <img src={invoice.businessLogoUrl} alt={invoice.businessName} className="size-9 rounded-lg object-contain" />
-              ) : (
-                <LogoMark className="size-9" />
-              )}
+          <div>
+            {invoice.businessLogoUrl ? (
+              <img src={invoice.businessLogoUrl} alt={invoice.businessName} className="size-20 rounded-lg object-contain" />
+            ) : (
+              <LogoMark className="size-20" />
+            )}
+            <div className="mt-4 flex items-start justify-between">
               <div>
                 <p className="text-sm font-semibold leading-none">{invoice.businessName}</p>
                 {invoice.businessAbn && <p className="mt-1 text-xs text-muted-foreground">ABN {invoice.businessAbn}</p>}
                 {invoice.businessLicenceNumber && <p className="text-xs text-muted-foreground">Lic. {invoice.businessLicenceNumber}</p>}
               </div>
-            </div>
-            <div className="text-right">
-              <h1 className="text-xl font-semibold tracking-tight">INVOICE</h1>
-              <p className="text-sm text-muted-foreground">{invoice.number}</p>
-              <div className="mt-2">
-                <StatusBadge status={invoice.status} />
+              <div className="text-right">
+                <h1 className="text-xl font-semibold tracking-tight">INVOICE</h1>
+                <p className="text-sm text-muted-foreground">{invoice.number}</p>
+                <div className="mt-2">
+                  <StatusBadge status={invoice.status} />
+                </div>
               </div>
             </div>
           </div>

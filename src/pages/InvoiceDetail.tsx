@@ -45,17 +45,15 @@ function InvoiceDocument({
 
   return (
     <div className="p-10">
-      <div className="flex items-start justify-between gap-6">
-        <div className="flex items-center gap-3">
-          {business.logoUrl ? (
-            <img src={business.logoUrl} alt={business.businessName} className="size-12 rounded-lg object-contain" />
-          ) : (
-            <LogoMark className="size-12" />
-          )}
-          <div>
-            <p className="text-lg font-bold leading-tight tracking-tight">{business.businessName}</p>
-            {credentials && <p className="mt-0.5 text-xs text-muted-foreground">{credentials}</p>}
-          </div>
+      {business.logoUrl ? (
+        <img src={business.logoUrl} alt={business.businessName} className="size-24 rounded-lg object-contain" />
+      ) : (
+        <LogoMark className="size-24" />
+      )}
+      <div className="mt-5 flex items-start justify-between gap-6">
+        <div>
+          <p className="text-lg font-bold leading-tight tracking-tight">{business.businessName}</p>
+          {credentials && <p className="mt-0.5 text-xs text-muted-foreground">{credentials}</p>}
         </div>
         <div className="text-right">
           <h1 className="text-2xl font-bold tracking-tight">{heading}</h1>
