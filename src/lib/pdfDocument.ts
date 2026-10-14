@@ -216,13 +216,16 @@ function drawLineItemsTable(ctx: Ctx, lineItems: LineItem[], gstType: GstType) {
     ensureSpace(ctx, rowHeight, (c) => drawTableHeaderRow(c, true))
 
     const baselineY = ctx.y + ROW_TOP_PAD
+    // Qty/price/total sit on one line each, so for a wrapped multi-line description they're
+    // vertically centred against the whole text block rather than pinned to its first line.
+    const figuresY = baselineY + ((lines.length - 1) * LINE_HEIGHT) / 2
     doc.setTextColor(...COLOR.foreground)
     doc.text(lines, MARGIN, baselineY)
     doc.setTextColor(...COLOR.muted)
-    doc.text(String(li.qty), COL.qty, baselineY, { align: 'right' })
-    doc.text(formatCurrency(li.unitPrice), COL.price, baselineY, { align: 'right' })
+    doc.text(String(li.qty), COL.qty, figuresY, { align: 'right' })
+    doc.text(formatCurrency(li.unitPrice), COL.price, figuresY, { align: 'right' })
     doc.setTextColor(...COLOR.foreground)
-    doc.text(formatCurrency(li.qty * li.unitPrice), COL.total, baselineY, { align: 'right' })
+    doc.text(formatCurrency(li.qty * li.unitPrice), COL.total, figuresY, { align: 'right' })
 
     ctx.y = baselineY + (lines.length - 1) * LINE_HEIGHT + ROW_BOTTOM_PAD
     doc.setDrawColor(...COLOR.border)
