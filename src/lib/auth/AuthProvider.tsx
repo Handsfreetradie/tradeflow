@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { clearOfflineCache } from '@/lib/offline/db'
 
 export type Role = 'owner' | 'employee'
 
@@ -43,6 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut()
+    await clearOfflineCache()
   }
 
   return (

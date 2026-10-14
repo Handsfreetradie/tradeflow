@@ -1,4 +1,4 @@
-import { get, set, del, createStore } from 'idb-keyval'
+import { get, set, del, clear, createStore } from 'idb-keyval'
 import type { FieldJob } from '@/lib/store/field-jobs-store'
 
 const store = createStore('tradeflow-offline', 'kv')
@@ -27,4 +27,8 @@ export async function getPhotoBlob(key: string): Promise<Blob | undefined> {
 
 export async function deletePhotoBlob(key: string): Promise<void> {
   await del(photoBlobKey(key), store)
+}
+
+export async function clearOfflineCache(): Promise<void> {
+  await clear(store)
 }
