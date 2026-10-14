@@ -33,10 +33,11 @@ interface Ctx {
   y: number
 }
 
-function ensureSpace(ctx: Ctx, height: number) {
+function ensureSpace(ctx: Ctx, height: number, onBreak?: (ctx: Ctx) => void) {
   if (ctx.y + height > BOTTOM_LIMIT) {
     ctx.doc.addPage()
     ctx.y = MARGIN
+    onBreak?.(ctx)
   }
 }
 
@@ -169,13 +170,14 @@ function drawTwoColumnDetails(ctx: Ctx, leftLabel: string, leftLines: string[], 
 
 const COL = { qty: CONTENT_RIGHT - 60, price: CONTENT_RIGHT - 38, total: CONTENT_RIGHT }
 
-function drawLineItemsTable(ctx: Ctx, lineItems: LineItem[], gstType: GstType) {
+/** The column-label row. Drawn once up front, then again at the top of any page the table spills
+ * onto — a bare continuation of rows with no header is the "cut mid-table" look this exists to avoid. */
+function drawTableHeaderRow(ctx: Ctx, continued: boolean) {
   const { doc } = ctx
-  ensureSpace(ctx, 12)
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7.5)
   doc.setTextColor(...COLOR.muted)
-  doc.text('DESCRIPTION', MARGIN, ctx.y, { charSpace: 0.4 })
+  doc.text(continued ? 'DESCRIPTION (CONTINUED)' : 'DESCRIPTION', MARGIN, ctx.y, { charSpace: 0.4 })
   doc.text('QTY', COL.qty, ctx.y, { align: 'right', charSpace: 0.4 })
   doc.text('UNIT PRICE', COL.price, ctx.y, { align: 'right', charSpace: 0.4 })
   doc.text('TOTAL', COL.total, ctx.y, { align: 'right', charSpace: 0.4 })
@@ -184,12 +186,18 @@ function drawLineItemsTable(ctx: Ctx, lineItems: LineItem[], gstType: GstType) {
   doc.setLineWidth(0.3)
   doc.line(MARGIN, ctx.y, CONTENT_RIGHT, ctx.y)
   ctx.y += 6
+}
+
+function drawLineItemsTable(ctx: Ctx, lineItems: LineItem[], gstType: GstType) {
+  const { doc } = ctx
+  ensureSpace(ctx, 12)
+  drawTableHeaderRow(ctx, false)
 
   const descWidth = COL.qty - MARGIN - 45
   for (const li of lineItems) {
     const lines = doc.splitTextToSize(li.description || '—', descWidth)
     const rowHeight = Math.max(lines.length * 4.5, 5)
-    ensureSpace(ctx, rowHeight + 4)
+    ensureSpace(ctx, rowHeight + 4, (c) => drawTableHeaderRow(c, true))
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(9.5)
     doc.setTextColor(...COLOR.foreground)
