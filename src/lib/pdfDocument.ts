@@ -77,19 +77,28 @@ async function fetchImageDataUrl(url: string): Promise<{ dataUrl: string; format
 
 async function drawHeader(ctx: Ctx, business: BusinessSettings, heading: string, number: string, extra?: (ctx: Ctx) => void) {
   const { doc } = ctx
-  let logoDrawn = false
   if (business.logoUrl) {
     const logo = await fetchImageDataUrl(business.logoUrl)
     if (logo) {
       try {
-        doc.addImage(logo.dataUrl, logo.format, MARGIN, ctx.y, 28, 28)
-        logoDrawn = true
+        // Spans the full content width like a banner. A wide/short logo file fills it edge to
+        // edge; a square or tall one is capped in height (so it can't eat half the page) and
+        // left-aligned at that height instead, same as every square logo on-screen.
+        const props = doc.getImageProperties(logo.dataUrl)
+        const MAX_HEIGHT = 42
+        let w = CONTENT_WIDTH
+        let h = (props.height / props.width) * w
+        if (h > MAX_HEIGHT) {
+          h = MAX_HEIGHT
+          w = (props.width / props.height) * h
+        }
+        doc.addImage(logo.dataUrl, logo.format, MARGIN, ctx.y, w, h)
+        ctx.y += h + 7
       } catch {
-        logoDrawn = false
+        // Leave ctx.y untouched — fall through to the text-only header.
       }
     }
   }
-  if (logoDrawn) ctx.y += 32
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(14)
@@ -194,22 +203,31 @@ function drawLineItemsTable(ctx: Ctx, lineItems: LineItem[], gstType: GstType) {
   drawTableHeaderRow(ctx, false)
 
   const descWidth = COL.qty - MARGIN - 45
+  // Fixed clearances either side of the text block, independent of how many lines it wraps to —
+  // this is what keeps a wrapped description from touching the divider above or below it.
+  const LINE_HEIGHT = 4.3
+  const ROW_TOP_PAD = 3.5
+  const ROW_BOTTOM_PAD = 3.5
   for (const li of lineItems) {
-    const lines = doc.splitTextToSize(li.description || '—', descWidth)
-    const rowHeight = Math.max(lines.length * 4.5, 5)
-    ensureSpace(ctx, rowHeight + 4, (c) => drawTableHeaderRow(c, true))
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(9.5)
+    const lines = doc.splitTextToSize(li.description || '—', descWidth)
+    const rowHeight = ROW_TOP_PAD + (lines.length - 1) * LINE_HEIGHT + ROW_BOTTOM_PAD
+    ensureSpace(ctx, rowHeight, (c) => drawTableHeaderRow(c, true))
+
+    const baselineY = ctx.y + ROW_TOP_PAD
     doc.setTextColor(...COLOR.foreground)
-    doc.text(lines, MARGIN, ctx.y)
+    doc.text(lines, MARGIN, baselineY)
     doc.setTextColor(...COLOR.muted)
-    doc.text(String(li.qty), COL.qty, ctx.y, { align: 'right' })
-    doc.text(formatCurrency(li.unitPrice), COL.price, ctx.y, { align: 'right' })
+    doc.text(String(li.qty), COL.qty, baselineY, { align: 'right' })
+    doc.text(formatCurrency(li.unitPrice), COL.price, baselineY, { align: 'right' })
     doc.setTextColor(...COLOR.foreground)
-    doc.text(formatCurrency(li.qty * li.unitPrice), COL.total, ctx.y, { align: 'right' })
-    ctx.y += rowHeight + 4
+    doc.text(formatCurrency(li.qty * li.unitPrice), COL.total, baselineY, { align: 'right' })
+
+    ctx.y = baselineY + (lines.length - 1) * LINE_HEIGHT + ROW_BOTTOM_PAD
     doc.setDrawColor(...COLOR.border)
-    doc.line(MARGIN, ctx.y - 2, CONTENT_RIGHT, ctx.y - 2)
+    doc.setLineWidth(0.3)
+    doc.line(MARGIN, ctx.y, CONTENT_RIGHT, ctx.y)
   }
 
   const subtotal = lineItems.reduce((sum, li) => sum + li.qty * li.unitPrice, 0)
@@ -217,7 +235,7 @@ function drawLineItemsTable(ctx: Ctx, lineItems: LineItem[], gstType: GstType) {
   const includeGst = gstType === 'gst_inclusive'
 
   ensureSpace(ctx, includeGst ? 24 : 18)
-  ctx.y += 2
+  ctx.y += 3.5
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(9.5)
   doc.setTextColor(...COLOR.muted)
