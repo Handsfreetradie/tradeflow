@@ -33,6 +33,7 @@ export const EMAIL_ALERT_CATEGORY_LABELS: Record<EmailAlertCategory, string> = {
 
 export interface EmailAlert {
   id: string
+  messageId: string
   subject: string
   fromAddress: string
   snippet: string
@@ -113,6 +114,7 @@ export async function sendDocumentEmail(input: SendDocumentEmailInput): Promise<
 
 type AlertRow = {
   id: string
+  message_id: string
   subject: string
   from_address: string
   snippet: string
@@ -127,6 +129,7 @@ type AlertRow = {
 function fromAlertRow(row: AlertRow): EmailAlert {
   return {
     id: row.id,
+    messageId: row.message_id,
     subject: row.subject,
     fromAddress: row.from_address,
     snippet: row.snippet,
@@ -144,7 +147,7 @@ export async function listEmailAlerts(): Promise<EmailAlert[]> {
   if (!businessId) return []
   const { data, error } = await supabase
     .from('email_alerts')
-    .select('id, subject, from_address, snippet, ai_reason, priority, category, received_at, read_at, dismissed')
+    .select('id, message_id, subject, from_address, snippet, ai_reason, priority, category, received_at, read_at, dismissed')
     .eq('business_id', businessId)
     .eq('dismissed', false)
     .order('received_at', { ascending: false })

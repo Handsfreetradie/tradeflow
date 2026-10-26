@@ -1,13 +1,15 @@
 import { useEffect, useState } from 'react'
-import { Mail, X } from 'lucide-react'
+import { Mail, Reply, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { dismissEmailAlert, EMAIL_ALERT_CATEGORY_LABELS, listEmailAlerts, type EmailAlert } from '@/lib/api/email'
 import { formatDate } from '@/lib/utils'
+import { ReplyDialog } from './ReplyDialog'
 
 export function EmailAlertsCard() {
   const [alerts, setAlerts] = useState<EmailAlert[]>([])
   const [loading, setLoading] = useState(true)
+  const [replyTo, setReplyTo] = useState<EmailAlert | null>(null)
 
   useEffect(() => {
     listEmailAlerts().then((a) => {
@@ -54,13 +56,24 @@ export function EmailAlertsCard() {
                   {formatDate(a.receivedAt, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
                 </p>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => dismiss(a.id)}>
-                <X className="size-3.5" />
-              </Button>
+              <div className="flex shrink-0 items-center gap-1">
+                <Button variant="secondary" size="sm" onClick={() => setReplyTo(a)}>
+                  <Reply />
+                  Reply
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => dismiss(a.id)} aria-label="Dismiss">
+                  <X className="size-3.5" />
+                </Button>
+              </div>
             </div>
           ))
         )}
       </CardContent>
+      <ReplyDialog
+        alert={replyTo}
+        onOpenChange={(open) => !open && setReplyTo(null)}
+        onSent={(id) => setAlerts((prev) => prev.filter((a) => a.id !== id))}
+      />
     </Card>
   )
 }
