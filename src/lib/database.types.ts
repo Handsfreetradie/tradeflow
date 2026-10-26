@@ -2132,6 +2132,57 @@ export type Database = {
         }
         Relationships: []
       }
+      trips: {
+        Row: {
+          business_id: string
+          created_at: string
+          date: string
+          from_location: string | null
+          id: string
+          job_id: string | null
+          km: number
+          purpose: string
+          to_location: string | null
+        }
+        Insert: {
+          business_id?: string
+          created_at?: string
+          date: string
+          from_location?: string | null
+          id?: string
+          job_id?: string | null
+          km: number
+          purpose?: string
+          to_location?: string | null
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          date?: string
+          from_location?: string | null
+          id?: string
+          job_id?: string | null
+          km?: number
+          purpose?: string
+          to_location?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trips_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trips_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       customers_field_view: {

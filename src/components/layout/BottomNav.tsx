@@ -7,6 +7,7 @@ import {
   FileSpreadsheet,
   Users,
   Receipt,
+  Car,
   Package,
   BarChart3,
   Calendar,
@@ -30,6 +31,7 @@ const primaryTabs: { to: string; icon: LucideIcon; label: string }[] = [
 const moreItems: { to: string; icon: LucideIcon; label: string }[] = [
   { to: '/customers', icon: Users, label: 'Customers' },
   { to: '/expenses', icon: Receipt, label: 'Expenses' },
+  { to: '/trips', icon: Car, label: 'Kilometre log' },
   { to: '/products', icon: Package, label: 'Products & Services' },
   { to: '/reports', icon: BarChart3, label: 'Reports' },
   { to: '/calendar', icon: Calendar, label: 'Calendar' },

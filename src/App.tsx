@@ -8,6 +8,7 @@ import { CustomersProvider } from '@/lib/store/customers-store'
 import { QuotesProvider } from '@/lib/store/quotes-store'
 import { InvoicesProvider } from '@/lib/store/invoices-store'
 import { ExpensesProvider } from '@/lib/store/expenses-store'
+import { TripsProvider } from '@/lib/store/trips-store'
 import { PurchaseOrdersProvider } from '@/lib/store/purchase-orders-store'
 import { BasPeriodsProvider } from '@/lib/store/bas-periods-store'
 import { TeamProvider } from '@/lib/store/team-store'
@@ -39,6 +40,7 @@ import InvoiceNew from '@/pages/InvoiceNew'
 import InvoiceEdit from '@/pages/InvoiceEdit'
 import ExpensesList from '@/pages/ExpensesList'
 import ExpenseNew from '@/pages/ExpenseNew'
+import TripsList from '@/pages/TripsList'
 import CalendarPage from '@/pages/Calendar'
 import Reports from '@/pages/Reports'
 import Settings from '@/pages/Settings'
@@ -63,6 +65,7 @@ function OwnerApp() {
           <QuotesProvider>
             <InvoicesProvider>
               <ExpensesProvider>
+              <TripsProvider>
               <PurchaseOrdersProvider>
               <BasPeriodsProvider>
                 <Routes>
@@ -84,6 +87,7 @@ function OwnerApp() {
                     <Route path="customers/:id" element={<CustomerDetail />} />
                     <Route path="expenses" element={<ExpensesList />} />
                     <Route path="expenses/new" element={<ExpenseNew />} />
+                    <Route path="trips" element={<TripsList />} />
                     <Route path="products" element={<ProductsList />} />
                     <Route path="reports" element={<Reports />} />
                     <Route path="calendar" element={<CalendarPage />} />
@@ -95,6 +99,7 @@ function OwnerApp() {
                 </Routes>
               </BasPeriodsProvider>
               </PurchaseOrdersProvider>
+              </TripsProvider>
               </ExpensesProvider>
             </InvoicesProvider>
           </QuotesProvider>
