@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Car, Download, Plus, Trash2 } from 'lucide-react'
+import { Car, Download, Loader2, MapPin, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -14,9 +14,28 @@ import { useTripsStore } from '@/lib/store/trips-store'
 import { useJobsStore } from '@/lib/store/jobs-store'
 import { useBusinessSettings } from '@/lib/store/business-settings-store'
 import { KM_CAP, defaultKmRate, downloadTripsCsv, fyLabel, fyStartOf, tripTotals } from '@/lib/trips'
+import { drivingDistanceKm } from '@/lib/distance'
 import { formatDate, formatMoney, toDateKey } from '@/lib/utils'
 
 const rateKey = (fyStart: number) => `tradeflow.kmRate.${fyStart}`
+const FROM_KEY = 'tradeflow.tripFrom'
+
+// "From" is usually the same every time (home / the yard), so it's remembered on this device.
+function loadFrom(): string {
+  try {
+    return localStorage.getItem(FROM_KEY) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+function saveFrom(value: string) {
+  try {
+    localStorage.setItem(FROM_KEY, value)
+  } catch {
+    // storage blocked — it just won't be remembered
+  }
+}
 
 function loadRate(fyStart: number): number {
   try {
@@ -42,11 +61,38 @@ export default function TripsList() {
   const [date, setDate] = useState(toDateKey(new Date()))
   const [km, setKm] = useState('')
   const [returnTrip, setReturnTrip] = useState(false)
-  const [fromLocation, setFromLocation] = useState('')
+  const [fromLocation, setFromLocation] = useState(loadFrom)
   const [toLocation, setToLocation] = useState('')
   const [purpose, setPurpose] = useState('')
   const [jobId, setJobId] = useState('none')
   const [saving, setSaving] = useState(false)
+  const [calculating, setCalculating] = useState(false)
+
+  const calculateKm = async (from: string, to: string) => {
+    if (!from.trim() || !to.trim()) {
+      toast.info('Enter both a From and a To address to work out the km')
+      return
+    }
+    setCalculating(true)
+    try {
+      const oneWay = await drivingDistanceKm(from.trim(), to.trim())
+      setKm(String(oneWay))
+      saveFrom(from.trim())
+      toast.success(`${oneWay} km one way by road — tick "Return trip" if you drove back too`)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't work out the distance — type the km")
+    } finally {
+      setCalculating(false)
+    }
+  }
+
+  const changeJob = (value: string) => {
+    setJobId(value)
+    const job = value === 'none' ? undefined : getJob(value)
+    if (!job?.address) return
+    setToLocation(job.address)
+    if (fromLocation.trim()) void calculateKm(fromLocation, job.address)
+  }
 
   const years = useMemo(() => {
     const set = new Set<number>([currentFy, ...trips.map((t) => fyStartOf(t.date))])
@@ -96,7 +142,7 @@ export default function TripsList() {
       toast.success('Trip logged')
       setKm('')
       setReturnTrip(false)
-      setFromLocation('')
+      if (fromLocation.trim()) saveFrom(fromLocation.trim())
       setToLocation('')
       setPurpose('')
       setJobId('none')
@@ -230,7 +276,7 @@ export default function TripsList() {
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">Link to a job (optional)</label>
-              <Select value={jobId} onValueChange={setJobId}>
+              <Select value={jobId} onValueChange={changeJob}>
                 <SelectTrigger className="mt-1">
                   <SelectValue />
                 </SelectTrigger>
@@ -245,7 +291,14 @@ export default function TripsList() {
               </Select>
             </div>
           </div>
-          <div className="flex justify-end">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Button variant="secondary" disabled={calculating || !fromLocation.trim() || !toLocation.trim()} onClick={() => calculateKm(fromLocation, toLocation)}>
+                {calculating ? <Loader2 className="animate-spin" /> : <MapPin />}
+                {calculating ? 'Working it out...' : 'Work out km from addresses'}
+              </Button>
+              <p className="hidden text-xs text-muted-foreground sm:block">Picking a job fills in "To" and works out the km automatically.</p>
+            </div>
             <Button disabled={!canSubmit || saving} onClick={submit}>
               <Plus />
               Log trip
