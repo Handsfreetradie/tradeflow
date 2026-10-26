@@ -8,6 +8,27 @@ export interface EmailConnectionStatus {
   lastCheckedAt: string | null
 }
 
+export type EmailAlertCategory =
+  | 'customer'
+  | 'quote_response'
+  | 'safety_compliance'
+  | 'reschedule'
+  | 'variation_payment'
+  | 'supplier'
+  | 'payment'
+  | 'other'
+
+export const EMAIL_ALERT_CATEGORY_LABELS: Record<EmailAlertCategory, string> = {
+  customer: 'Customer enquiry',
+  quote_response: 'Quote reply',
+  safety_compliance: 'Safety / compliance',
+  reschedule: 'Reschedule',
+  variation_payment: 'Variation / payment claim',
+  supplier: 'Supplier issue',
+  payment: 'Payment question',
+  other: 'Needs attention',
+}
+
 export interface EmailAlert {
   id: string
   subject: string
@@ -15,6 +36,7 @@ export interface EmailAlert {
   snippet: string
   aiReason: string
   priority: 'high' | 'normal'
+  category: EmailAlertCategory
   receivedAt: string
   readAt: string | null
   dismissed: boolean
@@ -76,6 +98,7 @@ type AlertRow = {
   snippet: string
   ai_reason: string
   priority: string
+  category: string | null
   received_at: string
   read_at: string | null
   dismissed: boolean
@@ -89,6 +112,7 @@ function fromAlertRow(row: AlertRow): EmailAlert {
     snippet: row.snippet,
     aiReason: row.ai_reason,
     priority: row.priority === 'high' ? 'high' : 'normal',
+    category: row.category && row.category in EMAIL_ALERT_CATEGORY_LABELS ? (row.category as EmailAlertCategory) : 'other',
     receivedAt: row.received_at,
     readAt: row.read_at,
     dismissed: row.dismissed,
@@ -100,7 +124,7 @@ export async function listEmailAlerts(): Promise<EmailAlert[]> {
   if (!businessId) return []
   const { data, error } = await supabase
     .from('email_alerts')
-    .select('id, subject, from_address, snippet, ai_reason, priority, received_at, read_at, dismissed')
+    .select('id, subject, from_address, snippet, ai_reason, priority, category, received_at, read_at, dismissed')
     .eq('business_id', businessId)
     .eq('dismissed', false)
     .order('received_at', { ascending: false })

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Mail, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { dismissEmailAlert, listEmailAlerts, type EmailAlert } from '@/lib/api/email'
+import { dismissEmailAlert, EMAIL_ALERT_CATEGORY_LABELS, listEmailAlerts, type EmailAlert } from '@/lib/api/email'
 import { formatDate } from '@/lib/utils'
 
 export function EmailAlertsCard() {
@@ -33,7 +33,7 @@ export function EmailAlertsCard() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Mail className="size-4 text-muted-foreground" />
-          Emails needing a reply
+          Emails needing attention
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-2">
@@ -43,6 +43,10 @@ export function EmailAlertsCard() {
           alerts.map((a) => (
             <div key={a.id} className="flex items-start justify-between gap-3 rounded-lg border border-border p-3">
               <div className="min-w-0">
+                <div className="mb-1 flex flex-wrap items-center gap-1.5">
+                  <span className="rounded-full bg-secondary px-2 py-0.5 text-[11px] font-medium text-muted-foreground">{EMAIL_ALERT_CATEGORY_LABELS[a.category]}</span>
+                  {a.priority === 'high' && <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-[11px] font-medium text-destructive">Urgent</span>}
+                </div>
                 <p className="truncate text-sm font-medium">{a.subject || '(no subject)'}</p>
                 <p className="truncate text-xs text-muted-foreground">{a.fromAddress}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{a.aiReason}</p>

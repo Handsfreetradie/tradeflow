@@ -405,6 +405,7 @@ export type Database = {
         Row: {
           ai_reason: string
           business_id: string | null
+          category: string | null
           created_at: string
           dismissed: boolean
           from_address: string
@@ -420,6 +421,7 @@ export type Database = {
         Insert: {
           ai_reason?: string
           business_id?: string | null
+          category?: string | null
           created_at?: string
           dismissed?: boolean
           from_address?: string
@@ -435,6 +437,7 @@ export type Database = {
         Update: {
           ai_reason?: string
           business_id?: string | null
+          category?: string | null
           created_at?: string
           dismissed?: boolean
           from_address?: string
