@@ -14,24 +14,28 @@ import { useTripsStore } from '@/lib/store/trips-store'
 import { useJobsStore } from '@/lib/store/jobs-store'
 import { useBusinessSettings } from '@/lib/store/business-settings-store'
 import { KM_CAP, defaultKmRate, downloadTripsCsv, fyLabel, fyStartOf, tripTotals } from '@/lib/trips'
-import { drivingDistanceKm } from '@/lib/distance'
+import { drivingDistance, type Place } from '@/lib/distance'
+import { AddressInput } from '@/components/shared/AddressInput'
 import { formatDate, formatMoney, toDateKey } from '@/lib/utils'
 
 const rateKey = (fyStart: number) => `tradeflow.kmRate.${fyStart}`
-const FROM_KEY = 'tradeflow.tripFrom'
+const FROM_KEY = 'tradeflow.tripFromPlace'
 
 // "From" is usually the same every time (home / the yard), so it's remembered on this device.
-function loadFrom(): string {
+function loadFrom(): Place | null {
   try {
-    return localStorage.getItem(FROM_KEY) ?? ''
+    const raw = localStorage.getItem(FROM_KEY)
+    if (!raw) return null
+    const p = JSON.parse(raw) as Place
+    return typeof p.label === 'string' && Number.isFinite(p.lat) && Number.isFinite(p.lon) ? p : null
   } catch {
-    return ''
+    return null
   }
 }
 
-function saveFrom(value: string) {
+function saveFrom(place: Place) {
   try {
-    localStorage.setItem(FROM_KEY, value)
+    localStorage.setItem(FROM_KEY, JSON.stringify(place))
   } catch {
     // storage blocked — it just won't be remembered
   }
@@ -61,24 +65,33 @@ export default function TripsList() {
   const [date, setDate] = useState(toDateKey(new Date()))
   const [km, setKm] = useState('')
   const [returnTrip, setReturnTrip] = useState(false)
-  const [fromLocation, setFromLocation] = useState(loadFrom)
+  const [fromPlace, setFromPlace] = useState<Place | null>(loadFrom)
+  const [fromLocation, setFromLocation] = useState(() => loadFrom()?.label ?? '')
+  const [toPlace, setToPlace] = useState<Place | null>(null)
   const [toLocation, setToLocation] = useState('')
   const [purpose, setPurpose] = useState('')
   const [jobId, setJobId] = useState('none')
   const [saving, setSaving] = useState(false)
   const [calculating, setCalculating] = useState(false)
 
-  const calculateKm = async (from: string, to: string) => {
-    if (!from.trim() || !to.trim()) {
+  // A picked suggestion carries exact coordinates; free-typed text is looked up (best match) instead.
+  const calculateKm = async (from: Place | string, to: Place | string) => {
+    if (!(typeof from === 'string' ? from.trim() : from) || !(typeof to === 'string' ? to.trim() : to)) {
       toast.info('Enter both a From and a To address to work out the km')
       return
     }
     setCalculating(true)
     try {
-      const oneWay = await drivingDistanceKm(from.trim(), to.trim())
-      setKm(String(oneWay))
-      saveFrom(from.trim())
-      toast.success(`${oneWay} km one way by road — tick "Return trip" if you drove back too`)
+      const result = await drivingDistance(typeof from === 'string' ? from.trim() : from, typeof to === 'string' ? to.trim() : to)
+      setKm(String(result.km))
+      setFromPlace(result.from)
+      setFromLocation(result.from.label)
+      setToPlace(result.to)
+      setToLocation(result.to.label)
+      saveFrom(result.from)
+      toast.success(`${result.km} km one way by road`, {
+        description: `${result.from.label} → ${result.to.label}. Tick "Return trip" if you drove back too.`,
+      })
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't work out the distance — type the km")
     } finally {
@@ -86,12 +99,36 @@ export default function TripsList() {
     }
   }
 
+  const typeFrom = (text: string) => {
+    setFromLocation(text)
+    setFromPlace(null)
+  }
+
+  const typeTo = (text: string) => {
+    setToLocation(text)
+    setToPlace(null)
+  }
+
+  const pickFrom = (place: Place) => {
+    setFromLocation(place.label)
+    setFromPlace(place)
+    saveFrom(place)
+    if (toPlace || toLocation.trim()) void calculateKm(place, toPlace ?? toLocation)
+  }
+
+  const pickTo = (place: Place) => {
+    setToLocation(place.label)
+    setToPlace(place)
+    if (fromPlace || fromLocation.trim()) void calculateKm(fromPlace ?? fromLocation, place)
+  }
+
   const changeJob = (value: string) => {
     setJobId(value)
     const job = value === 'none' ? undefined : getJob(value)
     if (!job?.address) return
     setToLocation(job.address)
-    if (fromLocation.trim()) void calculateKm(fromLocation, job.address)
+    setToPlace(null)
+    if (fromPlace || fromLocation.trim()) void calculateKm(fromPlace ?? fromLocation, job.address)
   }
 
   const years = useMemo(() => {
@@ -142,8 +179,8 @@ export default function TripsList() {
       toast.success('Trip logged')
       setKm('')
       setReturnTrip(false)
-      if (fromLocation.trim()) saveFrom(fromLocation.trim())
       setToLocation('')
+      setToPlace(null)
       setPurpose('')
       setJobId('none')
       // Show the year the trip landed in, so it doesn't look like it vanished.
@@ -262,11 +299,15 @@ export default function TripsList() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="text-xs font-medium text-muted-foreground">From (optional)</label>
-              <Input value={fromLocation} onChange={(e) => setFromLocation(e.target.value)} placeholder="e.g. Home" className="mt-1" />
+              <div className="mt-1">
+                <AddressInput value={fromLocation} onChange={typeFrom} onSelect={pickFrom} placeholder="Start typing an address" />
+              </div>
             </div>
             <div>
               <label className="text-xs font-medium text-muted-foreground">To (optional)</label>
-              <Input value={toLocation} onChange={(e) => setToLocation(e.target.value)} placeholder="e.g. 12 Smith St, Joondalup" className="mt-1" />
+              <div className="mt-1">
+                <AddressInput value={toLocation} onChange={typeTo} onSelect={pickTo} placeholder="Start typing an address" />
+              </div>
             </div>
           </div>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -293,7 +334,7 @@ export default function TripsList() {
           </div>
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <Button variant="secondary" disabled={calculating || !fromLocation.trim() || !toLocation.trim()} onClick={() => calculateKm(fromLocation, toLocation)}>
+              <Button variant="secondary" disabled={calculating || !fromLocation.trim() || !toLocation.trim()} onClick={() => calculateKm(fromPlace ?? fromLocation, toPlace ?? toLocation)}>
                 {calculating ? <Loader2 className="animate-spin" /> : <MapPin />}
                 {calculating ? 'Working it out...' : 'Work out km from addresses'}
               </Button>

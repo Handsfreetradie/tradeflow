@@ -1,22 +1,33 @@
 /**
- * Driving distance between two street addresses using free OpenStreetMap services:
- * Nominatim (address -> lat/lon) and the public OSRM demo router (lat/lon -> road distance).
- * No API key. Both are fair-use services, so this is only ever called on an explicit user action
- * (button press / picking a job), never on every keystroke.
+ * Address search and driving distance using free OpenStreetMap-based services:
+ * Photon (komoot) for address search-as-you-type, and the public OSRM demo router for road distance.
+ * No API key. Both are fair-use public services — searches are debounced by the caller and the
+ * route is only requested on an explicit action.
  */
 
-const TIMEOUT_MS = 10_000
-const geocodeCache = new Map<string, { lat: number; lon: number }>()
+export interface Place {
+  label: string
+  lat: number
+  lon: number
+}
 
-async function fetchJson<T>(url: string): Promise<T> {
+const TIMEOUT_MS = 10_000
+// Australia only (lon_min, lat_min, lon_max, lat_max).
+const AU_BBOX = '112,-44,154,-10'
+
+async function fetchJson<T>(url: string, signal?: AbortSignal): Promise<T> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
+  signal?.addEventListener('abort', () => controller.abort())
   try {
     const res = await fetch(url, { signal: controller.signal })
     if (!res.ok) throw new Error(`Map service returned ${res.status}`)
     return (await res.json()) as T
   } catch (e) {
-    if (e instanceof DOMException && e.name === 'AbortError') throw new Error('The map service took too long — try again or type the km')
+    if (e instanceof DOMException && e.name === 'AbortError') {
+      if (signal?.aborted) throw e
+      throw new Error('The map service took too long — try again or type the km')
+    }
     if (e instanceof TypeError) throw new Error("Couldn't reach the map service — check your connection or type the km")
     throw e
   } finally {
@@ -24,45 +35,74 @@ async function fetchJson<T>(url: string): Promise<T> {
   }
 }
 
-async function searchOnce(query: string): Promise<{ lat: number; lon: number } | null> {
-  const results = await fetchJson<{ lat: string; lon: string }[]>(
-    `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=au&q=${encodeURIComponent(query)}`
-  )
-  if (!results.length) return null
-  return { lat: Number(results[0].lat), lon: Number(results[0].lon) }
-}
-
-const cacheKey = (address: string) => address.trim().toLowerCase()
-
-async function geocode(address: string): Promise<{ lat: number; lon: number }> {
-  const key = cacheKey(address)
-  const cached = geocodeCache.get(key)
-  if (cached) return cached
-
-  // OSM often doesn't know unit numbers ("3/12 Smith St"), so retry with just the street number.
-  const withoutUnit = address.replace(/^\s*(?:unit|apt|apartment|suite|shop|lot)?\s*[\w-]+\s*\/\s*/i, '')
-  const attempts = [address, ...(withoutUnit !== address ? [withoutUnit] : [])]
-
-  for (const attempt of attempts) {
-    const found = await searchOnce(attempt)
-    if (found) {
-      geocodeCache.set(key, found)
-      return found
-    }
+interface PhotonFeature {
+  geometry: { coordinates: [number, number] }
+  properties: {
+    name?: string
+    housenumber?: string
+    street?: string
+    city?: string
+    district?: string
+    locality?: string
+    state?: string
+    postcode?: string
   }
-  throw new Error(`Couldn't find "${address}" on the map — check the address or type the km`)
 }
 
-/** One-way driving distance in km, rounded to 0.1. */
-export async function drivingDistanceKm(from: string, to: string): Promise<number> {
-  const needsSecondLookup = !geocodeCache.has(cacheKey(from)) && !geocodeCache.has(cacheKey(to))
-  const a = await geocode(from)
-  // Nominatim asks for no more than one request per second.
-  if (needsSecondLookup) await new Promise((r) => setTimeout(r, 1100))
-  const b = await geocode(to)
+const STATE_ABBR: Record<string, string> = {
+  'New South Wales': 'NSW',
+  Victoria: 'VIC',
+  Queensland: 'QLD',
+  'Western Australia': 'WA',
+  'South Australia': 'SA',
+  Tasmania: 'TAS',
+  'Northern Territory': 'NT',
+  'Australian Capital Territory': 'ACT',
+}
+
+function toPlace(f: PhotonFeature): Place {
+  const p = f.properties
+  const street = p.housenumber && p.street ? `${p.housenumber} ${p.street}` : p.street ?? p.name
+  const suburb = p.district ?? p.locality ?? p.city
+  const state = p.state ? STATE_ABBR[p.state] ?? p.state : undefined
+  const tail = [suburb, [state, p.postcode].filter(Boolean).join(' ')].filter(Boolean).join(', ')
+  // Avoid "Dalmeny, Dalmeny NSW" when the result is the suburb itself.
+  const label = street && street !== suburb ? `${street}, ${tail}` : tail || street || 'Unknown place'
+  const [lon, lat] = f.geometry.coordinates
+  return { label, lat, lon }
+}
+
+/** Address suggestions for a partly-typed query. Throws an AbortError if `signal` aborts. */
+export async function searchPlaces(query: string, signal?: AbortSignal): Promise<Place[]> {
+  const data = await fetchJson<{ features: PhotonFeature[] }>(
+    `https://photon.komoot.io/api/?q=${encodeURIComponent(query)}&limit=6&lang=en&bbox=${AU_BBOX}`,
+    signal
+  )
+  const seen = new Set<string>()
+  return data.features
+    .map(toPlace)
+    .filter((p) => (seen.has(p.label) ? false : (seen.add(p.label), true)))
+}
+
+/** Best single match for an address that wasn't picked from the suggestions. */
+export async function findPlace(address: string): Promise<Place> {
+  const results = await searchPlaces(address)
+  if (!results.length) throw new Error(`Couldn't find "${address}" on the map — pick a suggestion or type the km`)
+  return results[0]
+}
+
+export interface DistanceResult {
+  km: number
+  from: Place
+  to: Place
+}
+
+/** One-way driving distance in km (rounded to 0.1). Pass a Place when you have one, a string to look it up. */
+export async function drivingDistance(from: Place | string, to: Place | string): Promise<DistanceResult> {
+  const [a, b] = await Promise.all([typeof from === 'string' ? findPlace(from) : from, typeof to === 'string' ? findPlace(to) : to])
   const route = await fetchJson<{ code: string; routes?: { distance: number }[] }>(
     `https://router.project-osrm.org/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=false`
   )
   if (route.code !== 'Ok' || !route.routes?.length) throw new Error("Couldn't find a driving route between those addresses — type the km")
-  return Math.round(route.routes[0].distance / 100) / 10
+  return { km: Math.round(route.routes[0].distance / 100) / 10, from: a, to: b }
 }
