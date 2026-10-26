@@ -966,10 +966,14 @@ export type Database = {
           job_id: string
           logged_by_employee_id: string | null
           logged_by_employee_name: string | null
+          needs_pricing: boolean
           po_number: string | null
+          product_id: string | null
+          quantity: number | null
           receipt_storage_path: string | null
           signature_data_url: string | null
           supplier: string | null
+          unit: string | null
         }
         Insert: {
           amount: number
@@ -981,10 +985,14 @@ export type Database = {
           job_id: string
           logged_by_employee_id?: string | null
           logged_by_employee_name?: string | null
+          needs_pricing?: boolean
           po_number?: string | null
+          product_id?: string | null
+          quantity?: number | null
           receipt_storage_path?: string | null
           signature_data_url?: string | null
           supplier?: string | null
+          unit?: string | null
         }
         Update: {
           amount?: number
@@ -996,10 +1004,14 @@ export type Database = {
           job_id?: string
           logged_by_employee_id?: string | null
           logged_by_employee_name?: string | null
+          needs_pricing?: boolean
           po_number?: string | null
+          product_id?: string | null
+          quantity?: number | null
           receipt_storage_path?: string | null
           signature_data_url?: string | null
           supplier?: string | null
+          unit?: string | null
         }
         Relationships: [
           {
@@ -1028,6 +1040,20 @@ export type Database = {
             columns: ["logged_by_employee_id"]
             isOneToOne: false
             referencedRelation: "team_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_costs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_costs_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_field_view"
             referencedColumns: ["id"]
           },
         ]
@@ -2082,6 +2108,41 @@ export type Database = {
           },
         ]
       }
+      products_field_view: {
+        Row: {
+          business_id: string | null
+          category: string | null
+          description: string | null
+          id: string | null
+          name: string | null
+          unit: string | null
+        }
+        Insert: {
+          business_id?: string | null
+          category?: string | null
+          description?: string | null
+          id?: string | null
+          name?: string | null
+          unit?: string | null
+        }
+        Update: {
+          business_id?: string | null
+          category?: string | null
+          description?: string | null
+          id?: string | null
+          name?: string | null
+          unit?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "products_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       team_directory: {
         Row: {
           full_name: string | null
@@ -2112,6 +2173,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      employee_add_job_materials: {
+        Args: { p_items: Json; p_job_id: string }
+        Returns: number
+      }
       employee_finish_job: {
         Args: { p_blocked?: boolean; p_job_id: string; p_note?: string }
         Returns: {
@@ -2132,8 +2197,25 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      employee_job_materials: {
+        Args: { p_job_id: string }
+        Returns: {
+          created_at: string
+          description: string
+          id: string
+          logged_by_employee_id: string
+          logged_by_employee_name: string
+          needs_pricing: boolean
+          quantity: number
+          unit: string
+        }[]
+      }
       employee_join_job: { Args: { p_job_id: string }; Returns: undefined }
       employee_leave_job: { Args: { p_job_id: string }; Returns: undefined }
+      employee_remove_job_material: {
+        Args: { p_cost_id: string }
+        Returns: undefined
+      }
       employee_set_job_time: {
         Args: {
           p_check_in: string

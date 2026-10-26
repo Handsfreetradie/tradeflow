@@ -28,7 +28,7 @@ const categoryTone: Record<JobCost['category'], string> = {
 const MAX_RECEIPT_BYTES = 8 * 1024 * 1024
 
 export function JobCostingCard({ job }: { job: Job }) {
-  const { addCost } = useJobsStore()
+  const { addCost, updateCostAmount, deleteCost } = useJobsStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [open, setOpen] = useState(false)
   const [description, setDescription] = useState('')
@@ -40,6 +40,33 @@ export function JobCostingCard({ job }: { job: Job }) {
   const [uploading, setUploading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [viewingSignature, setViewingSignature] = useState<JobCost | null>(null)
+  const [pricing, setPricing] = useState<JobCost | null>(null)
+  const [priceValue, setPriceValue] = useState('')
+  const [savingPrice, setSavingPrice] = useState(false)
+
+  const savePrice = async () => {
+    if (!pricing) return
+    const value = Number(priceValue)
+    if (!(value >= 0)) return
+    setSavingPrice(true)
+    try {
+      await updateCostAmount(job.id, pricing.id, value)
+      setPricing(null)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not save the price')
+    } finally {
+      setSavingPrice(false)
+    }
+  }
+
+  const removeCost = async (cost: JobCost) => {
+    if (!window.confirm(`Remove "${cost.description}" from this job's costs?`)) return
+    try {
+      await deleteCost(job.id, cost.id)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not remove that cost')
+    }
+  }
 
   const costsTotal = job.costs.reduce((sum, c) => sum + c.amount, 0)
   const target = job.value
@@ -202,12 +229,50 @@ export function JobCostingCard({ job }: { job: Job }) {
                       : `${cost.supplier ? `${cost.supplier} · ` : ''}${formatDate(cost.date)}`}
                   </p>
                 </div>
-                <p className="shrink-0 text-sm font-medium">{formatCurrency(cost.amount)}</p>
+                {cost.needsPricing ? (
+                  <button
+                    onClick={() => {
+                      setPricing(cost)
+                      setPriceValue('')
+                    }}
+                    className="shrink-0 rounded-md bg-warning/10 px-2 py-1 text-xs font-medium text-warning hover:bg-warning/20"
+                  >
+                    Needs pricing — set price
+                  </button>
+                ) : (
+                  <p className="shrink-0 text-sm font-medium">{formatCurrency(cost.amount)}</p>
+                )}
+                <button onClick={() => removeCost(cost)} title="Remove cost" className="shrink-0 text-muted-foreground hover:text-destructive">
+                  <X className="size-4" />
+                </button>
               </div>
             ))}
           </div>
         )}
       </CardContent>
+
+      <Dialog open={!!pricing} onOpenChange={(next) => !next && setPricing(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Set the cost</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            {pricing?.loggedByEmployeeName} added <span className="font-medium text-foreground">{pricing?.description}</span>, which isn't on your materials list. Enter the total cost for it.
+          </p>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Total cost ($)</label>
+            <Input type="number" min="0" step="0.01" value={priceValue} onChange={(e) => setPriceValue(e.target.value)} className="mt-1" />
+          </div>
+          <DialogFooter>
+            <Button variant="secondary" onClick={() => setPricing(null)}>
+              Cancel
+            </Button>
+            <Button disabled={savingPrice || priceValue === '' || !(Number(priceValue) >= 0)} onClick={savePrice}>
+              {savingPrice ? 'Saving…' : 'Save cost'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={open} onOpenChange={(next) => (next ? setOpen(true) : closeDialog())}>
         <DialogContent>

@@ -39,6 +39,11 @@ export interface JobCost {
   loggedByEmployeeName?: string
   /** A signature captured at submission time, required for employee-logged costs. */
   signatureDataUrl?: string
+  /** Set for materials an employee added from the materials list (or typed in). */
+  quantity?: number
+  unit?: string
+  /** An employee typed this material in (it isn't on the list), so it was saved at $0 awaiting a price. */
+  needsPricing?: boolean
 }
 
 export interface JobNote {

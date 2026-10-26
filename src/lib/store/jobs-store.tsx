@@ -37,6 +37,9 @@ interface JobsContextValue {
   updateCoc: (id: string, patch: { cocStatus?: CocStatus; cocNumber?: string; cocIssuedDate?: string }) => Promise<void>
   addNote: (id: string, text: string) => Promise<void>
   addCost: (id: string, cost: Omit<JobCost, 'id' | 'createdAt' | 'loggedByEmployeeId' | 'loggedByEmployeeName' | 'signatureDataUrl'>) => Promise<void>
+  /** Set the price on a cost an employee added without one (or correct any cost's amount). */
+  updateCostAmount: (jobId: string, costId: string, amount: number) => Promise<void>
+  deleteCost: (jobId: string, costId: string) => Promise<void>
   startJob: (id: string) => Promise<void>
   finishJob: (id: string, note?: string) => Promise<void>
   addStage: (jobId: string, stage: NewJobStageInput) => Promise<void>
@@ -191,6 +194,9 @@ async function fetchJobs(businessId: string): Promise<Job[]> {
       loggedByEmployeeId: c.logged_by_employee_id ?? undefined,
       loggedByEmployeeName: c.logged_by_employee_name ?? undefined,
       signatureDataUrl: c.signature_data_url ?? undefined,
+      quantity: c.quantity ?? undefined,
+      unit: c.unit ?? undefined,
+      needsPricing: c.needs_pricing,
     })
     costsByJob.set(c.job_id, arr)
   }
@@ -301,6 +307,9 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       loggedByEmployeeId: c.logged_by_employee_id ?? undefined,
       loggedByEmployeeName: c.logged_by_employee_name ?? undefined,
       signatureDataUrl: c.signature_data_url ?? undefined,
+      quantity: c.quantity ?? undefined,
+      unit: c.unit ?? undefined,
+      needsPricing: c.needs_pricing,
     }))
     const notes = (noteRows ?? []).map((n) => ({
       id: n.id,
@@ -487,6 +496,24 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     [refreshJob]
   )
 
+  const updateCostAmount = useCallback(
+    async (jobId: string, costId: string, amount: number) => {
+      const { error } = await supabase.from('job_costs').update({ amount, needs_pricing: false }).eq('id', costId)
+      if (error) throw new Error(error.message)
+      await refreshJob(jobId)
+    },
+    [refreshJob]
+  )
+
+  const deleteCost = useCallback(
+    async (jobId: string, costId: string) => {
+      const { error } = await supabase.from('job_costs').delete().eq('id', costId)
+      if (error) throw new Error(error.message)
+      await refreshJob(jobId)
+    },
+    [refreshJob]
+  )
+
   const addStage = useCallback(
     async (jobId: string, stage: NewJobStageInput) => {
       const job = jobs.find((j) => j.id === jobId)
@@ -621,6 +648,8 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       updateCoc,
       addNote,
       addCost,
+      updateCostAmount,
+      deleteCost,
       startJob,
       finishJob,
       addStage,
@@ -642,6 +671,8 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       updateCoc,
       addNote,
       addCost,
+      updateCostAmount,
+      deleteCost,
       startJob,
       finishJob,
       addStage,

@@ -31,6 +31,32 @@ export interface NewFieldJobCostInput {
   signatureDataUrl: string
 }
 
+/** An item from the business's materials list, as employees see it — never with a price. */
+export interface MaterialOption {
+  id: string
+  name: string
+  description: string
+  category: string
+  unit: string
+}
+
+export interface NewMaterialItem {
+  /** From the materials list. Leave unset for an item typed in that isn't on the list. */
+  productId?: string
+  name?: string
+  unit?: string
+  qty: number
+}
+
+export interface JobMaterial {
+  id: string
+  description: string
+  needsPricing: boolean
+  loggedByEmployeeId: string | null
+  loggedByName: string
+  createdAt: string
+}
+
 export interface JoinableJob {
   id: string
   number: string
@@ -69,6 +95,10 @@ interface FieldJobsContextValue {
   addNote: (id: string, text: string) => Promise<void>
   startJob: (id: string) => Promise<void>
   finishJob: (id: string, note?: string, blocked?: boolean) => Promise<void>
+  loadMaterialOptions: () => Promise<MaterialOption[]>
+  addMaterials: (jobId: string, items: NewMaterialItem[]) => Promise<void>
+  listJobMaterials: (jobId: string) => Promise<JobMaterial[]>
+  removeMaterial: (costId: string) => Promise<void>
   /** Add a missed session (no checkinId) or correct one of your own. Always flagged for the office. */
   setJobTime: (jobId: string, input: { checkIn: string; checkOut: string | null; note: string; checkinId?: string }) => Promise<void>
   updateStage: (stageId: string, jobId: string, patch: { complete?: boolean; notes?: string }) => Promise<void>
@@ -394,6 +424,50 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
     [load, loadJoinable]
   )
 
+  const loadMaterialOptions = useCallback(async (): Promise<MaterialOption[]> => {
+    if (!activeBusinessId) return []
+    const { data, error } = await supabase
+      .from('products_field_view')
+      .select('id, name, description, category, unit')
+      .eq('business_id', activeBusinessId)
+      .order('name')
+    if (error) throw new Error(error.message)
+    return (data ?? []).map((p) => ({
+      id: p.id as string,
+      name: (p.name as string) ?? '',
+      description: (p.description as string) ?? '',
+      category: (p.category as string) ?? '',
+      unit: (p.unit as string) ?? '',
+    }))
+  }, [activeBusinessId])
+
+  const addMaterials = useCallback(async (jobId: string, items: NewMaterialItem[]) => {
+    if (!navigator.onLine) throw new Error('You need a connection to add materials — try again when you have signal')
+    const { error } = await supabase.rpc('employee_add_job_materials', {
+      p_job_id: jobId,
+      p_items: items.map((i) => ({ product_id: i.productId ?? null, name: i.name ?? null, unit: i.unit ?? null, qty: i.qty })),
+    })
+    if (error) throw new Error(error.message)
+  }, [])
+
+  const listJobMaterials = useCallback(async (jobId: string): Promise<JobMaterial[]> => {
+    const { data, error } = await supabase.rpc('employee_job_materials', { p_job_id: jobId })
+    if (error) throw new Error(error.message)
+    return (data ?? []).map((m) => ({
+      id: m.id,
+      description: m.description,
+      needsPricing: m.needs_pricing,
+      loggedByEmployeeId: m.logged_by_employee_id,
+      loggedByName: m.logged_by_employee_name ?? 'Employee',
+      createdAt: m.created_at,
+    }))
+  }, [])
+
+  const removeMaterial = useCallback(async (costId: string) => {
+    const { error } = await supabase.rpc('employee_remove_job_material', { p_cost_id: costId })
+    if (error) throw new Error(error.message)
+  }, [])
+
   const leaveJob = useCallback(
     async (jobId: string) => {
       const { error } = await supabase.rpc('employee_leave_job', { p_job_id: jobId })
@@ -416,13 +490,17 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
       startJob,
       finishJob,
       setJobTime,
+      loadMaterialOptions,
+      addMaterials,
+      listJobMaterials,
+      removeMaterial,
       updateStage,
       addJobCost,
       joinJob,
       leaveJob,
       refresh,
     }),
-    [jobs, loading, online, pendingSyncCount, joinableJobs, getJob, addNote, startJob, finishJob, setJobTime, updateStage, addJobCost, joinJob, leaveJob, refresh]
+    [jobs, loading, online, pendingSyncCount, joinableJobs, getJob, addNote, startJob, finishJob, setJobTime, loadMaterialOptions, addMaterials, listJobMaterials, removeMaterial, updateStage, addJobCost, joinJob, leaveJob, refresh]
   )
 
   return <FieldJobsContext.Provider value={value}>{children}</FieldJobsContext.Provider>
