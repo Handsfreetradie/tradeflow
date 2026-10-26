@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ArrowLeft, Send, DollarSign, Briefcase, Link as LinkIcon, Eye, Download, Pencil, Trash2, Check } from 'lucide-react'
 import { LogoMark } from '@/components/shared/Logo'
@@ -149,13 +149,15 @@ function InvoiceDocument({
 export default function InvoiceDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const location = useLocation()
   const { loading, getInvoice, markSent, recordPayment, deleteInvoice } = useInvoicesStore()
   const { getCustomer } = useCustomersStore()
   const { settings: business } = useBusinessSettings()
   const [paymentOpen, setPaymentOpen] = useState(false)
   const [amount, setAmount] = useState('')
   const [method, setMethod] = useState<PaymentMethod>('Bank Transfer')
-  const [sendOpen, setSendOpen] = useState(false)
+  // "Save & send" on the new-document page lands here with the send window already open.
+  const [sendOpen, setSendOpen] = useState(() => (location.state as { openSend?: boolean } | null)?.openSend === true)
   const [previewing, setPreviewing] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)

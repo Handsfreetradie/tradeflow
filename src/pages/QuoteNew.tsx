@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { toast } from 'sonner'
 import { ArrowLeft, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -21,10 +22,11 @@ const NEW_CUSTOMER = '__new__'
 
 export default function QuoteNew() {
   const navigate = useNavigate()
-  const { addQuote, updateStatus } = useQuotesStore()
+  const { addQuote } = useQuotesStore()
   const { customers, addCustomer } = useCustomersStore()
   const { settings: business, loading: businessLoading } = useBusinessSettings()
 
+  const [submitting, setSubmitting] = useState(false)
   const [customerId, setCustomerId] = useState('')
   const [newCustomerName, setNewCustomerName] = useState('')
   const [gstType, setGstType] = useState<GstType>('gst_inclusive')
@@ -61,27 +63,35 @@ export default function QuoteNew() {
     lineItems.some((li) => li.description.trim() && li.unitPrice > 0)
 
   const submit = async (send: boolean) => {
-    if (!canSubmit) return
-    if (!usingNewCustomer && !customer) return
-    let resolvedCustomerId = customerId
-    let resolvedCustomerName = customer?.name ?? ''
-    if (usingNewCustomer) {
-      const created = await addCustomer({ name: newCustomerName.trim() })
-      resolvedCustomerId = created.id
-      resolvedCustomerName = created.name
+    if (!canSubmit || submitting) return
+    if (!usingNewCustomer && !customer) {
+      toast.error('Pick a customer first')
+      return
     }
-    const quote = await addQuote({
-      customerId: resolvedCustomerId,
-      customer: resolvedCustomerName,
-      gstType,
-      validityDays: Number(validityDays) || 30,
-      terms: terms.trim(),
-      exclusions: exclusions.trim(),
-      notes: notes.trim(),
-      lineItems: lineItems.filter((li) => li.description.trim() && li.unitPrice > 0),
-    })
-    if (send) await updateStatus(quote.id, 'Sent')
-    navigate(`/quotes/${quote.id}`)
+    setSubmitting(true)
+    try {
+      let resolvedCustomerId = customerId
+      let resolvedCustomerName = customer?.name ?? ''
+      if (usingNewCustomer) {
+        const created = await addCustomer({ name: newCustomerName.trim() })
+        resolvedCustomerId = created.id
+        resolvedCustomerName = created.name
+      }
+      const quote = await addQuote({
+        customerId: resolvedCustomerId,
+        customer: resolvedCustomerName,
+        gstType,
+        validityDays: Number(validityDays) || 30,
+        terms: terms.trim(),
+        exclusions: exclusions.trim(),
+        notes: notes.trim(),
+        lineItems: lineItems.filter((li) => li.description.trim() && li.unitPrice > 0),
+      })
+      navigate(`/quotes/${quote.id}`, { state: { openSend: send } })
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not save the quote')
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -260,10 +270,10 @@ export default function QuoteNew() {
         <Button variant="secondary" onClick={() => navigate('/quotes')}>
           Cancel
         </Button>
-        <Button variant="secondary" disabled={!canSubmit} onClick={() => submit(false)}>
+        <Button variant="secondary" disabled={!canSubmit || submitting} onClick={() => submit(false)}>
           Save draft
         </Button>
-        <Button disabled={!canSubmit} onClick={() => submit(true)}>
+        <Button disabled={!canSubmit || submitting} onClick={() => submit(true)}>
           Save & send
         </Button>
       </div>

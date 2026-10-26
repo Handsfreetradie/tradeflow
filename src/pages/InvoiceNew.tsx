@@ -54,7 +54,7 @@ function labourLineItemsFromJob(job: Job, team: { id: string; fullName: string; 
 export default function InvoiceNew() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { invoices, addInvoice, markSent } = useInvoicesStore()
+  const { invoices, addInvoice } = useInvoicesStore()
   const { customers, addCustomer } = useCustomersStore()
   const { getJob, claimStages } = useJobsStore()
   const { team } = useTeamStore()
@@ -83,6 +83,7 @@ export default function InvoiceNew() {
     return [...linkedJob.lineItems.map((li) => ({ ...li })), ...labourItems]
   })
 
+  const [submitting, setSubmitting] = useState(false)
   const [claimPercent, setClaimPercent] = useState('')
   const [selectedStageIds, setSelectedStageIds] = useState<string[]>([])
 
@@ -128,29 +129,37 @@ export default function InvoiceNew() {
     lineItems.some((li) => li.description.trim() && li.unitPrice > 0)
 
   const submit = async (send: boolean) => {
-    if (!canSubmit) return
-    if (!usingNewCustomer && !customer) return
-    let resolvedCustomerId = customerId
-    let resolvedCustomerName = customer?.name ?? ''
-    if (usingNewCustomer) {
-      const created = await addCustomer({ name: newCustomerName.trim() })
-      resolvedCustomerId = created.id
-      resolvedCustomerName = created.name
+    if (!canSubmit || submitting) return
+    if (!usingNewCustomer && !customer) {
+      toast.error('Pick a customer first')
+      return
     }
-    const invoice = await addInvoice({
-      customerId: resolvedCustomerId,
-      customer: resolvedCustomerName,
-      gstType,
-      dueDate,
-      notes: notes.trim(),
-      paymentTerms: paymentTerms.trim(),
-      lineItems: lineItems.filter((li) => li.description.trim() && li.unitPrice > 0),
-      jobId: linkedJob?.id,
-    })
-    if (send) await markSent(invoice.id)
-    const claimedStageIds = selectedStageIds.filter((id) => lineItems.some((li) => li.id === `stage-claim-${id}`))
-    if (linkedJob && claimedStageIds.length > 0) await claimStages(linkedJob.id, claimedStageIds, invoice.id)
-    navigate(`/invoices/${invoice.id}`)
+    setSubmitting(true)
+    try {
+      let resolvedCustomerId = customerId
+      let resolvedCustomerName = customer?.name ?? ''
+      if (usingNewCustomer) {
+        const created = await addCustomer({ name: newCustomerName.trim() })
+        resolvedCustomerId = created.id
+        resolvedCustomerName = created.name
+      }
+      const invoice = await addInvoice({
+        customerId: resolvedCustomerId,
+        customer: resolvedCustomerName,
+        gstType,
+        dueDate,
+        notes: notes.trim(),
+        paymentTerms: paymentTerms.trim(),
+        lineItems: lineItems.filter((li) => li.description.trim() && li.unitPrice > 0),
+        jobId: linkedJob?.id,
+      })
+      const claimedStageIds = selectedStageIds.filter((id) => lineItems.some((li) => li.id === `stage-claim-${id}`))
+      if (linkedJob && claimedStageIds.length > 0) await claimStages(linkedJob.id, claimedStageIds, invoice.id)
+      navigate(`/invoices/${invoice.id}`, { state: { openSend: send } })
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not save the invoice')
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -385,10 +394,10 @@ export default function InvoiceNew() {
         <Button variant="secondary" onClick={() => navigate('/invoices')}>
           Cancel
         </Button>
-        <Button variant="secondary" disabled={!canSubmit} onClick={() => submit(false)}>
+        <Button variant="secondary" disabled={!canSubmit || submitting} onClick={() => submit(false)}>
           Save draft
         </Button>
-        <Button disabled={!canSubmit} onClick={() => submit(true)}>
+        <Button disabled={!canSubmit || submitting} onClick={() => submit(true)}>
           Save & send
         </Button>
       </div>

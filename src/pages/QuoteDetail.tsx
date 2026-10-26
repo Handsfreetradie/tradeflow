@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Navigate, useNavigate, useParams } from 'react-router-dom'
+import { Navigate, useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ArrowLeft, Briefcase, Send, Check, X, Link as LinkIcon, Eye, Download, Pencil, Trash2 } from 'lucide-react'
 import { LogoMark } from '@/components/shared/Logo'
@@ -139,6 +139,7 @@ function QuoteDetailLoaded({
   linkJob: ReturnType<typeof useQuotesStore>['linkJob']
 }) {
   const navigate = useNavigate()
+  const location = useLocation()
   const { addJob } = useJobsStore()
   const { getCustomer } = useCustomersStore()
   const { settings: business } = useBusinessSettings()
@@ -147,7 +148,8 @@ function QuoteDetailLoaded({
   const [exclusions, setExclusions] = useState(quote.exclusions)
   const [notes, setNotes] = useState(quote.notes)
   const [saving, setSaving] = useState(false)
-  const [sendOpen, setSendOpen] = useState(false)
+  // "Save & send" on the new-document page lands here with the send window already open.
+  const [sendOpen, setSendOpen] = useState(() => (location.state as { openSend?: boolean } | null)?.openSend === true)
   const [previewing, setPreviewing] = useState(false)
   const [downloading, setDownloading] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
