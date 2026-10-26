@@ -13,6 +13,16 @@ export function formatCurrency(value: number) {
   }).format(value)
 }
 
+/** Dollars and cents — for invoices and quotes, where rounding to whole dollars would misstate the amount. */
+export function formatMoney(value: number) {
+  return new Intl.NumberFormat('en-AU', {
+    style: 'currency',
+    currency: 'AUD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(value)
+}
+
 export function formatDate(date: string | Date, opts?: Intl.DateTimeFormatOptions) {
   const d = typeof date === 'string' ? new Date(date) : date
   return new Intl.DateTimeFormat('en-AU', opts ?? { day: 'numeric', month: 'short' }).format(d)

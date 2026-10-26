@@ -1,5 +1,5 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { formatCurrency } from '@/lib/utils'
+import { formatMoney } from '@/lib/utils'
 import { gstComponent } from '@/lib/bas'
 import type { GstType, LineItem } from '@/lib/demo-data'
 
@@ -23,10 +23,10 @@ export function LineItemsTable({
             <div className="min-w-0">
               <p className="text-xs font-medium">{li.description}</p>
               <p className="text-xs text-muted-foreground">
-                {li.qty} × {formatCurrency(li.unitPrice)}
+                {li.qty} × {formatMoney(li.unitPrice)}
               </p>
             </div>
-            <p className="shrink-0 text-xs font-medium">{formatCurrency(li.qty * li.unitPrice)}</p>
+            <p className="shrink-0 text-xs font-medium">{formatMoney(li.qty * li.unitPrice)}</p>
           </div>
         ))}
       </div>
@@ -49,8 +49,8 @@ export function LineItemsTable({
               <TableRow key={li.id}>
                 <TableCell className="text-xs font-medium">{li.description}</TableCell>
                 <TableCell className="text-right text-muted-foreground">{li.qty}</TableCell>
-                <TableCell className="text-right text-muted-foreground">{formatCurrency(li.unitPrice)}</TableCell>
-                <TableCell className="text-right font-medium">{formatCurrency(li.qty * li.unitPrice)}</TableCell>
+                <TableCell className="text-right text-muted-foreground">{formatMoney(li.unitPrice)}</TableCell>
+                <TableCell className="text-right font-medium">{formatMoney(li.qty * li.unitPrice)}</TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -60,17 +60,17 @@ export function LineItemsTable({
       <div className="space-y-1.5 border-t border-border px-4 py-3.5">
         <div className="flex justify-between text-sm text-muted-foreground">
           <span className="inline-block -translate-y-0.5">Subtotal</span>
-          <span>{formatCurrency(subtotal)}</span>
+          <span>{formatMoney(subtotal)}</span>
         </div>
         {includeGst && (
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>GST (10%)</span>
-            <span>{formatCurrency(gst)}</span>
+            <span>{formatMoney(gst)}</span>
           </div>
         )}
         <div className="flex justify-between border-t border-border pt-2 text-lg font-semibold">
           <span>Total</span>
-          <span>{formatCurrency(subtotal + gst)}</span>
+          <span>{formatMoney(subtotal + gst)}</span>
         </div>
       </div>
     </div>

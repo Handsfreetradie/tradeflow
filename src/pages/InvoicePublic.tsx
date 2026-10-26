@@ -6,7 +6,7 @@ import { LogoMark } from '@/components/shared/Logo'
 import { supabase } from '@/lib/supabase'
 import { gstComponent } from '@/lib/bas'
 import type { GstType } from '@/lib/demo-data'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatMoney, formatDate } from '@/lib/utils'
 
 interface PublicInvoice {
   id: string
@@ -159,11 +159,11 @@ export default function InvoicePublic() {
             <div className="rounded-lg border border-border bg-secondary/40 p-4">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Paid to date</span>
-                <span className="font-medium text-success">{formatCurrency(invoice.paidAmount)}</span>
+                <span className="font-medium text-success">{formatMoney(invoice.paidAmount)}</span>
               </div>
               <div className="mt-1.5 flex items-center justify-between text-base font-semibold">
                 <span>Balance due</span>
-                <span className={balanceDue > 0 ? 'text-destructive' : 'text-success'}>{formatCurrency(Math.max(balanceDue, 0))}</span>
+                <span className={balanceDue > 0 ? 'text-destructive' : 'text-success'}>{formatMoney(Math.max(balanceDue, 0))}</span>
               </div>
             </div>
           )}

@@ -1,6 +1,6 @@
 import { jsPDF } from 'jspdf'
 import { gstComponent, gstInclusiveTotal } from '@/lib/bas'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatMoney, formatDate } from '@/lib/utils'
 import type { BusinessSettings } from '@/lib/store/business-settings-store'
 import type { Customer, GstType, Invoice, LineItem, Payment, Quote } from '@/lib/demo-data'
 
@@ -20,6 +20,9 @@ const COLOR = {
   primary: [37, 99, 235] as [number, number, number],
   success: [22, 163, 74] as [number, number, number],
 }
+
+// Type scale: 7.5 labels, 8 fine print, 9.5 body, 12 total, 14 business name, 18 heading, 26 headline.
+const BODY_SIZE = 9.5
 
 const PAGE_WIDTH = 210
 const PAGE_HEIGHT = 297
@@ -48,12 +51,21 @@ function hairline(ctx: Ctx) {
   ctx.doc.line(MARGIN, ctx.y, CONTENT_RIGHT, ctx.y)
 }
 
+const LABEL_SPACE = 0.4
+
+/** Letter-spaced small caps. jsPDF ignores the spacing when it right-aligns, so the text spills past
+ * the margin by (characters - 1) x spacing; pull it back so labels end flush with the figures below. */
+function spacedText(doc: jsPDF, text: string, x: number, y: number, align: 'left' | 'right' = 'left') {
+  const shift = align === 'right' ? (text.length - 1) * LABEL_SPACE : 0
+  doc.text(text, x - shift, y, { align, charSpace: LABEL_SPACE })
+}
+
 /** A small-caps-style section label, e.g. "BILL TO" — letter-spaced, muted, uppercase. */
 function label(ctx: Ctx, text: string, x: number, align: 'left' | 'right' = 'left') {
   ctx.doc.setFont('helvetica', 'bold')
   ctx.doc.setFontSize(7.5)
   ctx.doc.setTextColor(...COLOR.muted)
-  ctx.doc.text(text.toUpperCase(), x, ctx.y, { align, charSpace: 0.4 })
+  spacedText(ctx.doc, text.toUpperCase(), x, ctx.y, align)
 }
 
 async function fetchImageDataUrl(url: string): Promise<{ dataUrl: string; format: 'PNG' | 'JPEG' | 'WEBP' } | null> {
@@ -119,7 +131,7 @@ async function drawHeader(ctx: Ctx, business: BusinessSettings, heading: string,
   doc.text(heading, CONTENT_RIGHT, ctx.y + 6, { align: 'right' })
 
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(9)
+  doc.setFontSize(BODY_SIZE)
   doc.setTextColor(...COLOR.muted)
   doc.text(number, CONTENT_RIGHT, ctx.y + 11, { align: 'right' })
 
@@ -141,7 +153,7 @@ function drawHeadline(ctx: Ctx, headlineLabel: string, value: string, valueColor
   doc.text(value, MARGIN, ctx.y + 11)
 
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(9)
+  doc.setFontSize(BODY_SIZE)
   doc.setTextColor(...COLOR.muted)
   // Same baseline as the big value, matching the on-screen `items-end` row — the date sits level
   // with the bottom of the dollar figure, not floating up near the "AMOUNT DUE" label.
@@ -158,7 +170,7 @@ function drawTwoColumnDetails(ctx: Ctx, leftLabel: string, leftLines: string[], 
   const startY = ctx.y
   label(ctx, leftLabel, MARGIN)
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(10)
+  doc.setFontSize(BODY_SIZE)
   doc.setTextColor(...COLOR.foreground)
   let ly = startY + 6
   leftLines.forEach((line, i) => {
@@ -170,7 +182,7 @@ function drawTwoColumnDetails(ctx: Ctx, leftLabel: string, leftLines: string[], 
 
   label(ctx, rightLabel, CONTENT_RIGHT, 'right')
   doc.setFont('helvetica', 'bold')
-  doc.setFontSize(10)
+  doc.setFontSize(BODY_SIZE)
   doc.setTextColor(...COLOR.foreground)
   // Top-aligned with the left column's first line, matching the on-screen document preview
   // (a plain CSS grid — no vertical centering there, unlike the line-items table below).
@@ -190,10 +202,10 @@ function drawTableHeaderRow(ctx: Ctx, continued: boolean) {
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7.5)
   doc.setTextColor(...COLOR.muted)
-  doc.text(continued ? 'DESCRIPTION (CONTINUED)' : 'DESCRIPTION', MARGIN, ctx.y, { charSpace: 0.4 })
-  doc.text('QTY', COL.qty, ctx.y, { align: 'right', charSpace: 0.4 })
-  doc.text('UNIT PRICE', COL.price, ctx.y, { align: 'right', charSpace: 0.4 })
-  doc.text('TOTAL', COL.total, ctx.y, { align: 'right', charSpace: 0.4 })
+  spacedText(doc, continued ? 'DESCRIPTION (CONTINUED)' : 'DESCRIPTION', MARGIN, ctx.y)
+  spacedText(doc, 'QTY', COL.qty, ctx.y, 'right')
+  spacedText(doc, 'UNIT PRICE', COL.price, ctx.y, 'right')
+  spacedText(doc, 'TOTAL', COL.total, ctx.y, 'right')
   ctx.y += 3
   doc.setDrawColor(...COLOR.border)
   doc.setLineWidth(0.3)
@@ -214,7 +226,7 @@ function drawLineItemsTable(ctx: Ctx, lineItems: LineItem[], gstType: GstType) {
   const ROW_BOTTOM_PAD = 3.5
   for (const li of lineItems) {
     doc.setFont('helvetica', 'normal')
-    doc.setFontSize(9.5)
+    doc.setFontSize(BODY_SIZE)
     const lines = doc.splitTextToSize(li.description || '—', descWidth)
     const rowHeight = ROW_TOP_PAD + (lines.length - 1) * LINE_HEIGHT + ROW_BOTTOM_PAD
     ensureSpace(ctx, rowHeight, (c) => drawTableHeaderRow(c, true))
@@ -227,9 +239,9 @@ function drawLineItemsTable(ctx: Ctx, lineItems: LineItem[], gstType: GstType) {
     doc.text(lines, MARGIN, baselineY)
     doc.setTextColor(...COLOR.muted)
     doc.text(String(li.qty), COL.qty, figuresY, { align: 'right' })
-    doc.text(formatCurrency(li.unitPrice), COL.price, figuresY, { align: 'right' })
+    doc.text(formatMoney(li.unitPrice), COL.price, figuresY, { align: 'right' })
     doc.setTextColor(...COLOR.foreground)
-    doc.text(formatCurrency(li.qty * li.unitPrice), COL.total, figuresY, { align: 'right' })
+    doc.text(formatMoney(li.qty * li.unitPrice), COL.total, figuresY, { align: 'right' })
 
     ctx.y = baselineY + (lines.length - 1) * LINE_HEIGHT + ROW_BOTTOM_PAD
     doc.setDrawColor(...COLOR.border)
@@ -244,14 +256,14 @@ function drawLineItemsTable(ctx: Ctx, lineItems: LineItem[], gstType: GstType) {
   ensureSpace(ctx, includeGst ? 24 : 18)
   ctx.y += 3.5
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(9.5)
+  doc.setFontSize(BODY_SIZE)
   doc.setTextColor(...COLOR.muted)
   doc.text('Subtotal', COL.price, ctx.y, { align: 'right' })
-  doc.text(formatCurrency(subtotal), COL.total, ctx.y, { align: 'right' })
+  doc.text(formatMoney(subtotal), COL.total, ctx.y, { align: 'right' })
   ctx.y += 5.5
   if (includeGst) {
     doc.text('GST (10%)', COL.price, ctx.y, { align: 'right' })
-    doc.text(formatCurrency(gst), COL.total, ctx.y, { align: 'right' })
+    doc.text(formatMoney(gst), COL.total, ctx.y, { align: 'right' })
     ctx.y += 5.5
   }
   doc.setDrawColor(...COLOR.border)
@@ -260,7 +272,7 @@ function drawLineItemsTable(ctx: Ctx, lineItems: LineItem[], gstType: GstType) {
   doc.setFontSize(12)
   doc.setTextColor(...COLOR.foreground)
   doc.text('Total', COL.price, ctx.y + 4, { align: 'right' })
-  doc.text(formatCurrency(subtotal + gst), COL.total, ctx.y + 4, { align: 'right' })
+  doc.text(formatMoney(subtotal + gst), COL.total, ctx.y + 4, { align: 'right' })
   ctx.y += 10
 }
 
@@ -283,7 +295,7 @@ function drawNotesGrid(ctx: Ctx, columns: { title: string; body: string }[]) {
     const x = MARGIN + i * colWidth
     label(ctx, c.title, x)
     doc.setFont('helvetica', 'normal')
-    doc.setFontSize(9)
+    doc.setFontSize(BODY_SIZE)
     doc.setTextColor(...COLOR.muted)
     doc.text(wrapped[i], x, startY + 6)
   })
@@ -292,7 +304,7 @@ function drawNotesGrid(ctx: Ctx, columns: { title: string; body: string }[]) {
 
 function drawFooter(doc: jsPDF, text: string) {
   doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8.5)
+  doc.setFontSize(8)
   doc.setTextColor(...COLOR.muted)
   doc.text(text, PAGE_WIDTH / 2, PAGE_HEIGHT - 12, { align: 'center' })
 }
@@ -319,7 +331,7 @@ export async function buildInvoicePdf({ invoice, customer, business }: InvoicePd
   drawHeadline(
     ctx,
     paidInFull ? 'Status' : 'Amount due',
-    paidInFull ? 'Paid in full' : formatCurrency(Math.max(balanceDue, 0)),
+    paidInFull ? 'Paid in full' : formatMoney(Math.max(balanceDue, 0)),
     paidInFull ? COLOR.success : COLOR.primary,
     `Due ${formatDate(invoice.dueDate, { day: 'numeric', month: 'short', year: 'numeric' })}`
   )
@@ -337,12 +349,12 @@ export async function buildInvoicePdf({ invoice, customer, business }: InvoicePd
     label(ctx, 'Payments received', MARGIN)
     ctx.y += 6
     doc.setFont('helvetica', 'normal')
-    doc.setFontSize(9.5)
+    doc.setFontSize(BODY_SIZE)
     for (const p of invoice.payments) {
       doc.setTextColor(...COLOR.muted)
       doc.text(`${formatDate(p.date)} · ${p.method}`, MARGIN, ctx.y)
       doc.setTextColor(...COLOR.foreground)
-      doc.text(formatCurrency(p.amount), CONTENT_RIGHT, ctx.y, { align: 'right' })
+      doc.text(formatMoney(p.amount), CONTENT_RIGHT, ctx.y, { align: 'right' })
       ctx.y += 5
     }
     ctx.y += 2
@@ -386,12 +398,12 @@ export async function buildQuotePdf({ quote, customer, business }: QuotePdfInput
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(8)
     doc.setTextColor(...COLOR.muted)
-    doc.text(quote.status.toUpperCase(), CONTENT_RIGHT, c.y + 5, { align: 'right', charSpace: 0.4 })
+    spacedText(doc, quote.status.toUpperCase(), CONTENT_RIGHT, c.y + 5, 'right')
   })
   drawHeadline(
     ctx,
     'Quote total',
-    formatCurrency(total),
+    formatMoney(total),
     COLOR.primary,
     `Valid until ${formatDate(expiryDate, { day: 'numeric', month: 'short', year: 'numeric' })}`
   )

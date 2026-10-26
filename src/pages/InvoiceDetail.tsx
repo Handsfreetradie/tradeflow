@@ -22,7 +22,7 @@ import { useInvoicesStore, invoiceTotal } from '@/lib/store/invoices-store'
 import { useCustomersStore } from '@/lib/store/customers-store'
 import { useBusinessSettings, type BusinessSettings } from '@/lib/store/business-settings-store'
 import type { Invoice, Customer, PaymentMethod } from '@/lib/demo-data'
-import { formatCurrency, formatDate } from '@/lib/utils'
+import { formatMoney, formatDate } from '@/lib/utils'
 import { openPdfBlobInNewTab, downloadPdfBlob } from '@/lib/pdf'
 import { buildInvoicePdf } from '@/lib/pdfDocument'
 
@@ -69,7 +69,7 @@ function InvoiceDocument({
           {paidInFull ? (
             <p className="mt-1 text-3xl font-bold tracking-tight text-success">Paid in full</p>
           ) : (
-            <p className="mt-1 text-4xl font-bold tracking-tight text-primary">{formatCurrency(Math.max(balanceDue, 0))}</p>
+            <p className="mt-1 text-4xl font-bold tracking-tight text-primary">{formatMoney(Math.max(balanceDue, 0))}</p>
           )}
         </div>
         <p className="text-sm text-muted-foreground">
@@ -107,7 +107,7 @@ function InvoiceDocument({
                 <span>
                   {formatDate(p.date)} · {p.method}
                 </span>
-                <span className="font-medium text-foreground">{formatCurrency(p.amount)}</span>
+                <span className="font-medium text-foreground">{formatMoney(p.amount)}</span>
               </div>
             ))}
           </div>
@@ -176,7 +176,7 @@ export default function InvoiceDetail() {
     const value = Number(amount)
     if (!value || value <= 0) return
     await recordPayment(invoice.id, value, method)
-    toast.success(`Payment of ${formatCurrency(value)} recorded for ${invoice.number}`)
+    toast.success(`Payment of ${formatMoney(value)} recorded for ${invoice.number}`)
     setAmount('')
     setPaymentOpen(false)
   }
@@ -191,7 +191,7 @@ export default function InvoiceDetail() {
   const mailtoFallbackUrl = `mailto:${customer?.email ?? ''}?subject=${encodeURIComponent(
     `Invoice ${invoice.number} from ${business.businessName}`
   )}&body=${encodeURIComponent(
-    `Hi ${customer?.contact ?? invoice.customer},\n\nHere's your invoice ${invoice.number} for ${formatCurrency(total)}.\n\nView and pay: ${shareUrl}\n\nThanks,\n${business.businessName}`
+    `Hi ${customer?.contact ?? invoice.customer},\n\nHere's your invoice ${invoice.number} for ${formatMoney(total)}.\n\nView and pay: ${shareUrl}\n\nThanks,\n${business.businessName}`
   )}`
 
   const handleSent = async () => {
@@ -318,7 +318,7 @@ export default function InvoiceDetail() {
         to={customer?.email ?? ''}
         fromName={business.businessName}
         defaultSubject={`Invoice ${invoice.number} from ${business.businessName}`}
-        defaultMessage={`Hi ${customer?.contact ?? invoice.customer},\n\nHere's your invoice ${invoice.number} for ${formatCurrency(total)} — see the attached PDF.\n\nYou can also view and pay it online:\n{{link}}\n\nThanks,\n${business.businessName}`}
+        defaultMessage={`Hi ${customer?.contact ?? invoice.customer},\n\nHere's your invoice ${invoice.number} for ${formatMoney(total)} — see the attached PDF.\n\nYou can also view and pay it online:\n{{link}}\n\nThanks,\n${business.businessName}`}
         mailtoFallbackUrl={mailtoFallbackUrl}
         linkUrl={shareUrl}
         linkText="Click here to view your invoice"
@@ -335,7 +335,7 @@ export default function InvoiceDetail() {
           </DialogHeader>
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Balance due: <span className="font-medium text-foreground">{formatCurrency(Math.max(balanceDue, 0))}</span>
+              Balance due: <span className="font-medium text-foreground">{formatMoney(Math.max(balanceDue, 0))}</span>
             </p>
             <div className="grid grid-cols-2 gap-3">
               <div>

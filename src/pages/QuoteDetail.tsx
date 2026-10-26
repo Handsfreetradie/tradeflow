@@ -14,7 +14,7 @@ import { useJobsStore } from '@/lib/store/jobs-store'
 import { useCustomersStore } from '@/lib/store/customers-store'
 import { useBusinessSettings, type BusinessSettings } from '@/lib/store/business-settings-store'
 import type { Quote, Customer } from '@/lib/demo-data'
-import { formatCurrency, formatDate, toDateKey } from '@/lib/utils'
+import { formatMoney, formatDate, toDateKey } from '@/lib/utils'
 import { openPdfBlobInNewTab, downloadPdfBlob } from '@/lib/pdf'
 import { buildQuotePdf } from '@/lib/pdfDocument'
 
@@ -58,7 +58,7 @@ function QuoteDocument({
       <div className="mt-8 flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Quote total</p>
-          <p className="mt-1 text-4xl font-bold tracking-tight text-primary">{formatCurrency(total)}</p>
+          <p className="mt-1 text-4xl font-bold tracking-tight text-primary">{formatMoney(total)}</p>
         </div>
         <p className="text-sm text-muted-foreground">
           Valid until <span className="font-medium text-foreground">{formatDate(expiryDate, { day: 'numeric', month: 'short', year: 'numeric' })}</span>
@@ -206,7 +206,7 @@ function QuoteDetailLoaded({
   const mailtoFallbackUrl = `mailto:${customer?.email ?? ''}?subject=${encodeURIComponent(
     `Quote ${quote.number} from ${business.businessName}`
   )}&body=${encodeURIComponent(
-    `Hi ${customer?.contact ?? quote.customer},\n\nHere's your quote ${quote.number} for ${formatCurrency(quoteTotal)}.\n\nView and respond: ${shareUrl}\n\nThanks,\n${business.businessName}`
+    `Hi ${customer?.contact ?? quote.customer},\n\nHere's your quote ${quote.number} for ${formatMoney(quoteTotal)}.\n\nView and respond: ${shareUrl}\n\nThanks,\n${business.businessName}`
   )}`
 
   const handleSent = async () => {
@@ -414,7 +414,7 @@ function QuoteDetailLoaded({
         to={customer?.email ?? ''}
         fromName={business.businessName}
         defaultSubject={`Quote ${quote.number} from ${business.businessName}`}
-        defaultMessage={`Hi ${customer?.contact ?? quote.customer},\n\nHere's your quote ${quote.number} for ${formatCurrency(quoteTotal)} — see the attached PDF.\n\nYou can also view and respond online:\n{{link}}\n\nThanks,\n${business.businessName}`}
+        defaultMessage={`Hi ${customer?.contact ?? quote.customer},\n\nHere's your quote ${quote.number} for ${formatMoney(quoteTotal)} — see the attached PDF.\n\nYou can also view and respond online:\n{{link}}\n\nThanks,\n${business.businessName}`}
         mailtoFallbackUrl={mailtoFallbackUrl}
         linkUrl={shareUrl}
         linkText="Click here to view your quote"
