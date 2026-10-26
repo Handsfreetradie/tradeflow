@@ -648,6 +648,47 @@ export type Database = {
           },
         ]
       }
+      email_sync_events: {
+        Row: {
+          business_id: string
+          created_at: string
+          detail: string
+          from_address: string
+          id: string
+          message_id: string
+          outcome: string
+          subject: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          detail?: string
+          from_address?: string
+          id?: string
+          message_id: string
+          outcome: string
+          subject?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          detail?: string
+          from_address?: string
+          id?: string
+          message_id?: string
+          outcome?: string
+          subject?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_sync_events_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       expenses: {
         Row: {
           amount: number
@@ -1537,8 +1578,10 @@ export type Database = {
           job_id: string | null
           leave_request_id: string | null
           message: string
+          product_id: string | null
           quote_id: string | null
           read_at: string | null
+          stock_order_id: string | null
           type: string
         }
         Insert: {
@@ -1550,8 +1593,10 @@ export type Database = {
           job_id?: string | null
           leave_request_id?: string | null
           message: string
+          product_id?: string | null
           quote_id?: string | null
           read_at?: string | null
+          stock_order_id?: string | null
           type: string
         }
         Update: {
@@ -1563,8 +1608,10 @@ export type Database = {
           job_id?: string | null
           leave_request_id?: string | null
           message?: string
+          product_id?: string | null
           quote_id?: string | null
           read_at?: string | null
+          stock_order_id?: string | null
           type?: string
         }
         Relationships: [
@@ -1618,10 +1665,31 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "notifications_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products_field_view"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "notifications_quote_id_fkey"
             columns: ["quote_id"]
             isOneToOne: false
             referencedRelation: "quotes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_stock_order_id_fkey"
+            columns: ["stock_order_id"]
+            isOneToOne: false
+            referencedRelation: "stock_orders"
             referencedColumns: ["id"]
           },
         ]
@@ -1712,6 +1780,12 @@ export type Database = {
           description: string
           id: string
           name: string
+          reorder_level: number
+          reorder_qty: number
+          stock_qty: number
+          supplier_code: string
+          supplier_id: string | null
+          track_stock: boolean
           unit: string
           unit_price: number
         }
@@ -1722,6 +1796,12 @@ export type Database = {
           description?: string
           id?: string
           name: string
+          reorder_level?: number
+          reorder_qty?: number
+          stock_qty?: number
+          supplier_code?: string
+          supplier_id?: string | null
+          track_stock?: boolean
           unit?: string
           unit_price?: number
         }
@@ -1732,6 +1812,12 @@ export type Database = {
           description?: string
           id?: string
           name?: string
+          reorder_level?: number
+          reorder_qty?: number
+          stock_qty?: number
+          supplier_code?: string
+          supplier_id?: string | null
+          track_stock?: boolean
           unit?: string
           unit_price?: number
         }
@@ -1742,6 +1828,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "businesses"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "products_supplier_fkey"
+            columns: ["supplier_id", "business_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id", "business_id"]
           },
         ]
       }
@@ -2132,6 +2225,216 @@ export type Database = {
         }
         Relationships: []
       }
+      stock_order_items: {
+        Row: {
+          business_id: string
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          order_id: string | null
+          product_id: string | null
+          qty: number
+          received_at: string | null
+          source: string
+          status: string
+          supplier_code: string
+          supplier_id: string | null
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          created_by?: string | null
+          description: string
+          id?: string
+          order_id?: string | null
+          product_id?: string | null
+          qty: number
+          received_at?: string | null
+          source: string
+          status?: string
+          supplier_code?: string
+          supplier_id?: string | null
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          order_id?: string | null
+          product_id?: string | null
+          qty?: number
+          received_at?: string | null
+          source?: string
+          status?: string
+          supplier_code?: string
+          supplier_id?: string | null
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_order_items_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_order_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_order_items_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "team_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_order_items_order_id_business_id_fkey"
+            columns: ["order_id", "business_id"]
+            isOneToOne: false
+            referencedRelation: "stock_orders"
+            referencedColumns: ["id", "business_id"]
+          },
+          {
+            foreignKeyName: "stock_order_items_product_id_business_id_fkey"
+            columns: ["product_id", "business_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id", "business_id"]
+          },
+          {
+            foreignKeyName: "stock_order_items_product_id_business_id_fkey"
+            columns: ["product_id", "business_id"]
+            isOneToOne: false
+            referencedRelation: "products_field_view"
+            referencedColumns: ["id", "business_id"]
+          },
+          {
+            foreignKeyName: "stock_order_items_supplier_id_business_id_fkey"
+            columns: ["supplier_id", "business_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id", "business_id"]
+          },
+        ]
+      }
+      stock_orders: {
+        Row: {
+          auto_sent: boolean
+          body: string
+          business_id: string
+          created_at: string
+          id: string
+          sent_by: string | null
+          subject: string
+          supplier_id: string | null
+          supplier_name: string
+          to_email: string
+        }
+        Insert: {
+          auto_sent?: boolean
+          body: string
+          business_id: string
+          created_at?: string
+          id?: string
+          sent_by?: string | null
+          subject: string
+          supplier_id?: string | null
+          supplier_name: string
+          to_email: string
+        }
+        Update: {
+          auto_sent?: boolean
+          body?: string
+          business_id?: string
+          created_at?: string
+          id?: string
+          sent_by?: string | null
+          subject?: string
+          supplier_id?: string | null
+          supplier_name?: string
+          to_email?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_orders_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_orders_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_orders_sent_by_fkey"
+            columns: ["sent_by"]
+            isOneToOne: false
+            referencedRelation: "team_directory"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_orders_supplier_id_business_id_fkey"
+            columns: ["supplier_id", "business_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id", "business_id"]
+          },
+        ]
+      }
+      suppliers: {
+        Row: {
+          account_number: string
+          auto_send: boolean
+          business_id: string
+          created_at: string
+          id: string
+          name: string
+          order_email: string | null
+        }
+        Insert: {
+          account_number?: string
+          auto_send?: boolean
+          business_id: string
+          created_at?: string
+          id?: string
+          name: string
+          order_email?: string | null
+        }
+        Update: {
+          account_number?: string
+          auto_send?: boolean
+          business_id?: string
+          created_at?: string
+          id?: string
+          name?: string
+          order_email?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       trips: {
         Row: {
           business_id: string
@@ -2179,6 +2482,13 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trips_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_field_view"
             referencedColumns: ["id"]
           },
         ]
@@ -2358,6 +2668,10 @@ export type Database = {
       }
     }
     Functions: {
+      adjust_stock: {
+        Args: { p_delta?: number; p_product: string; p_set?: number }
+        Returns: number
+      }
       current_business_id: { Args: never; Returns: string }
       employee_add_job_cost: {
         Args: {
@@ -2581,6 +2895,10 @@ export type Database = {
       next_job_number: { Args: never; Returns: string }
       next_po_number: { Args: never; Returns: string }
       next_quote_number: { Args: never; Returns: string }
+      receive_stock_item: {
+        Args: { p_item: string; p_qty?: number }
+        Returns: undefined
+      }
       request_leave: {
         Args: {
           p_business_id?: string

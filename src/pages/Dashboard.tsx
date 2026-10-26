@@ -8,6 +8,7 @@ import { InvoiceStatusCard } from '@/components/dashboard/InvoiceStatusCard'
 import { RecentInvoicesCard } from '@/components/dashboard/RecentInvoicesCard'
 import { QuickActionsCard } from '@/components/dashboard/QuickActionsCard'
 import { EmailAlertsCard } from '@/components/dashboard/EmailAlertsCard'
+import { LowStockCard } from '@/components/dashboard/LowStockCard'
 import { UpcomingJobsCard } from '@/components/dashboard/UpcomingJobsCard'
 import { RecentActivityCard } from '@/components/dashboard/RecentActivityCard'
 
@@ -33,6 +34,7 @@ export default function Dashboard() {
         </div>
 
         <div className="space-y-6">
+          <LowStockCard />
           <EmailAlertsCard />
           <UpcomingJobsCard />
           <RecentActivityCard />

@@ -31,6 +31,8 @@ type NotificationRow = {
   invoice_id: string | null
   quote_id: string | null
   leave_request_id: string | null
+  product_id: string | null
+  stock_order_id: string | null
   message: string
   created_at: string
   read_at: string | null
@@ -44,6 +46,7 @@ function fromRow(n: NotificationRow): Notification {
   if (n.job_id) return { ...base, title: `${n.job?.number ?? ''} — ${n.job?.title ?? ''}`, linkTo: `/jobs/${n.job_id}` }
   if (n.invoice_id) return { ...base, title: n.invoice?.number ?? '', linkTo: `/invoices/${n.invoice_id}` }
   if (n.leave_request_id) return { ...base, title: 'Leave request', linkTo: '/leave' }
+  if (n.product_id || n.stock_order_id) return { ...base, title: n.type === 'low_stock' ? 'Low stock' : 'Order sent', linkTo: '/orders' }
   return { ...base, title: n.quote?.number ?? '', linkTo: `/quotes/${n.quote_id}` }
 }
 
@@ -66,7 +69,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     supabase
       .from('notifications')
       .select(
-        'id, type, job_id, invoice_id, quote_id, leave_request_id, message, created_at, read_at, job:jobs(number, title), invoice:invoices(number), quote:quotes(number)'
+        'id, type, job_id, invoice_id, quote_id, leave_request_id, product_id, stock_order_id, message, created_at, read_at, job:jobs(number, title), invoice:invoices(number), quote:quotes(number)'
       )
       .eq('business_id', activeBusinessId)
       .order('created_at', { ascending: false })

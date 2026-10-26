@@ -18,6 +18,7 @@ import { FieldJobsProvider } from '@/lib/store/field-jobs-store'
 import { BusinessSettingsProvider } from '@/lib/store/business-settings-store'
 import { NotificationsProvider } from '@/lib/store/notifications-store'
 import { ProductsProvider } from '@/lib/store/products-store'
+import { StockProvider } from '@/lib/store/stock-store'
 import Login from '@/pages/auth/Login'
 import Setup from '@/pages/auth/Setup'
 import AcceptInvite from '@/pages/auth/AcceptInvite'
@@ -45,6 +46,7 @@ import CalendarPage from '@/pages/Calendar'
 import Reports from '@/pages/Reports'
 import Settings from '@/pages/Settings'
 import ProductsList from '@/pages/ProductsList'
+import StockOrders from '@/pages/StockOrders'
 import Leave from '@/pages/Leave'
 import OnCallRoster from '@/pages/OnCallRoster'
 import ImportData from '@/pages/ImportData'
@@ -60,6 +62,7 @@ function OwnerApp() {
     <BusinessSettingsProvider>
       <NotificationsProvider>
       <ProductsProvider>
+      <StockProvider>
       <CustomersProvider>
         <JobsProvider>
           <QuotesProvider>
@@ -89,6 +92,7 @@ function OwnerApp() {
                     <Route path="expenses/new" element={<ExpenseNew />} />
                     <Route path="trips" element={<TripsList />} />
                     <Route path="products" element={<ProductsList />} />
+                    <Route path="orders" element={<StockOrders />} />
                     <Route path="reports" element={<Reports />} />
                     <Route path="calendar" element={<CalendarPage />} />
                     <Route path="leave" element={<Leave />} />
@@ -105,6 +109,7 @@ function OwnerApp() {
           </QuotesProvider>
         </JobsProvider>
       </CustomersProvider>
+      </StockProvider>
       </ProductsProvider>
       </NotificationsProvider>
     </BusinessSettingsProvider>

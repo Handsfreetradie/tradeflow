@@ -7,6 +7,7 @@ import {
   Receipt,
   Car,
   Package,
+  ShoppingCart,
   BarChart3,
   Calendar,
   CalendarDays,
@@ -22,6 +23,7 @@ import { useJobsStore } from '@/lib/store/jobs-store'
 import { useQuotesStore } from '@/lib/store/quotes-store'
 import { useInvoicesStore } from '@/lib/store/invoices-store'
 import { useLeaveStore } from '@/lib/store/leave-store'
+import { useStockStore } from '@/lib/store/stock-store'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
 import { useBusinessSettings } from '@/lib/store/business-settings-store'
@@ -31,6 +33,7 @@ export function Sidebar() {
   const { quotes } = useQuotesStore()
   const { invoices } = useInvoicesStore()
   const { requests: leaveRequests } = useLeaveStore()
+  const { items: orderItems } = useStockStore()
   const { fullName, signOut } = useAuth()
   const { settings } = useBusinessSettings()
   const { memberships, openChooser } = useActiveBusiness()
@@ -38,6 +41,7 @@ export function Sidebar() {
   const openJobs = jobs.filter((j) => j.status === 'In Progress' || j.status === 'Scheduled').length
   const unpaidInvoices = invoices.filter((i) => i.status === 'Sent' || i.status === 'Partial' || i.status === 'Overdue').length
   const openQuotes = quotes.filter((q) => q.status === 'Draft' || q.status === 'Sent').length
+  const waitingOrders = orderItems.filter((i) => i.status === 'pending').length
   const pendingLeave = leaveRequests.filter((r) => r.status === 'pending').length
 
   const primaryNav = [
@@ -49,6 +53,7 @@ export function Sidebar() {
     { to: '/expenses', icon: Receipt, label: 'Expenses' },
     { to: '/trips', icon: Car, label: 'Kilometre log' },
     { to: '/products', icon: Package, label: 'Products & Services' },
+    { to: '/orders', icon: ShoppingCart, label: 'Stock orders', count: waitingOrders },
     { to: '/leave', icon: CalendarDays, label: 'Leave', count: pendingLeave },
     { to: '/on-call', icon: Phone, label: 'On-call roster' },
     { to: '/reports', icon: BarChart3, label: 'Reports' },

@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Search, Bell, HelpCircle, ChevronDown, AlertTriangle, Eye, CalendarDays, UserPlus } from 'lucide-react'
+import { Search, Bell, HelpCircle, ChevronDown, AlertTriangle, Eye, CalendarDays, UserPlus, Package } from 'lucide-react'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import {
   DropdownMenu,
@@ -89,6 +89,8 @@ export function Header() {
                       <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-warning" />
                     ) : n.type === 'leave_requested' ? (
                       <CalendarDays className="mt-0.5 size-3.5 shrink-0 text-primary" />
+                    ) : n.type === 'low_stock' || n.type === 'stock_order_sent' ? (
+                      <Package className="mt-0.5 size-3.5 shrink-0 text-warning" />
                     ) : n.type === 'job_self_joined' ? (
                       <UserPlus className="mt-0.5 size-3.5 shrink-0 text-primary" />
                     ) : (

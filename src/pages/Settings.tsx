@@ -4,6 +4,7 @@ import { toast } from 'sonner'
 import { UserPlus, Users as UsersIcon, Building2, Upload, Trash2, FileSpreadsheet, CalendarDays, Mail, FileUp } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { SuppliersCard } from '@/components/stock/SuppliersCard'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -689,6 +690,8 @@ export default function Settings() {
       <QuoteDefaultsCard />
 
       <EmailIntegrationCard />
+
+      <SuppliersCard />
 
       <ImportDataCard />
 
