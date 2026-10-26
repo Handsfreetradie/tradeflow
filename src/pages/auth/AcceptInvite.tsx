@@ -8,7 +8,7 @@ import { supabase } from '@/lib/supabase'
 
 export default function AcceptInvite() {
   const navigate = useNavigate()
-  const { session, role, loading, fullName, isPasswordRecovery } = useAuth()
+  const { session, loading, fullName, isPasswordRecovery } = useAuth()
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
@@ -27,7 +27,8 @@ export default function AcceptInvite() {
       setError(error.message)
       return
     }
-    navigate(role === 'owner' ? '/' : '/field', { replace: true })
+    // RequireRole sends employees on to /field once their business is known.
+    navigate('/', { replace: true })
   }
 
   if (loading) return null

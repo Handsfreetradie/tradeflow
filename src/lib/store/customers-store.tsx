@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth/AuthProvider'
+import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
 import type { Customer } from '@/lib/demo-data'
 
 export interface NewCustomerInput {
@@ -45,11 +46,12 @@ function fromRow(row: {
 
 export function CustomersProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth()
+  const { activeBusinessId } = useActiveBusiness()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!session) {
+    if (!session || !activeBusinessId) {
       setCustomers([])
       setLoading(false)
       return
@@ -60,6 +62,7 @@ export function CustomersProvider({ children }: { children: ReactNode }) {
     supabase
       .from('customers')
       .select('*')
+      .eq('business_id', activeBusinessId)
       .order('name')
       .then(({ data, error }) => {
         if (cancelled) return
@@ -69,7 +72,7 @@ export function CustomersProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [session])
+  }, [session, activeBusinessId])
 
   const getCustomer = useCallback((id: string) => customers.find((c) => c.id === id), [customers])
 
@@ -77,6 +80,7 @@ export function CustomersProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase
       .from('customers')
       .insert({
+        business_id: activeBusinessId ?? undefined,
         name: input.name,
         contact: input.contact ?? '',
         email: input.email ?? '',
@@ -89,7 +93,7 @@ export function CustomersProvider({ children }: { children: ReactNode }) {
     const created = fromRow(data)
     setCustomers((prev) => [created, ...prev].sort((a, b) => a.name.localeCompare(b.name)))
     return created
-  }, [])
+  }, [activeBusinessId])
 
   const updateCustomer = useCallback(async (id: string, patch: CustomerEditInput) => {
     const { error } = await supabase.from('customers').update(patch).eq('id', id)

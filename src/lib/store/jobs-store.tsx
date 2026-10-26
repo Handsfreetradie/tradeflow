@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth/AuthProvider'
+import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
 import type { CocStatus, Job, JobCheckIn, JobCost, JobNote, JobStage, JobStatus, LineItem, PricingType } from '@/lib/demo-data'
 
 export interface NewJobStageInput {
@@ -152,8 +153,8 @@ async function fetchAssigneesByJob(jobIds: string[]): Promise<Map<string, { id: 
   return map
 }
 
-async function fetchJobs(): Promise<Job[]> {
-  const { data: jobRows, error } = await supabase.from('jobs').select(JOB_SELECT).order('due_date')
+async function fetchJobs(businessId: string): Promise<Job[]> {
+  const { data: jobRows, error } = await supabase.from('jobs').select(JOB_SELECT).eq('business_id', businessId).order('due_date')
   if (error) throw new Error(error.message)
   const rows = (jobRows ?? []) as unknown as JobRow[]
   const jobIds = rows.map((r) => r.id)
@@ -242,11 +243,12 @@ async function fetchJobs(): Promise<Job[]> {
 
 export function JobsProvider({ children }: { children: ReactNode }) {
   const { fullName, session } = useAuth()
+  const { activeBusinessId } = useActiveBusiness()
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!session) {
+    if (!session || !activeBusinessId) {
       setJobs([])
       setLoading(false)
       return
@@ -254,7 +256,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     let cancelled = false
     setLoading(true)
     setJobs([])
-    fetchJobs()
+    fetchJobs(activeBusinessId)
       .then((data) => {
         if (!cancelled) setJobs(data)
       })
@@ -264,7 +266,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [session])
+  }, [session, activeBusinessId])
 
   const getJob = useCallback((id: string) => jobs.find((j) => j.id === id), [jobs])
 
@@ -331,12 +333,13 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       const value = items.reduce((sum, li) => sum + li.qty * li.unitPrice, 0)
       const pricingType: PricingType = input.pricingType ?? (items.length > 0 ? 'Fixed Price' : 'Time & Materials')
 
-      const { data: maxSortRow } = await supabase.from('jobs').select('sort_order').order('sort_order', { ascending: false }).limit(1).maybeSingle()
+      const { data: maxSortRow } = await supabase.from('jobs').select('sort_order').eq('business_id', activeBusinessId ?? '').order('sort_order', { ascending: false }).limit(1).maybeSingle()
       const nextSortOrder = (maxSortRow?.sort_order ?? 0) + 1
 
       const { data: jobRow, error } = await supabase
         .from('jobs')
         .insert({
+          business_id: activeBusinessId ?? undefined,
           number,
           title: input.title,
           customer_id: input.customerId,
@@ -400,7 +403,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       setJobs((prev) => [created, ...prev])
       return created
     },
-    [fullName]
+    [fullName, activeBusinessId]
   )
 
   const updateJobStatus = useCallback(

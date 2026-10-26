@@ -5,12 +5,13 @@ const store = createStore('tradeflow-offline', 'kv')
 
 const JOBS_CACHE_KEY = 'field-jobs-cache'
 
-export async function getCachedJobs(): Promise<FieldJob[] | undefined> {
-  return get<FieldJob[]>(JOBS_CACHE_KEY, store)
+// Cached per business — one login can work for several, and each has its own job list.
+export async function getCachedJobs(businessId: string): Promise<FieldJob[] | undefined> {
+  return get<FieldJob[]>(`${JOBS_CACHE_KEY}:${businessId}`, store)
 }
 
-export async function setCachedJobs(jobs: FieldJob[]): Promise<void> {
-  await set(JOBS_CACHE_KEY, jobs, store)
+export async function setCachedJobs(businessId: string, jobs: FieldJob[]): Promise<void> {
+  await set(`${JOBS_CACHE_KEY}:${businessId}`, jobs, store)
 }
 
 function photoBlobKey(key: string) {

@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth/AuthProvider'
+import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
 import { gstInclusiveTotal } from '@/lib/bas'
 import type { GstType, LineItem, Quote, QuoteStatus } from '@/lib/demo-data'
 
@@ -90,11 +91,12 @@ function fromRow(row: QuoteRow): Quote {
 
 export function QuotesProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth()
+  const { activeBusinessId } = useActiveBusiness()
   const [quotes, setQuotes] = useState<Quote[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!session) {
+    if (!session || !activeBusinessId) {
       setQuotes([])
       setLoading(false)
       return
@@ -105,6 +107,7 @@ export function QuotesProvider({ children }: { children: ReactNode }) {
     supabase
       .from('quotes')
       .select(QUOTE_SELECT)
+      .eq('business_id', activeBusinessId)
       .order('date', { ascending: false })
       .then(({ data, error }) => {
         if (cancelled) return
@@ -114,7 +117,7 @@ export function QuotesProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [session])
+  }, [session, activeBusinessId])
 
   const getQuote = useCallback((id: string) => quotes.find((q) => q.id === id), [quotes])
 
@@ -126,6 +129,7 @@ export function QuotesProvider({ children }: { children: ReactNode }) {
     const { data: row, error } = await supabase
       .from('quotes')
       .insert({
+        business_id: activeBusinessId ?? undefined,
         number,
         customer_id: input.customerId,
         date: new Date().toISOString().slice(0, 10),
@@ -151,7 +155,7 @@ export function QuotesProvider({ children }: { children: ReactNode }) {
     const created = fromRow({ ...(row as unknown as QuoteRow), quote_line_items: input.lineItems.map((li) => ({ id: li.id, description: li.description, qty: li.qty, unit_price: li.unitPrice })) })
     setQuotes((prev) => [created, ...prev])
     return created
-  }, [])
+  }, [activeBusinessId])
 
   const updateStatus = useCallback(async (id: string, status: QuoteStatus) => {
     const { error } = await supabase.from('quotes').update({ status }).eq('id', id)

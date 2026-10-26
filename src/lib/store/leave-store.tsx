@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth/AuthProvider'
+import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
 
 export type LeaveType = 'annual' | 'sick'
 export type LeaveStatus = 'pending' | 'approved' | 'declined'
@@ -75,32 +76,46 @@ function computeBalance(employee: LeaveEmployee, requests: LeaveRequest[]): Leav
 
 export function LeaveProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth()
+  const { activeBusinessId } = useActiveBusiness()
   const [employees, setEmployees] = useState<LeaveEmployee[]>([])
   const [requests, setRequests] = useState<LeaveRequest[]>([])
   const [loading, setLoading] = useState(true)
   const [tick, setTick] = useState(0)
 
   const load = useCallback(async () => {
+    if (!activeBusinessId) return
     setLoading(true)
-    const [{ data: profileRows }, { data: requestRows }] = await Promise.all([
+    const [{ data: memberRows }, { data: requestRows }] = await Promise.all([
       supabase
-        .from('profiles')
-        .select('id, full_name, employment_type, weekly_hours, employment_start_date, annual_leave_opening_hours, sick_leave_opening_hours'),
+        .from('business_memberships')
+        .select(
+          'person_id, employment_type, weekly_hours, employment_start_date, annual_leave_opening_hours, sick_leave_opening_hours, person:profiles!business_memberships_person_id_fkey(full_name)'
+        )
+        .eq('business_id', activeBusinessId),
       supabase
         .from('leave_requests')
         .select('*, employee:profiles!leave_requests_employee_id_fkey(full_name)')
+        .eq('business_id', activeBusinessId)
         .order('created_at', { ascending: false }),
     ])
 
     setEmployees(
-      (profileRows ?? []).map((p) => ({
-        id: p.id,
-        fullName: p.full_name,
-        employmentType: p.employment_type as EmploymentType,
-        weeklyHours: p.weekly_hours,
-        employmentStartDate: p.employment_start_date,
-        annualLeaveOpeningHours: p.annual_leave_opening_hours,
-        sickLeaveOpeningHours: p.sick_leave_opening_hours,
+      ((memberRows ?? []) as unknown as Array<{
+        person_id: string
+        employment_type: string
+        weekly_hours: number
+        employment_start_date: string | null
+        annual_leave_opening_hours: number
+        sick_leave_opening_hours: number
+        person: { full_name: string } | null
+      }>).map((m) => ({
+        id: m.person_id,
+        fullName: m.person?.full_name ?? 'Unknown',
+        employmentType: m.employment_type as EmploymentType,
+        weeklyHours: m.weekly_hours,
+        employmentStartDate: m.employment_start_date,
+        annualLeaveOpeningHours: m.annual_leave_opening_hours,
+        sickLeaveOpeningHours: m.sick_leave_opening_hours,
       }))
     )
     setRequests(
@@ -129,11 +144,11 @@ export function LeaveProvider({ children }: { children: ReactNode }) {
       }))
     )
     setLoading(false)
-  }, [])
+  }, [activeBusinessId])
 
   useEffect(() => {
-    if (session) load()
-  }, [session, tick, load])
+    if (session && activeBusinessId) load()
+  }, [session, activeBusinessId, tick, load])
 
   const refresh = useCallback(() => setTick((t) => t + 1), [])
 
@@ -154,11 +169,12 @@ export function LeaveProvider({ children }: { children: ReactNode }) {
         p_end_date: input.endDate,
         p_hours: input.hours,
         p_note: input.note ?? '',
+        p_business_id: activeBusinessId ?? undefined,
       })
       if (error) throw new Error(error.message)
       refresh()
     },
-    [refresh]
+    [refresh, activeBusinessId]
   )
 
   const logLeave = useCallback(
@@ -166,6 +182,7 @@ export function LeaveProvider({ children }: { children: ReactNode }) {
       const { data: sessionData } = await supabase.auth.getSession()
       const ownerId = sessionData.session?.user.id
       const { error } = await supabase.from('leave_requests').insert({
+        business_id: activeBusinessId ?? '',
         employee_id: input.employeeId,
         type: input.type,
         start_date: input.startDate,
@@ -179,7 +196,7 @@ export function LeaveProvider({ children }: { children: ReactNode }) {
       if (error) throw new Error(error.message)
       refresh()
     },
-    [refresh]
+    [refresh, activeBusinessId]
   )
 
   const reviewRequest = useCallback(

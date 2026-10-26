@@ -63,6 +63,7 @@ export type Database = {
       }
       bas_periods: {
         Row: {
+          business_id: string
           g1: number
           lodged_at: string
           net_gst: number
@@ -72,6 +73,7 @@ export type Database = {
           year: number
         }
         Insert: {
+          business_id: string
           g1?: number
           lodged_at?: string
           net_gst?: number
@@ -81,6 +83,7 @@ export type Database = {
           year: number
         }
         Update: {
+          business_id?: string
           g1?: number
           lodged_at?: string
           net_gst?: number
@@ -89,7 +92,15 @@ export type Database = {
           quarter_index?: number
           year?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "bas_periods_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       business_email_connection: {
         Row: {
@@ -146,6 +157,73 @@ export type Database = {
           {
             foreignKeyName: "business_email_connection_connected_by_fkey"
             columns: ["connected_by"]
+            isOneToOne: false
+            referencedRelation: "team_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      business_memberships: {
+        Row: {
+          annual_leave_opening_hours: number
+          business_id: string
+          created_at: string
+          employment_start_date: string | null
+          employment_type: string
+          hourly_rate: number | null
+          id: string
+          person_id: string
+          role: string
+          sick_leave_opening_hours: number
+          trade_role: string
+          weekly_hours: number
+        }
+        Insert: {
+          annual_leave_opening_hours?: number
+          business_id: string
+          created_at?: string
+          employment_start_date?: string | null
+          employment_type?: string
+          hourly_rate?: number | null
+          id?: string
+          person_id: string
+          role: string
+          sick_leave_opening_hours?: number
+          trade_role?: string
+          weekly_hours?: number
+        }
+        Update: {
+          annual_leave_opening_hours?: number
+          business_id?: string
+          created_at?: string
+          employment_start_date?: string | null
+          employment_type?: string
+          hourly_rate?: number | null
+          id?: string
+          person_id?: string
+          role?: string
+          sick_leave_opening_hours?: number
+          trade_role?: string
+          weekly_hours?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "business_memberships_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_memberships_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "business_memberships_person_id_fkey"
+            columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "team_directory"
             referencedColumns: ["id"]
@@ -540,18 +618,29 @@ export type Database = {
       }
       email_processed_messages: {
         Row: {
+          business_id: string
           message_id: string
           processed_at: string
         }
         Insert: {
+          business_id: string
           message_id: string
           processed_at?: string
         }
         Update: {
+          business_id?: string
           message_id?: string
           processed_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "email_processed_messages_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       expenses: {
         Row: {
@@ -1246,6 +1335,7 @@ export type Database = {
       }
       leave_requests: {
         Row: {
+          business_id: string
           created_at: string
           employee_id: string
           end_date: string
@@ -1259,6 +1349,7 @@ export type Database = {
           type: string
         }
         Insert: {
+          business_id: string
           created_at?: string
           employee_id: string
           end_date: string
@@ -1272,6 +1363,7 @@ export type Database = {
           type: string
         }
         Update: {
+          business_id?: string
           created_at?: string
           employee_id?: string
           end_date?: string
@@ -1285,6 +1377,13 @@ export type Database = {
           type?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "leave_requests_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "leave_requests_employee_id_fkey"
             columns: ["employee_id"]
@@ -1416,24 +1515,34 @@ export type Database = {
       }
       on_call_roster: {
         Row: {
+          business_id: string
           created_at: string
           employee_id: string | null
           id: string
           week_start: string
         }
         Insert: {
+          business_id: string
           created_at?: string
           employee_id?: string | null
           id?: string
           week_start: string
         }
         Update: {
+          business_id?: string
           created_at?: string
           employee_id?: string | null
           id?: string
           week_start?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "on_call_roster_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "on_call_roster_employee_id_fkey"
             columns: ["employee_id"]
@@ -1826,11 +1935,27 @@ export type Database = {
           },
         ]
       }
+      signup_attempts: {
+        Row: {
+          attempted_at: string
+          ip_hash: string
+        }
+        Insert: {
+          attempted_at?: string
+          ip_hash: string
+        }
+        Update: {
+          attempted_at?: string
+          ip_hash?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       customers_field_view: {
         Row: {
           address: string | null
+          business_id: string | null
           contact: string | null
           id: string | null
           name: string | null
@@ -1838,6 +1963,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          business_id?: string | null
           contact?: string | null
           id?: string | null
           name?: string | null
@@ -1845,12 +1971,21 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          business_id?: string | null
           contact?: string | null
           id?: string | null
           name?: string | null
           phone?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "customers_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       job_line_items_field_view: {
         Row: {
@@ -1880,6 +2015,7 @@ export type Database = {
       jobs_field_view: {
         Row: {
           address: string | null
+          business_id: string | null
           customer_id: string | null
           due_date: string | null
           id: string | null
@@ -1891,6 +2027,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          business_id?: string | null
           customer_id?: string | null
           due_date?: string | null
           id?: string | null
@@ -1902,6 +2039,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          business_id?: string | null
           customer_id?: string | null
           due_date?: string | null
           id?: string | null
@@ -1912,6 +2050,13 @@ export type Database = {
           title?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "jobs_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "jobs_customer_id_fkey"
             columns: ["customer_id"]
@@ -2032,7 +2177,7 @@ export type Database = {
         }[]
       }
       get_joinable_jobs: {
-        Args: never
+        Args: { p_business_id?: string }
         Returns: {
           address: string
           id: string
@@ -2109,7 +2254,6 @@ export type Database = {
           unit_price: number
         }[]
       }
-      is_owner: { Args: never; Returns: boolean }
       mark_invoice_viewed: { Args: { p_token: string }; Returns: undefined }
       mark_quote_viewed: { Args: { p_token: string }; Returns: undefined }
       next_invoice_number: { Args: never; Returns: string }
@@ -2118,6 +2262,7 @@ export type Database = {
       next_quote_number: { Args: never; Returns: string }
       request_leave: {
         Args: {
+          p_business_id?: string
           p_end_date: string
           p_hours: number
           p_note?: string
@@ -2125,6 +2270,7 @@ export type Database = {
           p_type: string
         }
         Returns: {
+          business_id: string
           created_at: string
           employee_id: string
           end_date: string
@@ -2151,6 +2297,7 @@ export type Database = {
       review_leave_request: {
         Args: { p_approve: boolean; p_request_id: string }
         Returns: {
+          business_id: string
           created_at: string
           employee_id: string
           end_date: string

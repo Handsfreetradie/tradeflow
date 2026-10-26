@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth/AuthProvider'
+import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
 import type { PurchaseOrder, PurchaseOrderStatus } from '@/lib/demo-data'
 
 export interface NewPurchaseOrderInput {
@@ -47,11 +48,12 @@ const PurchaseOrdersContext = createContext<PurchaseOrdersContextValue | null>(n
 
 export function PurchaseOrdersProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth()
+  const { activeBusinessId } = useActiveBusiness()
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!session) {
+    if (!session || !activeBusinessId) {
       setPurchaseOrders([])
       setLoading(false)
       return
@@ -62,6 +64,7 @@ export function PurchaseOrdersProvider({ children }: { children: ReactNode }) {
     supabase
       .from('purchase_orders')
       .select('*')
+      .eq('business_id', activeBusinessId)
       .order('created_at', { ascending: false })
       .then(({ data, error }) => {
         if (cancelled) return
@@ -71,7 +74,7 @@ export function PurchaseOrdersProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [session])
+  }, [session, activeBusinessId])
 
   const addPurchaseOrder = useCallback(async (input: NewPurchaseOrderInput) => {
     const { data: number, error: numberError } = await supabase.rpc('next_po_number')
@@ -80,6 +83,7 @@ export function PurchaseOrdersProvider({ children }: { children: ReactNode }) {
     const { data: row, error } = await supabase
       .from('purchase_orders')
       .insert({
+        business_id: activeBusinessId ?? undefined,
         number,
         job_id: input.jobId,
         supplier: input.supplier ?? '',
@@ -92,7 +96,7 @@ export function PurchaseOrdersProvider({ children }: { children: ReactNode }) {
     const created = fromRow(row as PurchaseOrderRow)
     setPurchaseOrders((prev) => [created, ...prev])
     return created
-  }, [])
+  }, [activeBusinessId])
 
   const cancelPurchaseOrder = useCallback(async (id: string) => {
     const { error } = await supabase.from('purchase_orders').update({ status: 'cancelled' }).eq('id', id)

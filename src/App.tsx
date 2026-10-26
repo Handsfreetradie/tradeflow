@@ -1,6 +1,7 @@
 import { Route, Routes } from 'react-router-dom'
 import { AppShell } from '@/components/layout/AppShell'
 import { AuthProvider } from '@/lib/auth/AuthProvider'
+import { ActiveBusinessProvider, BusinessScope } from '@/lib/auth/ActiveBusinessProvider'
 import { RequireRole } from '@/components/auth/RequireRole'
 import { JobsProvider } from '@/lib/store/jobs-store'
 import { CustomersProvider } from '@/lib/store/customers-store'
@@ -126,6 +127,8 @@ function EmployeeApp() {
 function App() {
   return (
     <AuthProvider>
+      <ActiveBusinessProvider>
+      <BusinessScope>
       <TeamProvider>
       <LeaveProvider>
       <OnCallProvider>
@@ -155,6 +158,8 @@ function App() {
       </OnCallProvider>
       </LeaveProvider>
       </TeamProvider>
+      </BusinessScope>
+      </ActiveBusinessProvider>
     </AuthProvider>
   )
 }

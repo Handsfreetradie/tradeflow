@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth/AuthProvider'
+import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
 
 export interface BusinessSettings {
   businessName: string
@@ -41,6 +42,7 @@ const BusinessSettingsContext = createContext<BusinessSettingsContextValue | nul
 
 export function BusinessSettingsProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth()
+  const { activeBusinessId } = useActiveBusiness()
   const [settings, setSettings] = useState<BusinessSettings>(DEFAULTS)
   const [loading, setLoading] = useState(true)
   // business_profile is keyed by business_id (one row per business) rather than the old
@@ -49,7 +51,7 @@ export function BusinessSettingsProvider({ children }: { children: ReactNode }) 
 
   useEffect(() => {
     businessIdRef.current = null
-    if (!session) {
+    if (!session || !activeBusinessId) {
       setSettings(DEFAULTS)
       setLoading(false)
       return
@@ -60,6 +62,7 @@ export function BusinessSettingsProvider({ children }: { children: ReactNode }) 
     supabase
       .from('business_profile')
       .select('*')
+      .eq('business_id', activeBusinessId)
       .maybeSingle()
       .then(({ data }) => {
         if (cancelled) return
@@ -83,7 +86,7 @@ export function BusinessSettingsProvider({ children }: { children: ReactNode }) 
     return () => {
       cancelled = true
     }
-  }, [session])
+  }, [session, activeBusinessId])
 
   const updateSettings = useCallback(async (patch: Partial<EditableFields>) => {
     if (!businessIdRef.current) throw new Error('Business settings not loaded yet')
@@ -103,6 +106,10 @@ export function BusinessSettingsProvider({ children }: { children: ReactNode }) 
       })
       .eq('business_id', businessIdRef.current)
     if (error) throw new Error(error.message)
+    // The business chooser reads the name from `businesses`, so keep that in step.
+    if (patch.businessName !== undefined) {
+      await supabase.from('businesses').update({ name: patch.businessName }).eq('id', businessIdRef.current)
+    }
     setSettings((prev) => ({ ...prev, ...patch }))
   }, [])
 

@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useAuth } from '@/lib/auth/AuthProvider'
+import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
 import { useNotifications } from '@/lib/store/notifications-store'
 import { useBusinessSettings } from '@/lib/store/business-settings-store'
 import { cn } from '@/lib/utils'
@@ -28,6 +29,7 @@ export function Header() {
   const navigate = useNavigate()
   const { notifications, unreadCount, markRead, markAllRead } = useNotifications()
   const { settings } = useBusinessSettings()
+  const { memberships, openChooser } = useActiveBusiness()
   const displayName = fullName ?? 'Owner'
   const initials = displayName
     .split(' ')
@@ -128,6 +130,7 @@ export function Header() {
             <ChevronDown className="size-3.5 text-muted-foreground" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            {memberships.length > 1 && <DropdownMenuItem onClick={openChooser}>Switch business</DropdownMenuItem>}
             <DropdownMenuItem onClick={() => signOut()}>Sign out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

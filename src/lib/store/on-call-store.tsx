@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth/AuthProvider'
+import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
 import { toDateKey } from '@/lib/utils'
 
 export interface OnCallWeek {
@@ -36,15 +37,18 @@ type RosterRow = {
 
 export function OnCallProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth()
+  const { activeBusinessId } = useActiveBusiness()
   const [roster, setRoster] = useState<OnCallWeek[]>([])
   const [loading, setLoading] = useState(true)
   const [tick, setTick] = useState(0)
 
   const load = useCallback(async () => {
+    if (!activeBusinessId) return
     setLoading(true)
     const { data, error } = await supabase
       .from('on_call_roster')
       .select('week_start, employee_id, employee:profiles(full_name)')
+      .eq('business_id', activeBusinessId)
       .order('week_start')
     if (!error && data) {
       setRoster(
@@ -56,11 +60,11 @@ export function OnCallProvider({ children }: { children: ReactNode }) {
       )
     }
     setLoading(false)
-  }, [])
+  }, [activeBusinessId])
 
   useEffect(() => {
-    if (session) load()
-  }, [session, tick, load])
+    if (session && activeBusinessId) load()
+  }, [session, activeBusinessId, tick, load])
 
   const refresh = useCallback(() => setTick((t) => t + 1), [])
 
@@ -74,11 +78,14 @@ export function OnCallProvider({ children }: { children: ReactNode }) {
 
   const assignWeek = useCallback(
     async (weekStart: string, employeeId: string | null) => {
-      const { error } = await supabase.from('on_call_roster').upsert({ week_start: weekStart, employee_id: employeeId }, { onConflict: 'week_start' })
+      const { error } = await supabase.from('on_call_roster').upsert(
+        { business_id: activeBusinessId ?? '', week_start: weekStart, employee_id: employeeId },
+        { onConflict: 'business_id,week_start' }
+      )
       if (error) throw new Error(error.message)
       refresh()
     },
-    [refresh]
+    [refresh, activeBusinessId]
   )
 
   const value = useMemo(

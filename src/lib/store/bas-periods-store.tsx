@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth/AuthProvider'
+import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
 import { quarterFromDate, type BasQuarter } from '@/lib/bas'
 
 export interface BasSnapshot {
@@ -33,11 +34,12 @@ function key(p: Pick<LodgedPeriod, 'year' | 'quarterIndex'>): string {
 
 export function BasPeriodsProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth()
+  const { activeBusinessId } = useActiveBusiness()
   const [lodgedPeriods, setLodgedPeriods] = useState<LodgedPeriod[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!session) {
+    if (!session || !activeBusinessId) {
       setLodgedPeriods([])
       setLoading(false)
       return
@@ -48,6 +50,7 @@ export function BasPeriodsProvider({ children }: { children: ReactNode }) {
     supabase
       .from('bas_periods')
       .select('year, quarter_index, lodged_at, g1, one_a, one_b, net_gst')
+      .eq('business_id', activeBusinessId)
       .then(({ data }) => {
         if (cancelled) return
         if (data) {
@@ -68,7 +71,7 @@ export function BasPeriodsProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [session])
+  }, [session, activeBusinessId])
 
   const isLocked = useCallback(
     (quarter: Pick<BasQuarter, 'year' | 'quarterIndex'>) => lodgedPeriods.some((p) => key(p) === key(quarter)),
@@ -80,18 +83,31 @@ export function BasPeriodsProvider({ children }: { children: ReactNode }) {
   const lockQuarter = useCallback(async (quarter: BasQuarter, snapshot: BasSnapshot) => {
     const { data: row, error } = await supabase
       .from('bas_periods')
-      .insert({ year: quarter.year, quarter_index: quarter.quarterIndex, g1: snapshot.g1, one_a: snapshot.oneA, one_b: snapshot.oneB, net_gst: snapshot.netGst })
+      .insert({
+        business_id: activeBusinessId ?? '',
+        year: quarter.year,
+        quarter_index: quarter.quarterIndex,
+        g1: snapshot.g1,
+        one_a: snapshot.oneA,
+        one_b: snapshot.oneB,
+        net_gst: snapshot.netGst,
+      })
       .select('lodged_at')
       .single()
     if (error || !row) throw new Error(error?.message ?? 'Failed to lock quarter')
     setLodgedPeriods((prev) => [...prev, { year: quarter.year, quarterIndex: quarter.quarterIndex, lodgedAt: row.lodged_at, ...snapshot }])
-  }, [])
+  }, [activeBusinessId])
 
   const unlockQuarter = useCallback(async (quarter: BasQuarter) => {
-    const { error } = await supabase.from('bas_periods').delete().eq('year', quarter.year).eq('quarter_index', quarter.quarterIndex)
+    const { error } = await supabase
+      .from('bas_periods')
+      .delete()
+      .eq('business_id', activeBusinessId ?? '')
+      .eq('year', quarter.year)
+      .eq('quarter_index', quarter.quarterIndex)
     if (error) throw new Error(error.message)
     setLodgedPeriods((prev) => prev.filter((p) => key(p) !== key(quarter)))
-  }, [])
+  }, [activeBusinessId])
 
   const value = useMemo(
     () => ({ loading, lodgedPeriods, isLocked, isDateLocked, lockQuarter, unlockQuarter }),

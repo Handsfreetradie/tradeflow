@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth/AuthProvider'
+import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
 
 export interface Notification {
   id: string
@@ -48,12 +49,13 @@ function fromRow(n: NotificationRow): Notification {
 
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth()
+  const { activeBusinessId } = useActiveBusiness()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
   const [tick, setTick] = useState(0)
 
   useEffect(() => {
-    if (!session) {
+    if (!session || !activeBusinessId) {
       setNotifications([])
       setLoading(false)
       return
@@ -66,6 +68,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       .select(
         'id, type, job_id, invoice_id, quote_id, leave_request_id, message, created_at, read_at, job:jobs(number, title), invoice:invoices(number), quote:quotes(number)'
       )
+      .eq('business_id', activeBusinessId)
       .order('created_at', { ascending: false })
       .limit(50)
       .then(({ data, error }) => {
@@ -76,7 +79,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [session, tick])
+  }, [session, activeBusinessId, tick])
 
   const refresh = useCallback(() => setTick((t) => t + 1), [])
 

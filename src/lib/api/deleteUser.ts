@@ -3,8 +3,9 @@ import { supabase } from '@/lib/supabase'
 const FUNCTION_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/delete-user`
 const ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY
 
-/** Removes an employee's login. Owner-only, authorized server-side by the caller's JWT. */
-export async function deleteUser(userId: string): Promise<{ error: string | null }> {
+/** Removes an employee from one business (their login is kept — it may belong to other
+ * businesses). Owner-only, authorized server-side against the caller's memberships. */
+export async function deleteUser(userId: string, businessId?: string): Promise<{ error: string | null }> {
   const { data: sessionData } = await supabase.auth.getSession()
   const accessToken = sessionData.session?.access_token
 
@@ -15,7 +16,7 @@ export async function deleteUser(userId: string): Promise<{ error: string | null
       apikey: ANON_KEY,
       Authorization: `Bearer ${accessToken ?? ANON_KEY}`,
     },
-    body: JSON.stringify({ userId }),
+    body: JSON.stringify({ userId, businessId }),
   })
 
   const body = await res.json().catch(() => ({ error: 'Unexpected response from server' }))

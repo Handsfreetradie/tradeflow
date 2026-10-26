@@ -16,13 +16,15 @@ interface InviteEmployeeInput {
   full_name: string
   role: 'employee'
   redirectTo: string
+  /** Which business to add them to — the one the owner is currently working in. */
+  businessId?: string
 }
 
 /** Calls the `create-user` edge function. Owner bootstrap sets their own password directly
  * and needs no session. Employee invites send a real email (the employee sets their own
  * password by clicking the link) and are authorized server-side by the caller's own JWT
  * (must be role='owner'). */
-export async function createUser(input: CreateOwnerInput | InviteEmployeeInput): Promise<{ error: string | null }> {
+export async function createUser(input: CreateOwnerInput | InviteEmployeeInput): Promise<{ error: string | null; existing?: boolean }> {
   const { data: sessionData } = await supabase.auth.getSession()
   const accessToken = sessionData.session?.access_token
 
@@ -38,5 +40,5 @@ export async function createUser(input: CreateOwnerInput | InviteEmployeeInput):
 
   const body = await res.json().catch(() => ({ error: 'Unexpected response from server' }))
   if (!res.ok) return { error: body.error ?? 'Something went wrong' }
-  return { error: null }
+  return { error: null, existing: body.existing === true }
 }

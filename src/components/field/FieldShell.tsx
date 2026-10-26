@@ -1,12 +1,14 @@
 import { NavLink, Outlet } from 'react-router-dom'
-import { Home, Briefcase, CalendarDays, LogOut, WifiOff, RefreshCw } from 'lucide-react'
+import { Home, Briefcase, CalendarDays, LogOut, WifiOff, RefreshCw, ArrowLeftRight } from 'lucide-react'
 import { useAuth } from '@/lib/auth/AuthProvider'
+import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
 import { useFieldJobsStore } from '@/lib/store/field-jobs-store'
 import { cn } from '@/lib/utils'
 import { Toaster } from '@/components/ui/toaster'
 
 export function FieldShell() {
   const { signOut } = useAuth()
+  const { memberships, openChooser } = useActiveBusiness()
   const { offline, pendingSyncCount } = useFieldJobsStore()
 
   return (
@@ -56,6 +58,15 @@ export function FieldShell() {
           <CalendarDays className="size-5" />
           Leave
         </NavLink>
+        {memberships.length > 1 && (
+          <button
+            onClick={openChooser}
+            className="flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-[11px] font-medium text-muted-foreground"
+          >
+            <ArrowLeftRight className="size-5" />
+            Switch
+          </button>
+        )}
         <button
           onClick={() => signOut()}
           className="flex flex-1 flex-col items-center justify-center gap-0.5 py-2.5 text-[11px] font-medium text-muted-foreground"

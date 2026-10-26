@@ -1,5 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
+import { useAuth } from '@/lib/auth/AuthProvider'
+import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
 
 export type EmploymentType = 'full_time' | 'part_time' | 'casual'
 
@@ -39,37 +41,61 @@ interface TeamContextValue {
 
 const TeamContext = createContext<TeamContextValue | null>(null)
 
+interface MembershipRow {
+  person_id: string
+  role: string
+  hourly_rate: number | null
+  trade_role: string
+  employment_type: string
+  weekly_hours: number
+  employment_start_date: string | null
+  annual_leave_opening_hours: number
+  sick_leave_opening_hours: number
+  person: { full_name: string; email: string } | null
+}
+
+// The team is "who belongs to the business I'm currently working in" — per-business details
+// (role, rate, employment terms) live on the membership, because one person can work for several.
 export function TeamProvider({ children }: { children: ReactNode }) {
+  const { session } = useAuth()
+  const { activeBusinessId } = useActiveBusiness()
   const [team, setTeam] = useState<TeamMember[]>([])
   const [loading, setLoading] = useState(true)
   const [tick, setTick] = useState(0)
 
   useEffect(() => {
+    if (!session || !activeBusinessId) {
+      setTeam([])
+      setLoading(false)
+      return
+    }
     let cancelled = false
     setLoading(true)
     supabase
-      .from('profiles')
+      .from('business_memberships')
       .select(
-        'id, full_name, role, email, hourly_rate, trade_role, employment_type, weekly_hours, employment_start_date, annual_leave_opening_hours, sick_leave_opening_hours'
+        'person_id, role, hourly_rate, trade_role, employment_type, weekly_hours, employment_start_date, annual_leave_opening_hours, sick_leave_opening_hours, person:profiles!business_memberships_person_id_fkey(full_name, email)'
       )
-      .order('full_name')
+      .eq('business_id', activeBusinessId)
       .then(({ data, error }) => {
         if (cancelled) return
         if (!error && data) {
           setTeam(
-            data.map((p) => ({
-              id: p.id,
-              fullName: p.full_name,
-              role: p.role as 'owner' | 'employee',
-              email: p.email,
-              hourlyRate: p.hourly_rate,
-              tradeRole: p.trade_role,
-              employmentType: p.employment_type as EmploymentType,
-              weeklyHours: p.weekly_hours,
-              employmentStartDate: p.employment_start_date,
-              annualLeaveOpeningHours: p.annual_leave_opening_hours,
-              sickLeaveOpeningHours: p.sick_leave_opening_hours,
-            }))
+            (data as unknown as MembershipRow[])
+              .map((m) => ({
+                id: m.person_id,
+                fullName: m.person?.full_name ?? 'Unknown',
+                role: m.role as 'owner' | 'employee',
+                email: m.person?.email ?? '',
+                hourlyRate: m.hourly_rate,
+                tradeRole: m.trade_role,
+                employmentType: m.employment_type as EmploymentType,
+                weeklyHours: m.weekly_hours,
+                employmentStartDate: m.employment_start_date,
+                annualLeaveOpeningHours: m.annual_leave_opening_hours,
+                sickLeaveOpeningHours: m.sick_leave_opening_hours,
+              }))
+              .sort((x, y) => x.fullName.localeCompare(y.fullName))
           )
         }
         setLoading(false)
@@ -77,21 +103,21 @@ export function TeamProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [tick])
+  }, [session, activeBusinessId, tick])
 
   const refresh = useCallback(() => setTick((t) => t + 1), [])
 
   const updateRate = useCallback(async (id: string, hourlyRate: number | null) => {
-    const { error } = await supabase.from('profiles').update({ hourly_rate: hourlyRate }).eq('id', id)
+    const { error } = await supabase.from('business_memberships').update({ hourly_rate: hourlyRate }).eq('person_id', id).eq('business_id', activeBusinessId ?? '')
     if (error) throw new Error(error.message)
     setTeam((prev) => prev.map((m) => (m.id === id ? { ...m, hourlyRate } : m)))
-  }, [])
+  }, [activeBusinessId])
 
   const updateTradeRole = useCallback(async (id: string, tradeRole: string) => {
-    const { error } = await supabase.from('profiles').update({ trade_role: tradeRole }).eq('id', id)
+    const { error } = await supabase.from('business_memberships').update({ trade_role: tradeRole }).eq('person_id', id).eq('business_id', activeBusinessId ?? '')
     if (error) throw new Error(error.message)
     setTeam((prev) => prev.map((m) => (m.id === id ? { ...m, tradeRole } : m)))
-  }, [])
+  }, [activeBusinessId])
 
   const updateEmployment = useCallback(
     async (
@@ -105,7 +131,7 @@ export function TeamProvider({ children }: { children: ReactNode }) {
       }>
     ) => {
       const { error } = await supabase
-        .from('profiles')
+        .from('business_memberships')
         .update({
           ...(patch.employmentType !== undefined ? { employment_type: patch.employmentType } : {}),
           ...(patch.weeklyHours !== undefined ? { weekly_hours: patch.weeklyHours } : {}),
@@ -113,11 +139,12 @@ export function TeamProvider({ children }: { children: ReactNode }) {
           ...(patch.annualLeaveOpeningHours !== undefined ? { annual_leave_opening_hours: patch.annualLeaveOpeningHours } : {}),
           ...(patch.sickLeaveOpeningHours !== undefined ? { sick_leave_opening_hours: patch.sickLeaveOpeningHours } : {}),
         })
-        .eq('id', id)
+        .eq('person_id', id)
+        .eq('business_id', activeBusinessId ?? '')
       if (error) throw new Error(error.message)
       setTeam((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)))
     },
-    []
+    [activeBusinessId]
   )
 
   const value = useMemo(

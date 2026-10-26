@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth/AuthProvider'
+import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
 import type { Expense, ExpenseCategory, GstType } from '@/lib/demo-data'
 
 export interface NewExpenseInput {
@@ -51,11 +52,12 @@ function fromRow(row: ExpenseRow): Expense {
 
 export function ExpensesProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth()
+  const { activeBusinessId } = useActiveBusiness()
   const [expenses, setExpenses] = useState<Expense[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!session) {
+    if (!session || !activeBusinessId) {
       setExpenses([])
       setLoading(false)
       return
@@ -66,6 +68,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
     supabase
       .from('expenses')
       .select('*')
+      .eq('business_id', activeBusinessId)
       .order('date', { ascending: false })
       .then(({ data, error }) => {
         if (cancelled) return
@@ -75,12 +78,13 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [session])
+  }, [session, activeBusinessId])
 
   const addExpense = useCallback(async (input: NewExpenseInput) => {
     const { data: row, error } = await supabase
       .from('expenses')
       .insert({
+        business_id: activeBusinessId ?? undefined,
         description: input.description,
         category: input.category,
         amount: input.amount,
@@ -96,7 +100,7 @@ export function ExpensesProvider({ children }: { children: ReactNode }) {
     const created = fromRow(row as ExpenseRow)
     setExpenses((prev) => [created, ...prev])
     return created
-  }, [])
+  }, [activeBusinessId])
 
   const deleteExpense = useCallback(
     async (id: string) => {

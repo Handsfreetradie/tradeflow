@@ -12,6 +12,7 @@ import {
   Phone,
   Settings,
   ChevronsUpDown,
+  ArrowLeftRight,
 } from 'lucide-react'
 import { NavItem } from '@/components/ui/nav-item'
 import { LogoMark } from '@/components/shared/Logo'
@@ -21,6 +22,7 @@ import { useQuotesStore } from '@/lib/store/quotes-store'
 import { useInvoicesStore } from '@/lib/store/invoices-store'
 import { useLeaveStore } from '@/lib/store/leave-store'
 import { useAuth } from '@/lib/auth/AuthProvider'
+import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
 import { useBusinessSettings } from '@/lib/store/business-settings-store'
 
 export function Sidebar() {
@@ -30,6 +32,7 @@ export function Sidebar() {
   const { requests: leaveRequests } = useLeaveStore()
   const { fullName, signOut } = useAuth()
   const { settings } = useBusinessSettings()
+  const { memberships, openChooser } = useActiveBusiness()
 
   const openJobs = jobs.filter((j) => j.status === 'In Progress' || j.status === 'Scheduled').length
   const unpaidInvoices = invoices.filter((i) => i.status === 'Sent' || i.status === 'Partial' || i.status === 'Overdue').length
@@ -76,6 +79,16 @@ export function Sidebar() {
       <div className="space-y-0.5 border-t border-sidebar-border px-3 py-3">
         <NavItem to="/settings" icon={Settings} label="Settings" />
       </div>
+
+      {memberships.length > 1 && (
+        <button
+          onClick={openChooser}
+          className="flex items-center gap-2.5 border-t border-sidebar-border px-4 py-3 text-left text-sm text-sidebar-muted transition-colors hover:bg-white/5 hover:text-white"
+        >
+          <ArrowLeftRight className="size-4" />
+          Switch business
+        </button>
+      )}
 
       <button
         onClick={() => signOut()}

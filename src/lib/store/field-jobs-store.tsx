@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth/AuthProvider'
+import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
 import { useOnline } from '@/lib/offline/online'
 import { getCachedJobs, setCachedJobs } from '@/lib/offline/db'
 import { enqueue, usePendingSyncCount } from '@/lib/offline/queue'
@@ -83,6 +84,7 @@ function formatTimestamp(iso: string) {
 
 export function FieldJobsProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth()
+  const { activeBusinessId } = useActiveBusiness()
   const online = useOnline()
   const pendingSyncCount = usePendingSyncCount()
   const [jobs, setJobs] = useState<FieldJob[]>([])
@@ -91,23 +93,24 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
   const [joinableJobs, setJoinableJobs] = useState<JoinableJob[]>([])
 
   const load = useCallback(async () => {
+    if (!activeBusinessId) return
     setLoading(true)
     try {
       if (!navigator.onLine) throw new Error('offline')
 
-      const { data: jobRows, error } = await supabase.from('jobs_field_view').select('*').order('due_date')
+      const { data: jobRows, error } = await supabase.from('jobs_field_view').select('*').eq('business_id', activeBusinessId).order('due_date')
       if (error) throw new Error(error.message)
       const jobIds = (jobRows ?? []).map((j) => j.id).filter((id): id is string => !!id)
       if (jobIds.length === 0) {
         setJobs([])
-        await setCachedJobs([])
+        await setCachedJobs(activeBusinessId, [])
         setLoading(false)
         return
       }
 
       const [{ data: customerRows }, { data: lineItemRows }, { data: noteRows }, { data: checkinRows }, { data: crewRows }, { data: stageRows }] =
         await Promise.all([
-          supabase.from('customers_field_view').select('*'),
+          supabase.from('customers_field_view').select('*').eq('business_id', activeBusinessId),
           supabase.from('job_line_items_field_view').select('*').in('job_id', jobIds).order('sort_order'),
           supabase.from('job_notes').select('*').in('job_id', jobIds).order('created_at'),
           supabase.from('job_checkins').select('*').in('job_id', jobIds).order('check_in'),
@@ -190,18 +193,18 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
         }
       })
       setJobs(assembled)
-      await setCachedJobs(assembled)
+      await setCachedJobs(activeBusinessId, assembled)
     } catch {
-      const cached = await getCachedJobs()
+      const cached = await getCachedJobs(activeBusinessId)
       setJobs(cached ?? [])
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [activeBusinessId])
 
   const loadJoinable = useCallback(async () => {
     if (!navigator.onLine) return
-    const { data, error } = await supabase.rpc('get_joinable_jobs')
+    const { data, error } = await supabase.rpc('get_joinable_jobs', { p_business_id: activeBusinessId ?? undefined })
     if (error || !data) return
     setJoinableJobs(
       data.map((row) => ({
@@ -213,7 +216,7 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
         status: row.status as JobStatus,
       }))
     )
-  }, [])
+  }, [activeBusinessId])
 
   useEffect(() => {
     if (session) load()

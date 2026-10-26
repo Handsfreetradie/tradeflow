@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { useTeamStore, type TeamMember } from '@/lib/store/team-store'
 import { useBusinessSettings } from '@/lib/store/business-settings-store'
 import { useAuth } from '@/lib/auth/AuthProvider'
+import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
 import { createUser } from '@/lib/api/createUser'
 import { deleteUser } from '@/lib/api/deleteUser'
 import { connectGmail, disconnectGmail, getEmailConnectionStatus, type EmailConnectionStatus } from '@/lib/api/email'
@@ -595,6 +596,7 @@ function EmploymentDialog({ member }: { member: TeamMember }) {
 export default function Settings() {
   const { team, loading, refresh } = useTeamStore()
   const { session } = useAuth()
+  const { activeBusinessId } = useActiveBusiness()
   const [open, setOpen] = useState(false)
   const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
@@ -605,7 +607,7 @@ export default function Settings() {
 
   const removeEmployee = async (id: string) => {
     setRemoving(true)
-    const { error } = await deleteUser(id)
+    const { error } = await deleteUser(id, activeBusinessId ?? undefined)
     setRemoving(false)
     if (error) {
       toast.error(error)
@@ -619,18 +621,23 @@ export default function Settings() {
     if (!fullName.trim() || !email.trim()) return
     setSubmitting(true)
     setError(null)
-    const { error } = await createUser({
+    const { error, existing } = await createUser({
       email: email.trim(),
       full_name: fullName.trim(),
       role: 'employee',
       redirectTo: `${window.location.origin}/auth/accept-invite`,
+      businessId: activeBusinessId ?? undefined,
     })
     setSubmitting(false)
     if (error) {
       setError(error)
       return
     }
-    toast.success(`Invite sent to ${email.trim()}`)
+    toast.success(
+      existing
+        ? `${email.trim()} already has a TradeFlow account — they've been added to your team`
+        : `Invite sent to ${email.trim()}`
+    )
     setFullName('')
     setEmail('')
     setOpen(false)

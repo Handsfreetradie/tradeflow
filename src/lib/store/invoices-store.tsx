@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth/AuthProvider'
+import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
 import { gstInclusiveTotal } from '@/lib/bas'
 import type { GstType, Invoice, InvoiceStatus, LineItem, PaymentMethod } from '@/lib/demo-data'
 
@@ -95,11 +96,12 @@ function fromRow(row: InvoiceRow): Invoice {
 
 export function InvoicesProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth()
+  const { activeBusinessId } = useActiveBusiness()
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!session) {
+    if (!session || !activeBusinessId) {
       setInvoices([])
       setLoading(false)
       return
@@ -110,6 +112,7 @@ export function InvoicesProvider({ children }: { children: ReactNode }) {
     supabase
       .from('invoices')
       .select(INVOICE_SELECT)
+      .eq('business_id', activeBusinessId)
       .order('date', { ascending: false })
       .then(({ data, error }) => {
         if (cancelled) return
@@ -119,7 +122,7 @@ export function InvoicesProvider({ children }: { children: ReactNode }) {
     return () => {
       cancelled = true
     }
-  }, [session])
+  }, [session, activeBusinessId])
 
   const getInvoice = useCallback((id: string) => invoices.find((i) => i.id === id), [invoices])
 
@@ -131,6 +134,7 @@ export function InvoicesProvider({ children }: { children: ReactNode }) {
     const { data: row, error } = await supabase
       .from('invoices')
       .insert({
+        business_id: activeBusinessId ?? undefined,
         number,
         customer_id: input.customerId,
         date: new Date().toISOString().slice(0, 10),
@@ -160,7 +164,7 @@ export function InvoicesProvider({ children }: { children: ReactNode }) {
     })
     setInvoices((prev) => [created, ...prev])
     return created
-  }, [])
+  }, [activeBusinessId])
 
   const updateInvoice = useCallback(async (id: string, input: NewInvoiceInput) => {
     const amount = input.lineItems.reduce((sum, li) => sum + li.qty * li.unitPrice, 0)
