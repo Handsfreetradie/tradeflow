@@ -15,7 +15,7 @@ import { useAuth } from '@/lib/auth/AuthProvider'
 import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
 import { createUser } from '@/lib/api/createUser'
 import { deleteUser } from '@/lib/api/deleteUser'
-import { connectGmail, disconnectGmail, getEmailConnectionStatus, type EmailConnectionStatus } from '@/lib/api/email'
+import { connectGmail, disconnectGmail, EMAIL_CHECK_INTERVAL_OPTIONS, getEmailConnectionStatus, setEmailCheckInterval, type EmailConnectionStatus } from '@/lib/api/email'
 
 function BusinessCard() {
   const { settings, loading, updateSettings, uploadLogo } = useBusinessSettings()
@@ -285,6 +285,19 @@ function EmailIntegrationCard() {
     }
   }
 
+  const changeInterval = async (value: string) => {
+    const minutes = Number(value)
+    const previous = status
+    setStatus((s) => (s ? { ...s, checkIntervalMinutes: minutes } : s))
+    try {
+      await setEmailCheckInterval(minutes)
+      toast.success(minutes === 0 ? 'Email checking paused' : 'Email check frequency saved')
+    } catch (e) {
+      setStatus(previous)
+      toast.error(e instanceof Error ? e.message : 'Could not save that')
+    }
+  }
+
   const disconnect = async () => {
     setDisconnecting(true)
     try {
@@ -332,16 +345,36 @@ function EmailIntegrationCard() {
       </CardHeader>
       <CardContent>
         {status.connected ? (
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="text-sm font-medium">Connected to {status.googleEmail}</p>
-              <p className="mt-0.5 text-xs text-muted-foreground">
-                New emails are checked automatically — flagged ones show up on your dashboard.
-              </p>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-medium">Connected to {status.googleEmail}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  New emails are checked automatically — flagged ones show up on your dashboard.
+                </p>
+              </div>
+              <Button variant="secondary" size="sm" disabled={disconnecting} onClick={disconnect}>
+                Disconnect
+              </Button>
             </div>
-            <Button variant="secondary" size="sm" disabled={disconnecting} onClick={disconnect}>
-              Disconnect
-            </Button>
+            <div className="flex items-center justify-between gap-4 border-t border-border pt-4">
+              <div>
+                <p className="text-sm font-medium">How often to check</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">Checking less often uses less AI. Pause it to stop checking completely.</p>
+              </div>
+              <Select value={String(status.checkIntervalMinutes)} onValueChange={changeInterval}>
+                <SelectTrigger className="w-44">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {EMAIL_CHECK_INTERVAL_OPTIONS.map((o) => (
+                    <SelectItem key={o.minutes} value={String(o.minutes)}>
+                      {o.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         ) : (
           <div className="flex items-center justify-between gap-4">

@@ -106,6 +106,7 @@ export type Database = {
         Row: {
           access_token: string | null
           business_id: string
+          check_interval_minutes: number
           connected_at: string | null
           connected_by: string | null
           google_email: string | null
@@ -118,6 +119,7 @@ export type Database = {
         Insert: {
           access_token?: string | null
           business_id: string
+          check_interval_minutes?: number
           connected_at?: string | null
           connected_by?: string | null
           google_email?: string | null
@@ -130,6 +132,7 @@ export type Database = {
         Update: {
           access_token?: string | null
           business_id?: string
+          check_interval_minutes?: number
           connected_at?: string | null
           connected_by?: string | null
           google_email?: string | null

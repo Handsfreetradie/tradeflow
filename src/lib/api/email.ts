@@ -6,6 +6,8 @@ export interface EmailConnectionStatus {
   googleEmail: string | null
   connectedAt: string | null
   lastCheckedAt: string | null
+  /** How often new email is checked, in minutes. 0 = paused. */
+  checkIntervalMinutes: number
 }
 
 export type EmailAlertCategory =
@@ -45,14 +47,29 @@ export interface EmailAlert {
 export async function getEmailConnectionStatus(): Promise<EmailConnectionStatus> {
   const businessId = getApiBusinessId()
   const { data } = businessId
-    ? await supabase.from('business_email_connection').select('google_email, connected_at, last_checked_at').eq('business_id', businessId).maybeSingle()
+    ? await supabase.from('business_email_connection').select('google_email, connected_at, last_checked_at, check_interval_minutes').eq('business_id', businessId).maybeSingle()
     : { data: null }
   return {
     connected: !!data?.google_email,
     googleEmail: data?.google_email ?? null,
     connectedAt: data?.connected_at ?? null,
     lastCheckedAt: data?.last_checked_at ?? null,
+    checkIntervalMinutes: data?.check_interval_minutes ?? 15,
   }
+}
+
+export const EMAIL_CHECK_INTERVAL_OPTIONS: { minutes: number; label: string }[] = [
+  { minutes: 15, label: 'Every 15 minutes' },
+  { minutes: 30, label: 'Every 30 minutes' },
+  { minutes: 60, label: 'Every hour' },
+  { minutes: 120, label: 'Every 2 hours' },
+  { minutes: 240, label: 'Every 4 hours' },
+  { minutes: 0, label: 'Paused' },
+]
+
+export async function setEmailCheckInterval(minutes: number): Promise<void> {
+  const { error } = await supabase.from('business_email_connection').update({ check_interval_minutes: minutes }).eq('business_id', requireApiBusinessId())
+  if (error) throw new Error(error.message)
 }
 
 export async function connectGmail(): Promise<string> {
