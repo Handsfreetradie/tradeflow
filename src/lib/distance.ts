@@ -39,6 +39,7 @@ interface PhotonFeature {
   geometry: { coordinates: [number, number] }
   properties: {
     name?: string
+    osm_key?: string
     housenumber?: string
     street?: string
     city?: string
@@ -60,12 +61,48 @@ const STATE_ABBR: Record<string, string> = {
   'Australian Capital Territory': 'ACT',
 }
 
-function toPlace(f: PhotonFeature): Place {
+const STREET_TYPES: Record<string, string> = {
+  st: 'street', rd: 'road', ave: 'avenue', av: 'avenue', dr: 'drive', ct: 'court', cres: 'crescent', pde: 'parade',
+  hwy: 'highway', pl: 'place', ln: 'lane', cl: 'close', blvd: 'boulevard', tce: 'terrace', cct: 'circuit', esp: 'esplanade',
+}
+const TYPE_WORDS = new Set(Object.values(STREET_TYPES))
+
+function tokens(s: string): string[] {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((t) => STREET_TYPES[t] ?? t)
+}
+
+/** House (and unit) number typed at the start of the query, e.g. "19 ..." or "3/12 ...". */
+function typedNumber(query: string): string | undefined {
+  const m = query.match(/^\s*(?:(\w+)\s*\/\s*)?(\d+[A-Za-z]?(?:\s*-\s*\d+[A-Za-z]?)?)\s+\S/)
+  return m ? `${m[1] ? `${m[1]}/` : ''}${m[2].replace(/\s+/g, '')}` : undefined
+}
+
+/**
+ * OpenStreetMap doesn't know every house number — Photon then returns just the street, or the nearest
+ * numbered house. When the result is on the street the user typed, keep the number they typed so the
+ * saved address (and the tax log) shows what they meant.
+ */
+function toPlace(f: PhotonFeature, query: string): Place {
   const p = f.properties
-  const street = p.housenumber && p.street ? `${p.housenumber} ${p.street}` : p.street ?? p.name
+  const streetName = p.street ?? (p.osm_key === 'highway' ? p.name : undefined)
   const suburb = p.district ?? p.locality ?? p.city
   const state = p.state ? STATE_ABBR[p.state] ?? p.state : undefined
   const tail = [suburb, [state, p.postcode].filter(Boolean).join(' ')].filter(Boolean).join(', ')
+
+  let number = p.housenumber
+  const typed = typedNumber(query)
+  if (typed && streetName) {
+    const distinctive = tokens(streetName).filter((t) => !TYPE_WORDS.has(t))
+    const queryTokens = new Set(tokens(query))
+    if (distinctive.length > 0 && distinctive.every((t) => queryTokens.has(t))) number = typed
+  }
+
+  const street = streetName ? (number ? `${number} ${streetName}` : streetName) : p.name
   // Avoid "Dalmeny, Dalmeny NSW" when the result is the suburb itself.
   const label = street && street !== suburb ? `${street}, ${tail}` : tail || street || 'Unknown place'
   const [lon, lat] = f.geometry.coordinates
@@ -80,7 +117,7 @@ export async function searchPlaces(query: string, signal?: AbortSignal): Promise
   )
   const seen = new Set<string>()
   return data.features
-    .map(toPlace)
+    .map((f) => toPlace(f, query))
     .filter((p) => (seen.has(p.label) ? false : (seen.add(p.label), true)))
 }
 
