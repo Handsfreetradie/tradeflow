@@ -240,8 +240,8 @@ function QuoteDefaultsCard() {
   )
 }
 
-/** Flip once the Google Cloud OAuth app + secrets are set up — see the "Connect Gmail" setup steps given to the owner. */
-const GMAIL_INTEGRATION_LIVE = false
+/** Off switch for the Gmail connection card (Google keys are set in Supabase). */
+const GMAIL_INTEGRATION_LIVE = true
 
 function EmailIntegrationCard() {
   const [status, setStatus] = useState<EmailConnectionStatus | null>(null)
