@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { getApiBusinessId, requireApiBusinessId } from '@/lib/api/active-business'
 
 export interface EmailConnectionStatus {
   connected: boolean
@@ -20,7 +21,10 @@ export interface EmailAlert {
 }
 
 export async function getEmailConnectionStatus(): Promise<EmailConnectionStatus> {
-  const { data } = await supabase.from('business_email_connection').select('google_email, connected_at, last_checked_at').maybeSingle()
+  const businessId = getApiBusinessId()
+  const { data } = businessId
+    ? await supabase.from('business_email_connection').select('google_email, connected_at, last_checked_at').eq('business_id', businessId).maybeSingle()
+    : { data: null }
   return {
     connected: !!data?.google_email,
     googleEmail: data?.google_email ?? null,
@@ -31,14 +35,14 @@ export async function getEmailConnectionStatus(): Promise<EmailConnectionStatus>
 
 export async function connectGmail(): Promise<string> {
   const returnUrl = `${window.location.origin}/settings`
-  const { data, error } = await supabase.functions.invoke('gmail-oauth-start', { body: { returnUrl } })
+  const { data, error } = await supabase.functions.invoke('gmail-oauth-start', { body: { returnUrl, businessId: requireApiBusinessId() } })
   if (error) throw new Error(error.message)
   if (!data?.url) throw new Error('Could not start Google sign-in')
   return data.url as string
 }
 
 export async function disconnectGmail(): Promise<void> {
-  const { error } = await supabase.functions.invoke('gmail-disconnect')
+  const { error } = await supabase.functions.invoke('gmail-disconnect', { body: { businessId: requireApiBusinessId() } })
   if (error) throw new Error(error.message)
 }
 
@@ -58,7 +62,7 @@ const SEND_ERROR_MESSAGES: Record<string, string> = {
 }
 
 export async function sendDocumentEmail(input: SendDocumentEmailInput): Promise<void> {
-  const { data, error } = await supabase.functions.invoke('send-document-email', { body: input })
+  const { data, error } = await supabase.functions.invoke('send-document-email', { body: { ...input, businessId: requireApiBusinessId() } })
   if (error) throw new Error(error.message)
   if (data?.error) {
     throw new Error(SEND_ERROR_MESSAGES[data.error] ?? (typeof data.error === 'string' ? data.error : 'Failed to send email'))
@@ -92,9 +96,12 @@ function fromAlertRow(row: AlertRow): EmailAlert {
 }
 
 export async function listEmailAlerts(): Promise<EmailAlert[]> {
+  const businessId = getApiBusinessId()
+  if (!businessId) return []
   const { data, error } = await supabase
     .from('email_alerts')
     .select('id, subject, from_address, snippet, ai_reason, priority, received_at, read_at, dismissed')
+    .eq('business_id', businessId)
     .eq('dismissed', false)
     .order('received_at', { ascending: false })
     .limit(20)

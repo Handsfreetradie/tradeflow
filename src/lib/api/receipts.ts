@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { requireApiBusinessId } from '@/lib/api/active-business'
 import type { ExpenseCategory } from '@/lib/demo-data'
 
 export interface ScannedReceipt {
@@ -13,8 +14,7 @@ export interface ScannedReceipt {
 /** Path-prefixed with the owner's own business id so the storage RLS policy can scope it —
  * matches the job-id-prefixed convention uploadJobCostReceipt uses for employee uploads below. */
 export async function uploadReceipt(file: File): Promise<string> {
-  const { data: businessId, error: businessIdError } = await supabase.rpc('current_business_id')
-  if (businessIdError || !businessId) throw new Error(businessIdError?.message ?? 'Could not resolve your business')
+  const businessId = requireApiBusinessId()
   const ext = file.name.split('.').pop() ?? 'jpg'
   const path = `${businessId}/${crypto.randomUUID()}.${ext}`
   const { error } = await supabase.storage.from('receipts').upload(path, file)
@@ -33,7 +33,7 @@ export async function uploadJobCostReceipt(jobId: string, file: File): Promise<s
 }
 
 export async function scanReceipt(storagePath: string): Promise<ScannedReceipt> {
-  const { data, error } = await supabase.functions.invoke('scan-receipt', { body: { storagePath } })
+  const { data, error } = await supabase.functions.invoke('scan-receipt', { body: { storagePath, businessId: requireApiBusinessId() } })
   if (error) throw new Error(error.message)
   return data as ScannedReceipt
 }

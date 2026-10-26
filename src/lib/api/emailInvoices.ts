@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase'
+import { getApiBusinessId, requireApiBusinessId } from '@/lib/api/active-business'
 import type { ExpenseCategory, GstType } from '@/lib/demo-data'
 
 export interface EmailInvoiceCandidate {
@@ -53,9 +54,12 @@ function fromRow(row: CandidateRow): EmailInvoiceCandidate {
 }
 
 export async function listEmailInvoiceCandidates(): Promise<EmailInvoiceCandidate[]> {
+  const businessId = getApiBusinessId()
+  if (!businessId) return []
   const { data, error } = await supabase
     .from('email_invoice_candidates')
     .select('*')
+    .eq('business_id', businessId)
     .eq('status', 'pending')
     .order('received_at', { ascending: false })
   if (error) throw new Error(error.message)
@@ -94,7 +98,8 @@ export async function claimEmailInvoiceReceipt(sourcePath: string): Promise<{ pa
   const filename = sourcePath.split('/').pop() ?? sourcePath
   const ext = filename.split('.').pop()?.toLowerCase() ?? 'pdf'
   const isImage = IMAGE_EXTENSIONS.includes(ext)
-  const path = `${crypto.randomUUID()}.${ext}`
+  // The receipts storage policy needs the business id as the first folder.
+  const path = `${requireApiBusinessId()}/${crypto.randomUUID()}.${ext}`
 
   const { error: uploadError } = await supabase.storage.from('receipts').upload(path, blob, { contentType: blob.type })
   if (uploadError) throw new Error(uploadError.message)

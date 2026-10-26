@@ -1,6 +1,7 @@
 import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth, type Role } from '@/lib/auth/AuthProvider'
+import { setApiBusinessId } from '@/lib/api/active-business'
 import { CHOSEN_KEY, LAST_USED_KEY, clearBusinessChoice, readChoice, writeChoice } from '@/lib/auth/business-choice'
 
 export interface Membership {
@@ -85,6 +86,8 @@ export function ActiveBusinessProvider({ children }: { children: ReactNode }) {
     // One business: no choice to make. Several: wait for the person to pick.
     const activeId = memberships.length === 1 ? memberships[0].businessId : chosenId
     const active = memberships.find((m) => m.businessId === activeId) ?? null
+    // Set during render (not in an effect) so child effects that call the API helpers on mount see it.
+    setApiBusinessId(active?.businessId ?? null)
     return {
       memberships,
       activeBusinessId: active?.businessId ?? null,
