@@ -108,6 +108,12 @@ export function JobCheckInCard({ job }: { job: Job }) {
                       {end ? end.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }) : 'ongoing'}
                     </p>
                     {c.note && <p className="truncate text-xs text-muted-foreground">{c.note}</p>}
+                    {(c.enteredManually || c.editedAt) && (
+                      <p className="truncate text-xs text-warning">
+                        {c.enteredManually ? 'Added manually' : 'Edited'} by {c.employeeName}
+                        {c.editNote ? ` — ${c.editNote}` : ''}
+                      </p>
+                    )}
                   </div>
                   <p className="shrink-0 text-xs font-medium text-muted-foreground">
                     {formatDuration((end ? end.getTime() : now) - start.getTime())}

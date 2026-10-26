@@ -69,6 +69,8 @@ interface FieldJobsContextValue {
   addNote: (id: string, text: string) => Promise<void>
   startJob: (id: string) => Promise<void>
   finishJob: (id: string, note?: string, blocked?: boolean) => Promise<void>
+  /** Add a missed session (no checkinId) or correct one of your own. Always flagged for the office. */
+  setJobTime: (jobId: string, input: { checkIn: string; checkOut: string | null; note: string; checkinId?: string }) => Promise<void>
   updateStage: (stageId: string, jobId: string, patch: { complete?: boolean; notes?: string }) => Promise<void>
   addJobCost: (jobId: string, input: NewFieldJobCostInput) => Promise<void>
   joinJob: (jobId: string) => Promise<void>
@@ -151,6 +153,9 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
           checkIn: ci.check_in,
           checkOut: ci.check_out,
           note: ci.note ?? undefined,
+          enteredManually: ci.entered_manually,
+          editedAt: ci.edited_at ?? undefined,
+          editNote: ci.edit_note ?? undefined,
         })
         checkinsByJob.set(ci.job_id, arr)
       }
@@ -289,6 +294,22 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
     [session, refresh]
   )
 
+  const setJobTime = useCallback(
+    async (jobId: string, input: { checkIn: string; checkOut: string | null; note: string; checkinId?: string }) => {
+      if (!navigator.onLine) throw new Error('You need a connection to change your time — try again when you have signal')
+      const { error } = await supabase.rpc('employee_set_job_time', {
+        p_job_id: jobId,
+        p_check_in: input.checkIn,
+        p_check_out: input.checkOut as string,
+        p_note: input.note,
+        p_checkin_id: input.checkinId,
+      })
+      if (error) throw new Error(error.message)
+      refresh()
+    },
+    [refresh]
+  )
+
   const finishJob = useCallback(
     async (id: string, note?: string, blocked?: boolean) => {
       if (!navigator.onLine) {
@@ -394,13 +415,14 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
       addNote,
       startJob,
       finishJob,
+      setJobTime,
       updateStage,
       addJobCost,
       joinJob,
       leaveJob,
       refresh,
     }),
-    [jobs, loading, online, pendingSyncCount, joinableJobs, getJob, addNote, startJob, finishJob, updateStage, addJobCost, joinJob, leaveJob, refresh]
+    [jobs, loading, online, pendingSyncCount, joinableJobs, getJob, addNote, startJob, finishJob, setJobTime, updateStage, addJobCost, joinJob, leaveJob, refresh]
   )
 
   return <FieldJobsContext.Provider value={value}>{children}</FieldJobsContext.Provider>

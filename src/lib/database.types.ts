@@ -894,7 +894,10 @@ export type Database = {
         Row: {
           check_in: string
           check_out: string | null
+          edit_note: string | null
+          edited_at: string | null
           employee_id: string
+          entered_manually: boolean
           id: string
           job_id: string
           note: string | null
@@ -902,7 +905,10 @@ export type Database = {
         Insert: {
           check_in: string
           check_out?: string | null
+          edit_note?: string | null
+          edited_at?: string | null
           employee_id: string
+          entered_manually?: boolean
           id?: string
           job_id: string
           note?: string | null
@@ -910,7 +916,10 @@ export type Database = {
         Update: {
           check_in?: string
           check_out?: string | null
+          edit_note?: string | null
+          edited_at?: string | null
           employee_id?: string
+          entered_manually?: boolean
           id?: string
           job_id?: string
           note?: string | null
@@ -2108,7 +2117,10 @@ export type Database = {
         Returns: {
           check_in: string
           check_out: string | null
+          edit_note: string | null
+          edited_at: string | null
           employee_id: string
+          entered_manually: boolean
           id: string
           job_id: string
           note: string | null
@@ -2122,12 +2134,41 @@ export type Database = {
       }
       employee_join_job: { Args: { p_job_id: string }; Returns: undefined }
       employee_leave_job: { Args: { p_job_id: string }; Returns: undefined }
+      employee_set_job_time: {
+        Args: {
+          p_check_in: string
+          p_check_out: string
+          p_checkin_id?: string
+          p_job_id: string
+          p_note: string
+        }
+        Returns: {
+          check_in: string
+          check_out: string | null
+          edit_note: string | null
+          edited_at: string | null
+          employee_id: string
+          entered_manually: boolean
+          id: string
+          job_id: string
+          note: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "job_checkins"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       employee_start_job: {
         Args: { p_job_id: string }
         Returns: {
           check_in: string
           check_out: string | null
+          edit_note: string | null
+          edited_at: string | null
           employee_id: string
+          entered_manually: boolean
           id: string
           job_id: string
           note: string | null

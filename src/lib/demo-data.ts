@@ -61,6 +61,10 @@ export interface JobCheckIn {
   checkIn: string
   checkOut: string | null
   note?: string
+  /** Added or changed by the employee after the fact (e.g. they forgot to press Start) — flagged for the office. */
+  enteredManually?: boolean
+  editedAt?: string
+  editNote?: string
 }
 
 /**

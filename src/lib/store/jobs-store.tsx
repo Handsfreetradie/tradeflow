@@ -208,6 +208,9 @@ async function fetchJobs(businessId: string): Promise<Job[]> {
     check_in: string
     check_out: string | null
     note: string | null
+    entered_manually: boolean
+    edited_at: string | null
+    edit_note: string | null
     employee: { full_name: string } | null
   }>) {
     const arr = checkinsByJob.get(ci.job_id) ?? []
@@ -218,6 +221,9 @@ async function fetchJobs(businessId: string): Promise<Job[]> {
       checkIn: ci.check_in,
       checkOut: ci.check_out,
       note: ci.note ?? undefined,
+      enteredManually: ci.entered_manually,
+      editedAt: ci.edited_at ?? undefined,
+      editNote: ci.edit_note ?? undefined,
     })
     checkinsByJob.set(ci.job_id, arr)
   }
@@ -310,6 +316,9 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       check_in: string
       check_out: string | null
       note: string | null
+      entered_manually: boolean
+      edited_at: string | null
+      edit_note: string | null
       employee: { full_name: string } | null
     }>).map((ci) => ({
       id: ci.id,
@@ -318,6 +327,9 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       checkIn: ci.check_in,
       checkOut: ci.check_out,
       note: ci.note ?? undefined,
+      enteredManually: ci.entered_manually,
+      editedAt: ci.edited_at ?? undefined,
+      editNote: ci.edit_note ?? undefined,
     }))
     const stages = ((stageRows ?? []) as StageRow[]).map(stageFromRow)
     const updated = assembleJob(row as unknown as JobRow, lineItems, costs, notes, checkIns, assigneesByJob.get(id) ?? [], stages)

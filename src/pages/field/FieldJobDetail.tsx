@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowLeft, Navigation, Phone, MapPin, Play, Square, Send, AlertTriangle, Users, ListChecks, Receipt, X } from 'lucide-react'
+import { ArrowLeft, Navigation, Phone, MapPin, Play, Square, Send, AlertTriangle, Users, ListChecks, Receipt, X, Clock, Pencil } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { StatusBadge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -14,7 +14,7 @@ import { useAuth } from '@/lib/auth/AuthProvider'
 import { useFieldJobsStore, type NewFieldJobCostInput } from '@/lib/store/field-jobs-store'
 import { uploadJobCostReceipt } from '@/lib/api/receipts'
 import { formatDate } from '@/lib/utils'
-import type { JobStage } from '@/lib/demo-data'
+import type { JobCheckIn, JobStage } from '@/lib/demo-data'
 
 const MAX_RECEIPT_BYTES = 8 * 1024 * 1024
 
@@ -225,11 +225,122 @@ function FieldLogExpenseDialog({
   )
 }
 
+function toDateInput(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
+function toTimeInput(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+/** Add a session the employee forgot to start, or correct one of their own. The office sees it
+ * flagged as manually entered, with this note. */
+function FieldTimeDialog({
+  open,
+  onOpenChange,
+  session,
+  hasOpenSession,
+  onSubmit,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  /** The session being edited; undefined when adding a missed one. */
+  session?: JobCheckIn
+  hasOpenSession: boolean
+  onSubmit: (input: { checkIn: string; checkOut: string | null; note: string; checkinId?: string }) => Promise<void>
+}) {
+  const [date, setDate] = useState('')
+  const [start, setStart] = useState('')
+  const [end, setEnd] = useState('')
+  const [stillOnSite, setStillOnSite] = useState(false)
+  const [note, setNote] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+
+  // Reset the form each time the dialog opens, from the session being edited (or sensible defaults).
+  useEffect(() => {
+    if (!open) return
+    const startDate = session ? new Date(session.checkIn) : new Date()
+    setDate(toDateInput(startDate))
+    setStart(session ? toTimeInput(startDate) : '07:00')
+    setEnd(session?.checkOut ? toTimeInput(new Date(session.checkOut)) : session ? '' : toTimeInput(new Date()))
+    setStillOnSite(session ? session.checkOut === null : false)
+    setNote('')
+  }, [open, session])
+
+  const canSubmit = !!date && !!start && (stillOnSite || !!end) && note.trim().length > 0
+
+  const submit = async () => {
+    const checkIn = new Date(`${date}T${start}`)
+    const checkOut = stillOnSite ? null : new Date(`${date}T${end}`)
+    if (checkOut && checkOut <= checkIn) {
+      toast.error('Finish time must be after the start time')
+      return
+    }
+    setSubmitting(true)
+    try {
+      await onSubmit({ checkIn: checkIn.toISOString(), checkOut: checkOut?.toISOString() ?? null, note: note.trim(), checkinId: session?.id })
+      toast.success(session ? 'Time updated — the office has been flagged' : 'Time added — the office has been flagged')
+      onOpenChange(false)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not save your time')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{session ? 'Change your time' : 'Add time you forgot to log'}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Date</label>
+            <Input type="date" value={date} max={toDateInput(new Date())} onChange={(e) => setDate(e.target.value)} className="mt-1" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Started</label>
+              <Input type="time" value={start} onChange={(e) => setStart(e.target.value)} className="mt-1" />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-muted-foreground">Finished</label>
+              <Input type="time" value={end} disabled={stillOnSite} onChange={(e) => setEnd(e.target.value)} className="mt-1" />
+            </div>
+          </div>
+          {(session ? session.checkOut === null : !hasOpenSession) ? (
+            <label className="flex items-center gap-2 text-sm">
+              <Checkbox checked={stillOnSite} onCheckedChange={(v) => setStillOnSite(v === true)} />
+              I'm still on site (start the clock from this time)
+            </label>
+          ) : null}
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Why? (required)</label>
+            <Input value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. Forgot to press Start when I arrived" className="mt-1" />
+          </div>
+          <p className="text-xs text-muted-foreground">The office will see this was added by you, with your note.</p>
+        </div>
+        <DialogFooter>
+          <Button variant="secondary" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button disabled={!canSubmit || submitting} onClick={submit}>
+            {submitting ? 'Saving…' : 'Save time'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export default function FieldJobDetail() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { session } = useAuth()
-  const { loading, getJob, addNote, startJob, finishJob, updateStage, addJobCost, leaveJob } = useFieldJobsStore()
+  const { loading, getJob, addNote, startJob, finishJob, setJobTime, updateStage, addJobCost, leaveJob } = useFieldJobsStore()
   const [leaving, setLeaving] = useState(false)
   const [noteText, setNoteText] = useState('')
   const [finishOpen, setFinishOpen] = useState(false)
@@ -238,6 +349,7 @@ export default function FieldJobDetail() {
   const [now, setNow] = useState(() => Date.now())
   const [busy, setBusy] = useState(false)
   const [expenseOpen, setExpenseOpen] = useState(false)
+  const [timeDialog, setTimeDialog] = useState<{ open: boolean; session?: JobCheckIn }>({ open: false })
 
   const job = id ? getJob(id) : undefined
   const myId = session?.user.id
@@ -251,6 +363,8 @@ export default function FieldJobDetail() {
 
   if (!loading && !job) return <Navigate to="/field/jobs" replace />
   if (!job) return <p className="p-5 text-sm text-muted-foreground">Loading…</p>
+
+  const mySessions = job.checkIns.filter((c) => c.employeeId === myId).sort((a, b) => b.checkIn.localeCompare(a.checkIn))
 
   const totalMs = job.checkIns.reduce((sum, c) => {
     if (c.employeeId !== myId) return sum
@@ -368,6 +482,68 @@ export default function FieldJobDetail() {
           )}
         </div>
       </div>
+
+      <div className="mx-5 rounded-xl border border-border bg-card p-4">
+        <div className="flex items-center justify-between gap-3">
+          <p className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+            <Clock className="size-3.5" />
+            Your time on this job
+          </p>
+          <button
+            type="button"
+            onClick={() => setTimeDialog({ open: true })}
+            className="text-xs font-medium text-primary"
+          >
+            Forgot to start? Add time
+          </button>
+        </div>
+        {mySessions.length === 0 ? (
+          <p className="mt-2 text-sm text-muted-foreground">Nothing logged yet.</p>
+        ) : (
+          <div className="mt-2 space-y-1">
+            {mySessions.map((c) => {
+              const start = new Date(c.checkIn)
+              const end = c.checkOut ? new Date(c.checkOut) : null
+              return (
+                <div key={c.id} className="flex items-center justify-between gap-2 rounded-lg px-1 py-1.5 text-sm">
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">
+                      {start.toLocaleDateString('en-AU', { day: 'numeric', month: 'short' })} ·{' '}
+                      {start.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' })} –{' '}
+                      {end ? end.toLocaleTimeString('en-AU', { hour: 'numeric', minute: '2-digit' }) : 'now'}
+                    </p>
+                    {(c.enteredManually || c.editedAt) && (
+                      <p className="truncate text-xs text-warning">
+                        {c.enteredManually ? 'Added by you' : 'Changed by you'}
+                        {c.editNote ? ` — ${c.editNote}` : ''}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <span className="text-xs font-medium text-muted-foreground">{formatDuration((end ? end.getTime() : now) - start.getTime())}</span>
+                    <button
+                      type="button"
+                      aria-label="Change this time"
+                      onClick={() => setTimeDialog({ open: true, session: c })}
+                      className="rounded-md p-1.5 text-muted-foreground hover:bg-secondary"
+                    >
+                      <Pencil className="size-3.5" />
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      <FieldTimeDialog
+        open={timeDialog.open}
+        onOpenChange={(o) => setTimeDialog((prev) => ({ ...prev, open: o }))}
+        session={timeDialog.session}
+        hasOpenSession={!!openSession}
+        onSubmit={(input) => setJobTime(job.id, input)}
+      />
 
       {job.crew.length > 1 && (
         <div className="mx-5 space-y-2">
