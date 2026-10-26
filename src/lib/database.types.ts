@@ -1058,6 +1058,78 @@ export type Database = {
           },
         ]
       }
+      job_documents: {
+        Row: {
+          business_id: string
+          created_at: string
+          id: string
+          job_id: string
+          name: string
+          source: string
+          storage_path: string
+          uploaded_by: string | null
+          uploaded_by_name: string | null
+        }
+        Insert: {
+          business_id: string
+          created_at?: string
+          id?: string
+          job_id: string
+          name: string
+          source?: string
+          storage_path: string
+          uploaded_by?: string | null
+          uploaded_by_name?: string | null
+        }
+        Update: {
+          business_id?: string
+          created_at?: string
+          id?: string
+          job_id?: string
+          name?: string
+          source?: string
+          storage_path?: string
+          uploaded_by?: string | null
+          uploaded_by_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_documents_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_documents_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_documents_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_field_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_documents_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "team_directory"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_line_items: {
         Row: {
           description: string
@@ -1966,6 +2038,75 @@ export type Database = {
             columns: ["job_id"]
             isOneToOne: false
             referencedRelation: "jobs_field_view"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      setout_handoffs: {
+        Row: {
+          business_id: string
+          code_hash: string
+          created_at: string
+          expires_at: string
+          id: string
+          job_id: string
+          user_id: string
+          uses: number
+        }
+        Insert: {
+          business_id: string
+          code_hash: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          job_id: string
+          user_id: string
+          uses?: number
+        }
+        Update: {
+          business_id?: string
+          code_hash?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          job_id?: string
+          user_id?: string
+          uses?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "setout_handoffs_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "setout_handoffs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "setout_handoffs_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_field_view"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "setout_handoffs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "setout_handoffs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "team_directory"
             referencedColumns: ["id"]
           },
         ]

@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { SignaturePad } from '@/components/shared/SignaturePad'
 import { JobPhotosCard } from '@/components/jobs/JobPhotosCard'
 import { FieldMaterialsCard } from '@/components/field/FieldMaterials'
+import { JobDocumentsCard } from '@/components/jobs/JobDocumentsCard'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { useFieldJobsStore, type NewFieldJobCostInput } from '@/lib/store/field-jobs-store'
 import { uploadJobCostReceipt } from '@/lib/api/receipts'
@@ -547,6 +548,8 @@ export default function FieldJobDetail() {
       />
 
       <FieldMaterialsCard jobId={job.id} />
+
+      <JobDocumentsCard jobId={job.id} field />
 
       {job.crew.length > 1 && (
         <div className="mx-5 space-y-2">

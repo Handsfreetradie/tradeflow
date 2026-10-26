@@ -19,6 +19,8 @@ import { LineItemsTable } from '@/components/shared/LineItemsTable'
 import { JobCostingCard } from '@/components/jobs/JobCostingCard'
 import { JobPurchaseOrdersCard } from '@/components/jobs/JobPurchaseOrdersCard'
 import { JobPhotosCard } from '@/components/jobs/JobPhotosCard'
+import { JobDocumentsCard } from '@/components/jobs/JobDocumentsCard'
+import { openRoughInPlan } from '@/lib/api/jobDocuments'
 import { JobCheckInCard } from '@/components/jobs/JobCheckInCard'
 import { JobWorkflow } from '@/components/jobs/JobWorkflow'
 import { ProgressClaimsCard } from '@/components/jobs/ProgressClaimsCard'
@@ -81,7 +83,7 @@ export default function JobDetail() {
         <div className="flex flex-wrap items-center gap-2">
           <Button
             variant="secondary"
-            onClick={() => window.open(`https://app.standaid.ai/setout?jobReference=${encodeURIComponent(job.number)}`, '_blank', 'noopener,noreferrer')}
+            onClick={() => openRoughInPlan(job.id).catch((e) => toast.error(e instanceof Error ? e.message : "Couldn't open the rough-in plan"))}
           >
             <Zap />
             Rough-in plan in StandAId
@@ -137,6 +139,8 @@ export default function JobDetail() {
           <ProgressClaimsCard job={job} />
 
           <CertificateOfComplianceCard job={job} />
+
+          <JobDocumentsCard jobId={job.id} canDelete />
 
           <JobPhotosCard jobId={job.id} />
 
