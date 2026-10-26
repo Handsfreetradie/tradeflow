@@ -414,8 +414,10 @@ function QuoteDetailLoaded({
         to={customer?.email ?? ''}
         fromName={business.businessName}
         defaultSubject={`Quote ${quote.number} from ${business.businessName}`}
-        defaultMessage={`Hi ${customer?.contact ?? quote.customer},\n\nHere's your quote ${quote.number} for ${formatCurrency(quoteTotal)} — see the attached PDF.\n\nYou can also view and respond online: ${shareUrl}\n\nThanks,\n${business.businessName}`}
+        defaultMessage={`Hi ${customer?.contact ?? quote.customer},\n\nHere's your quote ${quote.number} for ${formatCurrency(quoteTotal)} — see the attached PDF.\n\nYou can also view and respond online:\n{{link}}\n\nThanks,\n${business.businessName}`}
         mailtoFallbackUrl={mailtoFallbackUrl}
+        linkUrl={shareUrl}
+        linkText="Click here to view your quote"
         filename={`Quote-${quote.number}.pdf`}
         documentPreview={<QuoteDocument quote={currentQuote} customer={customer} business={business} />}
         buildPdf={() => buildQuotePdf({ quote: currentQuote, customer, business })}

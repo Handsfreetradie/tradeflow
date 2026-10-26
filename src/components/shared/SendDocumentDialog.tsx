@@ -16,6 +16,9 @@ interface SendDocumentDialogProps {
   defaultSubject: string
   defaultMessage: string
   mailtoFallbackUrl: string
+  /** The online view/pay link. Put {{link}} in the message where it should appear. */
+  linkUrl: string
+  linkText: string
   filename: string
   /** What the dialog shows for a quick visual gut-check before sending — the actual attachment
    * comes from buildPdf, not a screenshot of this, so the two can differ slightly in rendering. */
@@ -33,6 +36,8 @@ export function SendDocumentDialog({
   defaultSubject,
   defaultMessage,
   mailtoFallbackUrl,
+  linkUrl,
+  linkText,
   filename,
   documentPreview,
   buildPdf,
@@ -62,7 +67,7 @@ export function SendDocumentDialog({
     try {
       const doc = await buildPdf()
       const pdfBase64 = doc.output('datauristring').split(',')[1]
-      await sendDocumentEmail({ to: toValue.trim(), fromName, subject, message, pdfBase64, filename })
+      await sendDocumentEmail({ to: toValue.trim(), fromName, subject, message, pdfBase64, filename, linkUrl, linkText })
       toast.success(`Emailed to ${toValue.trim()}`)
       onOpenChange(false)
       await onSent()
@@ -103,6 +108,9 @@ export function SendDocumentDialog({
               rows={5}
               className="mt-1 w-full resize-none rounded-lg border border-input bg-white p-2.5 text-sm shadow-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             />
+            <p className="mt-1 text-[11px] text-muted-foreground">
+              <code>{'{{link}}'}</code> becomes a "{linkText}" link in the email. Keep it in the message so your customer can open it.
+            </p>
           </div>
 
           {connected === false && (

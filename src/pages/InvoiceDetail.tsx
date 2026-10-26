@@ -318,8 +318,10 @@ export default function InvoiceDetail() {
         to={customer?.email ?? ''}
         fromName={business.businessName}
         defaultSubject={`Invoice ${invoice.number} from ${business.businessName}`}
-        defaultMessage={`Hi ${customer?.contact ?? invoice.customer},\n\nHere's your invoice ${invoice.number} for ${formatCurrency(total)} — see the attached PDF.\n\nYou can also view and pay it online: ${shareUrl}\n\nThanks,\n${business.businessName}`}
+        defaultMessage={`Hi ${customer?.contact ?? invoice.customer},\n\nHere's your invoice ${invoice.number} for ${formatCurrency(total)} — see the attached PDF.\n\nYou can also view and pay it online:\n{{link}}\n\nThanks,\n${business.businessName}`}
         mailtoFallbackUrl={mailtoFallbackUrl}
+        linkUrl={shareUrl}
+        linkText="Click here to view your invoice"
         filename={`Invoice-${invoice.number}.pdf`}
         documentPreview={<InvoiceDocument invoice={invoice} customer={customer} business={business} />}
         buildPdf={() => buildInvoicePdf({ invoice, customer, business })}

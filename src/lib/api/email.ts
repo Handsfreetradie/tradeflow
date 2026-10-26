@@ -75,6 +75,9 @@ export interface SendDocumentEmailInput {
   message: string
   pdfBase64: string
   filename: string
+  /** Where the {{link}} marker in the message points. */
+  linkUrl?: string
+  linkText?: string
 }
 
 const SEND_ERROR_MESSAGES: Record<string, string> = {
