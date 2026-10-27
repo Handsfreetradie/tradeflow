@@ -13,6 +13,7 @@ import { supabase } from '@/lib/supabase'
 import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
 import type { ExpenseCategory } from '@/lib/demo-data'
 import { toDateKey } from '@/lib/utils'
+import { useProductSources } from '@/lib/useProductSources'
 
 type Target = 'customers' | 'expenses' | 'products'
 
@@ -104,6 +105,7 @@ export default function ImportData() {
   const [hasHeader, setHasHeader] = useState(true)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
   const [sourceName, setSourceName] = useState('')
+  const { sources: knownSources } = useProductSources()
 
   const fields = target === 'customers' ? CUSTOMER_FIELDS : target === 'expenses' ? EXPENSE_FIELDS : PRODUCT_FIELDS
 
@@ -146,7 +148,6 @@ export default function ImportData() {
     } else if (target === 'products' && headers.length >= 11 && /^\d+(\.\d+)?$/.test(headers[6]?.trim() ?? '')) {
       // The MM Electrical price list layout: code, description 1 & 2, …, your price per unit, vendor part, …, unit.
       Object.assign(guessed, { supplierCode: '0', name: '1', name2: '2', unitPrice: '6', vendorPart: '7', unit: '10' })
-      setSourceName((current) => current || 'MM Electrical')
     }
     return guessed
   }
@@ -313,6 +314,31 @@ export default function ImportData() {
             </SelectContent>
           </Select>
 
+          {target === 'products' && (
+            <div>
+              <label className="text-sm font-medium">
+                Which supplier is this price list from?<span className="text-destructive"> *</span>
+              </label>
+              <input
+                value={sourceName}
+                onChange={(e) => setSourceName(e.target.value)}
+                list="known-product-sources"
+                placeholder="e.g. MM Electrical"
+                className="mt-1 h-10 w-full max-w-sm rounded-lg border border-input bg-white px-3 text-sm shadow-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              />
+              <datalist id="known-product-sources">
+                {knownSources
+                  .filter((s) => s.source !== 'Added by hand')
+                  .map((s) => (
+                    <option key={s.source} value={s.source} />
+                  ))}
+              </datalist>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Shown on the product screens so everyone knows where the prices come from. Re-importing the same supplier's list updates its prices.
+              </p>
+            </div>
+          )}
+
           <input
             ref={fileInputRef}
             type="file"
@@ -320,10 +346,11 @@ export default function ImportData() {
             className="hidden"
             onChange={(e) => handleFile(e.target.files?.[0])}
           />
-          <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
+          <Button variant="secondary" disabled={target === 'products' && !sourceName.trim()} onClick={() => fileInputRef.current?.click()}>
             <Upload />
             {parsed ? 'Choose a different file' : 'Choose CSV file'}
           </Button>
+          {target === 'products' && !sourceName.trim() && <p className="text-xs text-muted-foreground">Type the supplier's name first, then choose the file.</p>}
         </CardContent>
       </Card>
 
@@ -339,19 +366,6 @@ export default function ImportData() {
             </label>
             {!hasHeader && target === 'products' && Object.keys(mapping).length > 0 && (
               <p className="text-xs text-success">This looks like a supplier price list — I've matched the columns for you. Check them below.</p>
-            )}
-            {target === 'products' && (
-              <div className="flex items-center justify-between gap-4">
-                <label className="text-sm font-medium">
-                  Which supplier is this list from?<span className="text-destructive"> *</span>
-                </label>
-                <input
-                  value={sourceName}
-                  onChange={(e) => setSourceName(e.target.value)}
-                  placeholder="e.g. MM Electrical"
-                  className="h-10 w-64 rounded-lg border border-input bg-white px-3 text-sm shadow-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                />
-              </div>
             )}
             {fields.map((field) => (
               <div key={field.key} className="flex items-center justify-between gap-4">
