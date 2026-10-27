@@ -7,7 +7,7 @@ import { useProductsStore } from '@/lib/store/products-store'
 import { useStockStore } from '@/lib/store/stock-store'
 
 export function LowStockCard() {
-  const { products, refresh: refreshProducts } = useProductsStore()
+  const { trackedProducts, refresh: refreshProducts } = useProductsStore()
   const { items, refresh: refreshStock } = useStockStore()
 
   // Stock moves when the team logs materials on jobs — pick up the latest when the dashboard opens.
@@ -17,7 +17,7 @@ export function LowStockCard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const low = products.filter((p) => p.trackStock && p.stockQty <= p.reorderLevel)
+  const low = trackedProducts.filter((p) => p.trackStock && p.stockQty <= p.reorderLevel)
   const waiting = items.filter((i) => i.status === 'pending').length
   if (low.length === 0 && waiting === 0) return null
 

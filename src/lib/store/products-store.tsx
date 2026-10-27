@@ -16,6 +16,7 @@ export interface Product {
   reorderQty: number
   supplierId?: string
   supplierCode: string
+  vendorPart: string
 }
 
 export interface NewProductInput {
@@ -34,7 +35,8 @@ export interface NewProductInput {
 }
 
 interface ProductsContextValue {
-  products: Product[]
+  /** Only the products you track stock on (a handful). The full list is searched on the server — see useProductSearch. */
+  trackedProducts: Product[]
   loading: boolean
   addProduct: (input: NewProductInput) => Promise<Product>
   updateProduct: (id: string, input: NewProductInput) => Promise<void>
@@ -45,8 +47,10 @@ interface ProductsContextValue {
   adjustStock: (id: string, delta: number) => Promise<void>
   /** Set the count after a stocktake. */
   setStock: (id: string, count: number) => Promise<void>
-  /** Re-reads products — stock moves when materials are logged on jobs. */
+  /** Re-reads tracked products — stock moves when materials are logged on jobs. */
   refresh: () => void
+  /** One full product, for editing. */
+  loadProduct: (id: string) => Promise<Product>
 }
 
 const ProductsContext = createContext<ProductsContextValue | null>(null)
@@ -64,9 +68,10 @@ type ProductRow = {
   reorder_qty: number
   supplier_id: string | null
   supplier_code: string
+  vendor_part: string
 }
 
-function fromRow(row: ProductRow): Product {
+export function productFromRow(row: ProductRow): Product {
   return {
     id: row.id,
     name: row.name,
@@ -80,13 +85,14 @@ function fromRow(row: ProductRow): Product {
     reorderQty: Number(row.reorder_qty),
     supplierId: row.supplier_id ?? undefined,
     supplierCode: row.supplier_code,
+    vendorPart: row.vendor_part,
   }
 }
 
 export function ProductsProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth()
   const { activeBusinessId } = useActiveBusiness()
-  const [products, setProducts] = useState<Product[]>([])
+  const [trackedProducts, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [tick, setTick] = useState(0)
 
@@ -104,10 +110,11 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
       .from('products')
       .select('*')
       .eq('business_id', activeBusinessId)
+      .eq('track_stock', true)
       .order('name')
       .then(({ data, error }) => {
         if (cancelled) return
-        if (!error && data) setProducts(data.map(fromRow))
+        if (!error && data) setProducts(data.map(productFromRow))
         setLoading(false)
       })
     return () => {
@@ -137,10 +144,15 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
       .select('*')
       .single()
     if (error || !data) throw new Error(error?.message ?? 'Failed to create product')
-    const created = fromRow(data)
-    setProducts((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)))
-    return created
-  }, [activeBusinessId])
+    refresh()
+    return productFromRow(data)
+  }, [activeBusinessId, refresh])
+
+  const loadProduct = useCallback(async (id: string) => {
+    const { data, error } = await supabase.from('products').select('*').eq('id', id).single()
+    if (error || !data) throw new Error(error?.message ?? 'Could not load that product')
+    return productFromRow(data)
+  }, [])
 
   const updateProduct = useCallback(
     async (id: string, input: NewProductInput) => {
@@ -199,8 +211,8 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
   )
 
   const value = useMemo(
-    () => ({ products, loading, addProduct, updateProduct, deleteProduct, deleteAllProducts, adjustStock, setStock, refresh }),
-    [products, loading, addProduct, updateProduct, deleteProduct, deleteAllProducts, adjustStock, setStock, refresh]
+    () => ({ trackedProducts, loading, addProduct, updateProduct, deleteProduct, deleteAllProducts, adjustStock, setStock, refresh, loadProduct }),
+    [trackedProducts, loading, addProduct, updateProduct, deleteProduct, deleteAllProducts, adjustStock, setStock, refresh, loadProduct]
   )
 
   return <ProductsContext.Provider value={value}>{children}</ProductsContext.Provider>

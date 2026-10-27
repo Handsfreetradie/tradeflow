@@ -1,16 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { Package, Plus, Search, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useAuth } from '@/lib/auth/AuthProvider'
-import {
-  useFieldJobsStore,
-  type JobMaterial,
-  type MaterialOption,
-  type NewMaterialItem,
-} from '@/lib/store/field-jobs-store'
+import { useFieldJobsStore, type JobMaterial, type NewMaterialItem } from '@/lib/store/field-jobs-store'
+import { useProductSearch } from '@/lib/useProductSearch'
+import type { ProductHit } from '@/lib/api/productSearch'
 import { formatDate } from '@/lib/utils'
 
 interface DraftItem {
@@ -21,13 +18,10 @@ interface DraftItem {
   qty: string
 }
 
-const MAX_SEARCH_RESULTS = 30
-
 function AddMaterialsDialog({ jobId, open, onOpenChange, onAdded }: { jobId: string; open: boolean; onOpenChange: (o: boolean) => void; onAdded: () => void }) {
-  const { loadMaterialOptions, addMaterials } = useFieldJobsStore()
-  const [options, setOptions] = useState<MaterialOption[]>([])
-  const [loadingOptions, setLoadingOptions] = useState(false)
+  const { addMaterials } = useFieldJobsStore()
   const [search, setSearch] = useState('')
+  const { items: results, total, loading: loadingOptions } = useProductSearch(search, { enabled: open })
   const [items, setItems] = useState<DraftItem[]>([])
   const [otherName, setOtherName] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -37,20 +31,9 @@ function AddMaterialsDialog({ jobId, open, onOpenChange, onAdded }: { jobId: str
     setSearch('')
     setItems([])
     setOtherName('')
-    setLoadingOptions(true)
-    loadMaterialOptions()
-      .then(setOptions)
-      .catch(() => toast.error("Couldn't load the materials list"))
-      .finally(() => setLoadingOptions(false))
-  }, [open, loadMaterialOptions])
+  }, [open])
 
-  const results = useMemo(() => {
-    const q = search.trim().toLowerCase()
-    const matches = q ? options.filter((o) => `${o.name} ${o.category} ${o.description}`.toLowerCase().includes(q)) : options
-    return matches.slice(0, MAX_SEARCH_RESULTS)
-  }, [options, search])
-
-  const addFromList = (o: MaterialOption) => {
+  const addFromList = (o: ProductHit) => {
     setItems((prev) => {
       const existing = prev.find((i) => i.productId === o.id)
       if (existing) return prev.map((i) => (i.key === existing.key ? { ...i, qty: String(Number(i.qty || 0) + 1) } : i))
@@ -100,22 +83,27 @@ function AddMaterialsDialog({ jobId, open, onOpenChange, onAdded }: { jobId: str
           </div>
 
           <div className="max-h-48 divide-y divide-border overflow-y-auto rounded-lg border border-border">
-            {loadingOptions ? (
+            {loadingOptions && results.length === 0 ? (
               <p className="p-3 text-sm text-muted-foreground">Loading…</p>
             ) : results.length === 0 ? (
               <p className="p-3 text-sm text-muted-foreground">
-                {options.length === 0 ? 'No materials on the list yet — add your own below.' : 'Nothing matches — add it below.'}
+                {search.trim() === '' ? 'No materials on the list yet — add your own below.' : 'Nothing matches — try fewer words, or add it below.'}
               </p>
             ) : (
               results.map((o) => (
                 <button key={o.id} type="button" onClick={() => addFromList(o)} className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-secondary/60">
                   <span className="min-w-0">
                     <span className="block truncate font-medium">{o.name}</span>
-                    {(o.category || o.unit) && <span className="block truncate text-xs text-muted-foreground">{[o.category, o.unit && `per ${o.unit}`].filter(Boolean).join(' · ')}</span>}
+                    <span className="block truncate text-xs text-muted-foreground">{[o.supplierCode, o.unit && `per ${o.unit}`].filter(Boolean).join(' · ')}</span>
                   </span>
                   <Plus className="size-4 shrink-0 text-primary" />
                 </button>
               ))
+            )}
+            {total > results.length && (
+              <p className="p-2 text-center text-[11px] text-muted-foreground">
+                Showing {results.length} of {total.toLocaleString()} — type more to narrow it down
+              </p>
             )}
           </div>
 

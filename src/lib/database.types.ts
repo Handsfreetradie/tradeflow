@@ -246,6 +246,7 @@ export type Database = {
           is_gst_registered: boolean
           licence_number: string
           logo_url: string | null
+          materials_markup_percent: number
           updated_at: string
         }
         Insert: {
@@ -260,6 +261,7 @@ export type Database = {
           is_gst_registered?: boolean
           licence_number?: string
           logo_url?: string | null
+          materials_markup_percent?: number
           updated_at?: string
         }
         Update: {
@@ -274,6 +276,7 @@ export type Database = {
           is_gst_registered?: boolean
           licence_number?: string
           logo_url?: string | null
+          materials_markup_percent?: number
           updated_at?: string
         }
         Relationships: [
@@ -1782,12 +1785,14 @@ export type Database = {
           name: string
           reorder_level: number
           reorder_qty: number
+          search_text: string | null
           stock_qty: number
           supplier_code: string
           supplier_id: string | null
           track_stock: boolean
           unit: string
           unit_price: number
+          vendor_part: string
         }
         Insert: {
           business_id?: string | null
@@ -1798,12 +1803,14 @@ export type Database = {
           name: string
           reorder_level?: number
           reorder_qty?: number
+          search_text?: string | null
           stock_qty?: number
           supplier_code?: string
           supplier_id?: string | null
           track_stock?: boolean
           unit?: string
           unit_price?: number
+          vendor_part?: string
         }
         Update: {
           business_id?: string | null
@@ -1814,12 +1821,14 @@ export type Database = {
           name?: string
           reorder_level?: number
           reorder_qty?: number
+          search_text?: string | null
           stock_qty?: number
           supplier_code?: string
           supplier_id?: string | null
           track_stock?: boolean
           unit?: string
           unit_price?: number
+          vendor_part?: string
         }
         Relationships: [
           {
@@ -2889,6 +2898,10 @@ export type Database = {
           unit_price: number
         }[]
       }
+      import_products: {
+        Args: { p_business: string; p_rows: Json }
+        Returns: number
+      }
       mark_invoice_viewed: { Args: { p_token: string }; Returns: undefined }
       mark_quote_viewed: { Args: { p_token: string }; Returns: undefined }
       next_invoice_number: { Args: never; Returns: string }
@@ -2955,6 +2968,28 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      search_products: {
+        Args: {
+          p_business: string
+          p_groups?: Json
+          p_limit?: number
+          p_offset?: number
+          p_only_tracked?: boolean
+          p_relaxed?: boolean
+        }
+        Returns: {
+          id: string
+          name: string
+          reorder_level: number
+          stock_qty: number
+          supplier_code: string
+          total: number
+          track_stock: boolean
+          unit: string
+          unit_price: number
+          vendor_part: string
+        }[]
       }
     }
     Enums: {

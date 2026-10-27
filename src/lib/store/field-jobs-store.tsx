@@ -31,15 +31,6 @@ export interface NewFieldJobCostInput {
   signatureDataUrl: string
 }
 
-/** An item from the business's materials list, as employees see it — never with a price. */
-export interface MaterialOption {
-  id: string
-  name: string
-  description: string
-  category: string
-  unit: string
-}
-
 export interface NewMaterialItem {
   /** From the materials list. Leave unset for an item typed in that isn't on the list. */
   productId?: string
@@ -95,7 +86,6 @@ interface FieldJobsContextValue {
   addNote: (id: string, text: string) => Promise<void>
   startJob: (id: string) => Promise<void>
   finishJob: (id: string, note?: string, blocked?: boolean) => Promise<void>
-  loadMaterialOptions: () => Promise<MaterialOption[]>
   addMaterials: (jobId: string, items: NewMaterialItem[]) => Promise<void>
   listJobMaterials: (jobId: string) => Promise<JobMaterial[]>
   removeMaterial: (costId: string) => Promise<void>
@@ -424,23 +414,6 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
     [load, loadJoinable]
   )
 
-  const loadMaterialOptions = useCallback(async (): Promise<MaterialOption[]> => {
-    if (!activeBusinessId) return []
-    const { data, error } = await supabase
-      .from('products_field_view')
-      .select('id, name, description, category, unit')
-      .eq('business_id', activeBusinessId)
-      .order('name')
-    if (error) throw new Error(error.message)
-    return (data ?? []).map((p) => ({
-      id: p.id as string,
-      name: (p.name as string) ?? '',
-      description: (p.description as string) ?? '',
-      category: (p.category as string) ?? '',
-      unit: (p.unit as string) ?? '',
-    }))
-  }, [activeBusinessId])
-
   const addMaterials = useCallback(async (jobId: string, items: NewMaterialItem[]) => {
     if (!navigator.onLine) throw new Error('You need a connection to add materials — try again when you have signal')
     const { error } = await supabase.rpc('employee_add_job_materials', {
@@ -490,7 +463,6 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
       startJob,
       finishJob,
       setJobTime,
-      loadMaterialOptions,
       addMaterials,
       listJobMaterials,
       removeMaterial,
@@ -500,7 +472,7 @@ export function FieldJobsProvider({ children }: { children: ReactNode }) {
       leaveJob,
       refresh,
     }),
-    [jobs, loading, online, pendingSyncCount, joinableJobs, getJob, addNote, startJob, finishJob, setJobTime, loadMaterialOptions, addMaterials, listJobMaterials, removeMaterial, updateStage, addJobCost, joinJob, leaveJob, refresh]
+    [jobs, loading, online, pendingSyncCount, joinableJobs, getJob, addNote, startJob, finishJob, setJobTime, addMaterials, listJobMaterials, removeMaterial, updateStage, addJobCost, joinJob, leaveJob, refresh]
   )
 
   return <FieldJobsContext.Provider value={value}>{children}</FieldJobsContext.Provider>

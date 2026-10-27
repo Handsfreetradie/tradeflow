@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useState, t
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
+import { toDateKey } from '@/lib/utils'
 import type { CocStatus, Job, JobCheckIn, JobCost, JobNote, JobStage, JobStatus, LineItem, PricingType } from '@/lib/demo-data'
 
 export interface NewJobStageInput {
@@ -26,6 +27,15 @@ export interface NewJobInput {
   stages?: NewJobStageInput[]
 }
 
+export interface NewJobMaterial {
+  productId: string
+  name: string
+  unit: string
+  qty: number
+  /** What you pay per unit. */
+  unitCost: number
+}
+
 interface JobsContextValue {
   jobs: Job[]
   loading: boolean
@@ -36,6 +46,8 @@ interface JobsContextValue {
   setAssignees: (id: string, employeeIds: string[]) => Promise<void>
   updateCoc: (id: string, patch: { cocStatus?: CocStatus; cocNumber?: string; cocIssuedDate?: string }) => Promise<void>
   addNote: (id: string, text: string) => Promise<void>
+  /** Owner adds materials picked from the price list — each line is your cost × quantity, and tracked stock comes off. */
+  addMaterials: (id: string, items: NewJobMaterial[]) => Promise<void>
   addCost: (id: string, cost: Omit<JobCost, 'id' | 'createdAt' | 'loggedByEmployeeId' | 'loggedByEmployeeName' | 'signatureDataUrl'>) => Promise<void>
   /** Set the price on a cost an employee added without one (or correct any cost's amount). */
   updateCostAmount: (jobId: string, costId: string, amount: number) => Promise<void>
@@ -496,6 +508,29 @@ export function JobsProvider({ children }: { children: ReactNode }) {
     [refreshJob]
   )
 
+  const addMaterials = useCallback(
+    async (id: string, items: NewJobMaterial[]) => {
+      if (items.length === 0) return
+      const today = toDateKey(new Date())
+      const { error } = await supabase.from('job_costs').insert(
+        items.map((i) => ({
+          job_id: id,
+          description: `${i.name} × ${i.qty}${i.unit && i.unit !== 'each' ? ` ${i.unit}` : ''}`,
+          category: 'Materials',
+          amount: Math.round(i.unitCost * i.qty * 100) / 100,
+          date: today,
+          product_id: i.productId,
+          quantity: i.qty,
+          unit: i.unit || null,
+          needs_pricing: false,
+        }))
+      )
+      if (error) throw new Error(error.message)
+      await refreshJob(id)
+    },
+    [refreshJob]
+  )
+
   const updateCostAmount = useCallback(
     async (jobId: string, costId: string, amount: number) => {
       const { error } = await supabase.from('job_costs').update({ amount, needs_pricing: false }).eq('id', costId)
@@ -648,6 +683,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       updateCoc,
       addNote,
       addCost,
+      addMaterials,
       updateCostAmount,
       deleteCost,
       startJob,
@@ -671,6 +707,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       updateCoc,
       addNote,
       addCost,
+      addMaterials,
       updateCostAmount,
       deleteCost,
       startJob,

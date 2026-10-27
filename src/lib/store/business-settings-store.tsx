@@ -14,6 +14,8 @@ export interface BusinessSettings {
   bankAccountNumber: string
   defaultQuoteTerms: string
   defaultQuoteExclusions: string
+  /** Added on top of supplier cost when a product goes onto a quote or invoice. */
+  materialsMarkupPercent: number
 }
 
 type EditableFields = Omit<BusinessSettings, 'logoUrl'>
@@ -36,6 +38,7 @@ const DEFAULTS: BusinessSettings = {
   bankAccountNumber: '',
   defaultQuoteTerms: '',
   defaultQuoteExclusions: '',
+  materialsMarkupPercent: 0,
 }
 
 const BusinessSettingsContext = createContext<BusinessSettingsContextValue | null>(null)
@@ -79,6 +82,7 @@ export function BusinessSettingsProvider({ children }: { children: ReactNode }) 
             bankAccountNumber: data.bank_account_number,
             defaultQuoteTerms: data.default_quote_terms,
             defaultQuoteExclusions: data.default_quote_exclusions,
+            materialsMarkupPercent: Number(data.materials_markup_percent),
           })
         }
         setLoading(false)
@@ -102,6 +106,7 @@ export function BusinessSettingsProvider({ children }: { children: ReactNode }) 
         ...(patch.bankAccountNumber !== undefined ? { bank_account_number: patch.bankAccountNumber } : {}),
         ...(patch.defaultQuoteTerms !== undefined ? { default_quote_terms: patch.defaultQuoteTerms } : {}),
         ...(patch.defaultQuoteExclusions !== undefined ? { default_quote_exclusions: patch.defaultQuoteExclusions } : {}),
+        ...(patch.materialsMarkupPercent !== undefined ? { materials_markup_percent: patch.materialsMarkupPercent } : {}),
         updated_at: new Date().toISOString(),
       })
       .eq('business_id', businessIdRef.current)

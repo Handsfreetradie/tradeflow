@@ -10,11 +10,12 @@ import { EmptyState } from '@/components/ui/empty-state'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useProductsStore } from '@/lib/store/products-store'
+import { useProductSearch } from '@/lib/useProductSearch'
+import type { ProductHit } from '@/lib/api/productSearch'
 import { useStockStore, type OrderItem, type Supplier } from '@/lib/store/stock-store'
 import { previewOrder, sendOrder, type OrderPreview } from '@/lib/api/stockOrders'
 
 const NO_SUPPLIER = 'none'
-const OTHER_ITEM = 'other'
 
 function itemLine(i: OrderItem) {
   const unit = i.unit && i.unit !== 'each' ? ` (${i.unit})` : ''
@@ -109,9 +110,11 @@ function ReviewDialog({ supplier, onClose }: { supplier: Supplier | null; onClos
 }
 
 function AddItemDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { products } = useProductsStore()
+  const { loadProduct } = useProductsStore()
   const { suppliers, addItem } = useStockStore()
-  const [productId, setProductId] = useState(OTHER_ITEM)
+  const [find, setFind] = useState('')
+  const { items: found, loading: finding } = useProductSearch(find, { enabled: open && find.trim().length > 0 })
+  const [product, setProduct] = useState<ProductHit | null>(null)
   const [description, setDescription] = useState('')
   const [unit, setUnit] = useState('each')
   const [qty, setQty] = useState('')
@@ -119,15 +122,18 @@ function AddItemDialog({ open, onClose }: { open: boolean; onClose: () => void }
   const [supplierCode, setSupplierCode] = useState('')
   const [saving, setSaving] = useState(false)
 
-  const product = products.find((p) => p.id === productId)
-
-  const pickProduct = (id: string) => {
-    setProductId(id)
-    const p = products.find((x) => x.id === id)
-    if (p) {
-      setSupplierId(p.supplierId ?? NO_SUPPLIER)
-      setSupplierCode(p.supplierCode)
-      if (p.reorderQty > 0 && !qty) setQty(String(p.reorderQty))
+  const pickProduct = async (hit: ProductHit) => {
+    setProduct(hit)
+    setFind('')
+    setSupplierCode(hit.supplierCode)
+    try {
+      // The search result is slim; the full product knows its usual supplier and order quantity.
+      const full = await loadProduct(hit.id)
+      setSupplierId(full.supplierId ?? NO_SUPPLIER)
+      setSupplierCode(full.supplierCode)
+      if (full.reorderQty > 0) setQty((q) => q || String(full.reorderQty))
+    } catch {
+      // Fine — they can still pick the supplier by hand.
     }
   }
 
@@ -162,20 +168,35 @@ function AddItemDialog({ open, onClose }: { open: boolean; onClose: () => void }
         </DialogHeader>
         <div className="space-y-3">
           <div>
-            <label className="text-xs font-medium text-muted-foreground">Item</label>
-            <Select value={productId} onValueChange={pickProduct}>
-              <SelectTrigger className="mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={OTHER_ITEM}>Something else (type it in)</SelectItem>
-                {products.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>
-                    {p.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <label className="text-xs font-medium text-muted-foreground">Item from your price list</label>
+            {product ? (
+              <div className="mt-1 flex items-center justify-between gap-2 rounded-lg border border-border px-3 py-2 text-sm">
+                <span className="min-w-0 truncate">{product.name}</span>
+                <button type="button" onClick={() => setProduct(null)} className="shrink-0 text-xs text-primary hover:underline">
+                  Change
+                </button>
+              </div>
+            ) : (
+              <>
+                <Input value={find} onChange={(e) => setFind(e.target.value)} placeholder="Search e.g. 2.5 cable, 2g gpo white — or type a new item below" className="mt-1" />
+                {find.trim() !== '' && (
+                  <div className="mt-1 max-h-44 divide-y divide-border overflow-y-auto rounded-lg border border-border">
+                    {finding && found.length === 0 ? (
+                      <p className="p-2 text-xs text-muted-foreground">Searching…</p>
+                    ) : found.length === 0 ? (
+                      <p className="p-2 text-xs text-muted-foreground">No matches — type it in below instead.</p>
+                    ) : (
+                      found.map((f) => (
+                        <button key={f.id} type="button" onClick={() => pickProduct(f)} className="block w-full px-3 py-2 text-left text-sm hover:bg-secondary/60">
+                          <span className="block truncate">{f.name}</span>
+                          <span className="block truncate text-[11px] text-muted-foreground">{f.supplierCode}</span>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                )}
+              </>
+            )}
           </div>
           {!product && (
             <div className="grid grid-cols-[1fr_6rem] gap-3">

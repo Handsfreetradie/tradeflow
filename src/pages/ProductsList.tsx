@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { Package, Plus, Search, Pencil, Trash2, Upload, Boxes } from 'lucide-react'
@@ -13,7 +13,10 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useProductsStore, type Product } from '@/lib/store/products-store'
 import { useStockStore } from '@/lib/store/stock-store'
-import { formatCurrency } from '@/lib/utils'
+import { useBusinessSettings } from '@/lib/store/business-settings-store'
+import { useProductSearch } from '@/lib/useProductSearch'
+import type { ProductHit } from '@/lib/api/productSearch'
+import { formatMoney, withMarkup } from '@/lib/utils'
 
 const UNITS = ['each', 'hour', 'metre', 'sqm', 'day', 'kit']
 
@@ -21,10 +24,12 @@ function ProductDialog({
   open,
   onOpenChange,
   editing,
+  onSaved,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   editing: Product | null
+  onSaved: () => void
 }) {
   const { addProduct, updateProduct } = useProductsStore()
   const { suppliers } = useStockStore()
@@ -83,6 +88,7 @@ function ProductDialog({
       }
       onOpenChange(false)
       resetFor(null)
+      onSaved()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to save')
     } finally {
@@ -205,7 +211,7 @@ function ProductDialog({
   )
 }
 
-function DeleteAllDialog({ open, count, onClose }: { open: boolean; count: number; onClose: () => void }) {
+function DeleteAllDialog({ open, count, onClose, onDone }: { open: boolean; count: number | null; onClose: () => void; onDone: () => void }) {
   const { deleteAllProducts } = useProductsStore()
   const [typed, setTyped] = useState('')
   const [deleting, setDeleting] = useState(false)
@@ -221,6 +227,7 @@ function DeleteAllDialog({ open, count, onClose }: { open: boolean; count: numbe
       await deleteAllProducts()
       toast.success('All products deleted')
       close()
+      onDone()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to delete')
     } finally {
@@ -232,7 +239,7 @@ function DeleteAllDialog({ open, count, onClose }: { open: boolean; count: numbe
     <Dialog open={open} onOpenChange={(o) => !o && close()}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete all {count} products?</DialogTitle>
+          <DialogTitle>{count === null ? 'Delete all products?' : `Delete all ${count.toLocaleString()} products?`}</DialogTitle>
         </DialogHeader>
         <div className="space-y-3 text-sm">
           <p>This clears your whole products list, including stock counts and reorder settings. It can't be undone.</p>
@@ -257,7 +264,7 @@ function DeleteAllDialog({ open, count, onClose }: { open: boolean; count: numbe
   )
 }
 
-function StockCountDialog({ product, onClose }: { product: Product | null; onClose: () => void }) {
+function StockCountDialog({ product, onClose, onSaved }: { product: ProductHit | null; onClose: () => void; onSaved: () => void }) {
   const { setStock } = useProductsStore()
   const [count, setCount] = useState('')
   const [saving, setSaving] = useState(false)
@@ -269,6 +276,7 @@ function StockCountDialog({ product, onClose }: { product: Product | null; onClo
       await setStock(product.id, Number(count))
       toast.success('Stock count updated')
       onClose()
+      onSaved()
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to update')
     } finally {
@@ -305,27 +313,30 @@ function StockCountDialog({ product, onClose }: { product: Product | null; onClo
 
 export default function ProductsList() {
   const navigate = useNavigate()
-  const { products, loading, deleteProduct } = useProductsStore()
+  const { deleteProduct, loadProduct } = useProductsStore()
+  const { settings } = useBusinessSettings()
+  const markup = settings.materialsMarkupPercent
   const [search, setSearch] = useState('')
+  const { items, total, loading, loadingMore, error, hasMore, loadMore, reload } = useProductSearch(search)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [editing, setEditing] = useState<Product | null>(null)
-  const [removeTarget, setRemoveTarget] = useState<Product | null>(null)
-  const [countTarget, setCountTarget] = useState<Product | null>(null)
+  const [removeTarget, setRemoveTarget] = useState<ProductHit | null>(null)
+  const [countTarget, setCountTarget] = useState<ProductHit | null>(null)
   const [deleteAllOpen, setDeleteAllOpen] = useState(false)
 
-  const filtered = useMemo(() => {
-    const q = search.toLowerCase().trim()
-    if (!q) return products
-    return products.filter((p) => p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q))
-  }, [products, search])
+  const searching = search.trim() !== ''
 
   const openNew = () => {
     setEditing(null)
     setDialogOpen(true)
   }
-  const openEdit = (p: Product) => {
-    setEditing(p)
-    setDialogOpen(true)
+  const openEdit = async (hit: ProductHit) => {
+    try {
+      setEditing(await loadProduct(hit.id))
+      setDialogOpen(true)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Could not open that product')
+    }
   }
 
   return (
@@ -333,14 +344,16 @@ export default function ProductsList() {
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Products & Services</h1>
-          <p className="mt-1 text-sm text-muted-foreground">Your reusable catalog — pick these straight into jobs, quotes and invoices.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Your supplier price list. Prices here are what you pay{markup > 0 ? `; ${markup}% markup is added when you quote` : ''}.
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="secondary" onClick={() => navigate('/import')}>
             <Upload />
             Import from supplier CSV
           </Button>
-          {products.length > 0 && (
+          {(total > 0 || searching) && (
             <Button variant="secondary" onClick={() => setDeleteAllOpen(true)}>
               <Trash2 />
               Delete all
@@ -353,33 +366,48 @@ export default function ProductsList() {
         </div>
       </div>
 
-      <div className="relative max-w-sm">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
-        <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search products..." className="pl-9" />
+      <div className="space-y-1.5">
+        <div className="relative max-w-md">
+          <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by name, size, code… e.g. 2.5 cable, 2g gpo white"
+            className="pl-9"
+            autoFocus
+          />
+        </div>
+        {!loading && (
+          <p className="text-xs text-muted-foreground">
+            {searching ? `${total.toLocaleString()} match${total === 1 ? '' : 'es'}` : `${total.toLocaleString()} products`}
+            {hasMore && ` · showing the first ${items.length}`}
+          </p>
+        )}
       </div>
 
       <Card>
         <CardContent className="p-0">
-          {loading ? (
-            <p className="p-6 text-center text-sm text-muted-foreground">Loading…</p>
-          ) : filtered.length === 0 ? (
+          {error ? (
+            <p className="p-6 text-center text-sm text-destructive">{error}</p>
+          ) : loading && items.length === 0 ? (
+            <p className="p-6 text-center text-sm text-muted-foreground">Searching…</p>
+          ) : items.length === 0 ? (
             <EmptyState
               icon={Package}
-              title={products.length === 0 ? 'No products yet' : 'No products match your search'}
-              description={products.length === 0 ? 'Add the things you sell often so you can add them to jobs in one click.' : undefined}
+              title={searching ? 'No products match your search' : 'No products yet'}
+              description={searching ? 'Try fewer words, or part of the code.' : 'Import your supplier price list, or add the things you use often.'}
             />
           ) : (
             <div className="divide-y divide-border">
-              {filtered.map((p) => (
+              {items.map((p) => (
                 <div key={p.id} className="flex items-center gap-3 p-4">
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{p.name}</p>
+                    <p className="text-sm font-medium">{p.name}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {p.category && `${p.category} · `}
-                      {formatCurrency(p.unitPrice)} / {p.unit}
+                      {[p.supplierCode, p.vendorPart && p.vendorPart !== p.supplierCode ? `Part ${p.vendorPart}` : '', `per ${p.unit}`].filter(Boolean).join(' · ')}
                     </p>
                   </div>
-                  {p.trackStock && (
+                  {p.trackStock && p.stockQty !== null && (
                     <button
                       type="button"
                       onClick={() => setCountTarget(p)}
@@ -389,9 +417,13 @@ export default function ProductsList() {
                       <Boxes className="size-3.5 text-muted-foreground" />
                       <span className="font-medium">{p.stockQty}</span>
                       <span className="text-muted-foreground">in stock</span>
-                      {p.stockQty <= p.reorderLevel && <Badge variant="warning">Low</Badge>}
+                      {p.reorderLevel !== null && p.stockQty <= p.reorderLevel && <Badge variant="warning">Low</Badge>}
                     </button>
                   )}
+                  <div className="shrink-0 text-right">
+                    <p className="text-sm font-medium">{formatMoney(p.unitPrice ?? 0)}</p>
+                    <p className="text-[11px] text-muted-foreground">{markup > 0 ? `sell ${formatMoney(withMarkup(p.unitPrice ?? 0, markup))}` : 'your cost'}</p>
+                  </div>
                   <Button variant="ghost" size="icon" onClick={() => openEdit(p)}>
                     <Pencil className="text-muted-foreground" />
                   </Button>
@@ -405,9 +437,17 @@ export default function ProductsList() {
         </CardContent>
       </Card>
 
-      <ProductDialog key={editing?.id ?? 'new'} open={dialogOpen} onOpenChange={setDialogOpen} editing={editing} />
-      <DeleteAllDialog open={deleteAllOpen} count={products.length} onClose={() => setDeleteAllOpen(false)} />
-      <StockCountDialog key={countTarget?.id ?? 'none'} product={countTarget} onClose={() => setCountTarget(null)} />
+      {hasMore && (
+        <div className="flex justify-center">
+          <Button variant="secondary" disabled={loadingMore} onClick={loadMore}>
+            {loadingMore ? 'Loading…' : 'Show more'}
+          </Button>
+        </div>
+      )}
+
+      <ProductDialog key={editing?.id ?? 'new'} open={dialogOpen} onOpenChange={setDialogOpen} editing={editing} onSaved={reload} />
+      <DeleteAllDialog open={deleteAllOpen} count={searching ? null : total} onClose={() => setDeleteAllOpen(false)} onDone={reload} />
+      <StockCountDialog key={countTarget?.id ?? 'none'} product={countTarget} onClose={() => setCountTarget(null)} onSaved={reload} />
 
       <ConfirmDialog
         open={!!removeTarget}
@@ -416,7 +456,12 @@ export default function ProductsList() {
         description="This only removes it from your catalog — it won't affect jobs, quotes or invoices that already used it."
         confirmLabel="Delete"
         variant="danger"
-        onConfirm={() => removeTarget && deleteProduct(removeTarget.id).catch((e) => toast.error(e instanceof Error ? e.message : 'Failed to delete'))}
+        onConfirm={() =>
+          removeTarget &&
+          deleteProduct(removeTarget.id)
+            .then(reload)
+            .catch((e) => toast.error(e instanceof Error ? e.message : 'Failed to delete'))
+        }
       />
     </div>
   )

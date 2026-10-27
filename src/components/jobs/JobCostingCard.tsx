@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn, formatCurrency, formatDate, toDateKey } from '@/lib/utils'
 import { useJobsStore } from '@/lib/store/jobs-store'
+import { AddJobMaterialsDialog } from '@/components/jobs/AddJobMaterialsDialog'
 import { deleteReceipt, getReceiptUrl, uploadReceipt } from '@/lib/api/receipts'
 import type { Job, JobCost } from '@/lib/demo-data'
 
@@ -31,6 +32,7 @@ export function JobCostingCard({ job }: { job: Job }) {
   const { addCost, updateCostAmount, deleteCost } = useJobsStore()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [open, setOpen] = useState(false)
+  const [materialsOpen, setMaterialsOpen] = useState(false)
   const [description, setDescription] = useState('')
   const [category, setCategory] = useState<JobCost['category']>('Materials')
   const [amount, setAmount] = useState('')
@@ -181,10 +183,16 @@ export function JobCostingCard({ job }: { job: Job }) {
 
         <div className="mt-5 flex items-center justify-between">
           <p className="text-sm font-medium">Logged costs</p>
-          <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
-            <Plus />
-            Log cost
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button size="sm" onClick={() => setMaterialsOpen(true)}>
+              <Plus />
+              Add materials
+            </Button>
+            <Button size="sm" variant="secondary" onClick={() => setOpen(true)}>
+              <Plus />
+              Log cost
+            </Button>
+          </div>
         </div>
 
         {job.costs.length === 0 ? (
@@ -250,6 +258,8 @@ export function JobCostingCard({ job }: { job: Job }) {
           </div>
         )}
       </CardContent>
+
+      <AddJobMaterialsDialog jobId={job.id} open={materialsOpen} onClose={() => setMaterialsOpen(false)} />
 
       <Dialog open={!!pricing} onOpenChange={(next) => !next && setPricing(null)}>
         <DialogContent>

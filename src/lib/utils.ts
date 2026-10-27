@@ -40,3 +40,8 @@ export function toDateKey(date: Date) {
   const d = String(date.getDate()).padStart(2, '0')
   return `${y}-${m}-${d}`
 }
+
+/** Supplier cost plus your markup, to the cent (e.g. $8.15 at 30% = $10.60). */
+export function withMarkup(cost: number, markupPercent: number): number {
+  return Math.round(cost * (1 + markupPercent / 100) * 100) / 100
+}

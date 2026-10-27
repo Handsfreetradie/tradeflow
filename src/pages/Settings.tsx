@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { UserPlus, Users as UsersIcon, Building2, Upload, Trash2, FileSpreadsheet, CalendarDays, Mail, FileUp } from 'lucide-react'
+import { UserPlus, Users as UsersIcon, Building2, Upload, Trash2, FileSpreadsheet, CalendarDays, Mail, FileUp, Package } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { SuppliersCard } from '@/components/stock/SuppliersCard'
@@ -14,6 +14,7 @@ import { useTeamStore, type TeamMember } from '@/lib/store/team-store'
 import { useBusinessSettings } from '@/lib/store/business-settings-store'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
+import { formatMoney, withMarkup } from '@/lib/utils'
 import { createUser } from '@/lib/api/createUser'
 import { deleteUser } from '@/lib/api/deleteUser'
 import { connectGmail, disconnectGmail, EMAIL_CHECK_INTERVAL_OPTIONS, getEmailConnectionStatus, setEmailCheckInterval, type EmailConnectionStatus } from '@/lib/api/email'
@@ -235,6 +236,67 @@ function QuoteDefaultsCard() {
           <Button size="sm" disabled={saving} onClick={save}>
             {saving ? 'Saving…' : 'Save defaults'}
           </Button>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function MaterialsMarkupCard() {
+  const { settings, loading, updateSettings } = useBusinessSettings()
+  const [markup, setMarkup] = useState(String(settings.materialsMarkupPercent))
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setMarkup(String(settings.materialsMarkupPercent))
+  }, [settings.materialsMarkupPercent])
+
+  const value = Number(markup)
+  const valid = markup.trim() !== '' && Number.isFinite(value) && value >= 0 && value <= 1000
+  const dirty = valid && value !== settings.materialsMarkupPercent
+
+  const save = async () => {
+    setSaving(true)
+    try {
+      await updateSettings({ materialsMarkupPercent: value })
+      toast.success('Markup updated')
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to save')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) return null
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Package className="size-4 text-muted-foreground" />
+          Materials markup
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">
+          Your products list holds what <span className="font-medium text-foreground">you pay</span>. This markup is added on top when you put a product on a quote or invoice.
+          Your employees never see prices or markup.
+        </p>
+        <div className="flex items-end gap-3">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Markup (%)</label>
+            <Input type="number" min="0" max="1000" step="0.5" value={markup} onChange={(e) => setMarkup(e.target.value)} className="mt-1 w-28" />
+          </div>
+          {dirty && (
+            <Button size="sm" disabled={saving} onClick={save}>
+              {saving ? 'Saving…' : 'Save'}
+            </Button>
+          )}
+        </div>
+        {valid && (
+          <p className="text-xs text-muted-foreground">
+            Example: a $10.00 part is sold at <span className="font-medium text-foreground">{formatMoney(withMarkup(10, value))}</span>.
+          </p>
         )}
       </CardContent>
     </Card>
@@ -686,6 +748,8 @@ export default function Settings() {
       </div>
 
       <BusinessCard />
+
+      <MaterialsMarkupCard />
 
       <QuoteDefaultsCard />
 

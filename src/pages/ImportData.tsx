@@ -9,7 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { parseCsvFile, type ParsedCsv } from '@/lib/csv'
 import { useCustomersStore } from '@/lib/store/customers-store'
 import { useExpensesStore } from '@/lib/store/expenses-store'
-import { useProductsStore } from '@/lib/store/products-store'
+import { supabase } from '@/lib/supabase'
+import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
 import type { ExpenseCategory } from '@/lib/demo-data'
 import { toDateKey } from '@/lib/utils'
 
@@ -38,12 +39,22 @@ const EXPENSE_FIELDS: FieldSpec[] = [
 ]
 
 const PRODUCT_FIELDS: FieldSpec[] = [
-  { key: 'name', label: 'Name', required: true },
-  { key: 'description', label: 'Description', required: false },
+  { key: 'name', label: 'Name / description', required: true },
+  { key: 'name2', label: 'Description, second part (joined to the name)', required: false },
+  { key: 'supplierCode', label: 'Product code (re-importing updates the price)', required: false },
+  { key: 'vendorPart', label: "Manufacturer's part number", required: false },
   { key: 'category', label: 'Category', required: false },
   { key: 'unit', label: 'Unit', required: false },
-  { key: 'unitPrice', label: 'Price ($)', required: false },
+  { key: 'unitPrice', label: 'Your cost price ($)', required: false },
 ]
+
+const PRODUCT_BATCH = 1000
+
+// Supplier unit codes -> words. Unknown codes are kept as typed (lowercased).
+const UNIT_WORDS: Record<string, string> = {
+  EA: 'each', EACH: 'each', MTR: 'metre', LN: 'length', PK: 'pack', PKT: 'pack', RO: 'roll', ROLL: 'roll', RL: 'reel',
+  BX: 'box', KT: 'kit', PR: 'pair', SET: 'set', BG: 'bag', CT: 'carton', FT: 'foot', TN: 'tin',
+}
 
 const EXPENSE_CATEGORIES: ExpenseCategory[] = ['Materials', 'Fuel', 'Tools & Equipment', 'Subcontractor', 'Vehicle', 'Insurance', 'Office', 'Other']
 
@@ -82,7 +93,7 @@ export default function ImportData() {
   const navigate = useNavigate()
   const { addCustomer } = useCustomersStore()
   const { addExpense } = useExpensesStore()
-  const { addProduct } = useProductsStore()
+  const { activeBusinessId } = useActiveBusiness()
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [target, setTarget] = useState<Target>('customers')
@@ -90,6 +101,8 @@ export default function ImportData() {
   const [mapping, setMapping] = useState<Record<string, string>>({})
   const [importing, setImporting] = useState(false)
   const [result, setResult] = useState<{ imported: number; skipped: number } | null>(null)
+  const [hasHeader, setHasHeader] = useState(true)
+  const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
 
   const fields = target === 'customers' ? CUSTOMER_FIELDS : target === 'expenses' ? EXPENSE_FIELDS : PRODUCT_FIELDS
 
@@ -103,26 +116,92 @@ export default function ImportData() {
         return
       }
       setParsed(csv)
-      const guessed: Record<string, string> = {}
-      for (const field of fields) {
-        const idx = csv.headers.findIndex((h) => h.trim().toLowerCase() === field.label.toLowerCase() || h.trim().toLowerCase() === field.key)
-        if (idx !== -1) guessed[field.key] = String(idx)
-      }
-      setMapping(guessed)
+      // Some supplier exports have no header row — the first line is already a product (it has a price in it).
+      const firstRowIsData = csv.headers.some((h) => /^\d+(\.\d+)?$/.test(h.trim()) && Number(h) > 0)
+      setHasHeader(!firstRowIsData)
+      setMapping(guessMapping(csv.headers, !firstRowIsData))
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't read that file")
     }
   }
 
-  const previewRows = useMemo(() => {
-    if (!parsed) return []
-    return parsed.rows.slice(0, 5)
-  }, [parsed])
+  // With "no header row" the first line is data, and columns are just numbered.
+  const view = useMemo(() => {
+    if (!parsed) return { headers: [] as string[], rows: [] as string[][] }
+    if (hasHeader) return parsed
+    return {
+      headers: parsed.headers.map((h, i) => `Column ${i + 1} (e.g. ${h.trim().slice(0, 22) || 'blank'})`),
+      rows: [parsed.headers, ...parsed.rows],
+    }
+  }, [parsed, hasHeader])
+
+  const guessMapping = (headers: string[], withHeader: boolean): Record<string, string> => {
+    const guessed: Record<string, string> = {}
+    if (withHeader) {
+      for (const field of fields) {
+        const idx = headers.findIndex((h) => h.trim().toLowerCase() === field.label.toLowerCase() || h.trim().toLowerCase() === field.key)
+        if (idx !== -1) guessed[field.key] = String(idx)
+      }
+    } else if (target === 'products' && headers.length >= 11 && /^\d+(\.\d+)?$/.test(headers[6]?.trim() ?? '')) {
+      // The MM Electrical price list layout: code, description 1 & 2, …, your price per unit, vendor part, …, unit.
+      Object.assign(guessed, { supplierCode: '0', name: '1', name2: '2', unitPrice: '6', vendorPart: '7', unit: '10' })
+    }
+    return guessed
+  }
+
+  const changeHasHeader = (value: boolean) => {
+    setHasHeader(value)
+    if (parsed) setMapping(guessMapping(parsed.headers, value))
+  }
+
+  const previewRows = useMemo(() => view.rows.slice(0, 5), [view])
 
   const getMapped = (row: string[], key: string) => {
     const idx = mapping[key]
     if (idx === undefined || idx === '') return ''
     return row[Number(idx)]?.trim() ?? ''
+  }
+
+  const importProducts = async () => {
+    if (!activeBusinessId) {
+      toast.error('Could not work out which business this is for')
+      return
+    }
+    const records: Record<string, string | number>[] = []
+    let invalid = 0
+    for (const row of view.rows) {
+      const name = `${getMapped(row, 'name')} ${getMapped(row, 'name2')}`.replace(/\s+/g, ' ').trim()
+      if (!name) {
+        invalid++
+        continue
+      }
+      const rawUnit = getMapped(row, 'unit')
+      records.push({
+        name,
+        category: getMapped(row, 'category'),
+        unit: UNIT_WORDS[rawUnit.toUpperCase()] ?? (rawUnit.toLowerCase() || 'each'),
+        unit_price: parsePrice(getMapped(row, 'unitPrice')),
+        supplier_code: getMapped(row, 'supplierCode'),
+        vendor_part: getMapped(row, 'vendorPart'),
+      })
+    }
+
+    setImporting(true)
+    setProgress({ done: 0, total: records.length })
+    let imported = 0
+    let failed = 0
+    for (let i = 0; i < records.length; i += PRODUCT_BATCH) {
+      const chunk = records.slice(i, i + PRODUCT_BATCH)
+      const { data, error } = await supabase.rpc('import_products', { p_business: activeBusinessId, p_rows: chunk })
+      if (error) failed += chunk.length
+      else imported += data ?? 0
+      setProgress({ done: Math.min(i + PRODUCT_BATCH, records.length), total: records.length })
+    }
+    setImporting(false)
+    setProgress(null)
+    setResult({ imported, skipped: invalid + failed })
+    if (imported > 0) toast.success(`Imported ${imported.toLocaleString()} products`)
+    if (invalid + failed > 0) toast.info(`Skipped ${(invalid + failed).toLocaleString()} row${invalid + failed === 1 ? '' : 's'}`)
   }
 
   const runImport = async () => {
@@ -133,11 +212,16 @@ export default function ImportData() {
       return
     }
 
+    if (target === 'products') {
+      await importProducts()
+      return
+    }
+
     setImporting(true)
     let imported = 0
     let skipped = 0
 
-    for (const row of parsed.rows) {
+    for (const row of view.rows) {
       try {
         if (target === 'customers') {
           const name = getMapped(row, 'name')
@@ -171,19 +255,6 @@ export default function ImportData() {
             gstType: 'gst_inclusive',
             supplier: getMapped(row, 'supplier') || undefined,
           })
-        } else {
-          const name = getMapped(row, 'name')
-          if (!name) {
-            skipped++
-            continue
-          }
-          await addProduct({
-            name,
-            description: getMapped(row, 'description') || undefined,
-            category: getMapped(row, 'category') || undefined,
-            unit: getMapped(row, 'unit') || undefined,
-            unitPrice: parsePrice(getMapped(row, 'unitPrice')),
-          })
         }
         imported++
       } catch {
@@ -193,7 +264,7 @@ export default function ImportData() {
 
     setImporting(false)
     setResult({ imported, skipped })
-    if (imported > 0) toast.success(`Imported ${imported} ${target === 'products' ? 'products' : target}`)
+    if (imported > 0) toast.success(`Imported ${imported} ${target}`)
     if (skipped > 0) toast.info(`Skipped ${skipped} row${skipped === 1 ? '' : 's'} — missing or invalid required fields`)
   }
 
@@ -256,6 +327,13 @@ export default function ImportData() {
             <CardTitle>2. Match your columns</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
+            <label className="flex cursor-pointer items-center gap-2 text-sm">
+              <input type="checkbox" checked={hasHeader} onChange={(e) => changeHasHeader(e.target.checked)} className="size-4" />
+              First row is a header (column names), not a product
+            </label>
+            {!hasHeader && target === 'products' && Object.keys(mapping).length > 0 && (
+              <p className="text-xs text-success">This looks like a supplier price list — I've matched the columns for you. Check them below.</p>
+            )}
             {fields.map((field) => (
               <div key={field.key} className="flex items-center justify-between gap-4">
                 <label className="text-sm font-medium">
@@ -267,7 +345,7 @@ export default function ImportData() {
                     <SelectValue placeholder="Don't import" />
                   </SelectTrigger>
                   <SelectContent>
-                    {parsed.headers.map((h, i) => (
+                    {view.headers.map((h, i) => (
                       <SelectItem key={i} value={String(i)}>
                         {h || `Column ${i + 1}`}
                       </SelectItem>
@@ -312,9 +390,9 @@ export default function ImportData() {
 
       {parsed && (
         <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground">{parsed.rows.length} rows found in this file.</p>
+          <p className="text-sm text-muted-foreground">{view.rows.length.toLocaleString()} rows found in this file.</p>
           <Button disabled={importing} onClick={runImport}>
-            {importing ? 'Importing…' : `Import ${parsed.rows.length} rows`}
+            {importing ? (progress ? `Importing… ${progress.done.toLocaleString()} of ${progress.total.toLocaleString()}` : 'Importing…') : `Import ${view.rows.length.toLocaleString()} rows`}
           </Button>
         </div>
       )}
