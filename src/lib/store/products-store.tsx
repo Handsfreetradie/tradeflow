@@ -39,6 +39,8 @@ interface ProductsContextValue {
   addProduct: (input: NewProductInput) => Promise<Product>
   updateProduct: (id: string, input: NewProductInput) => Promise<void>
   deleteProduct: (id: string) => Promise<void>
+  /** Removes every product in the active business. */
+  deleteAllProducts: () => Promise<void>
   /** Add or take off from the current count (e.g. +10 delivered, -2 used). */
   adjustStock: (id: string, delta: number) => Promise<void>
   /** Set the count after a stocktake. */
@@ -171,6 +173,13 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
     setProducts((prev) => prev.filter((p) => p.id !== id))
   }, [])
 
+  const deleteAllProducts = useCallback(async () => {
+    if (!activeBusinessId) throw new Error('Could not resolve your business')
+    const { error } = await supabase.from('products').delete().eq('business_id', activeBusinessId)
+    if (error) throw new Error(error.message)
+    setProducts([])
+  }, [activeBusinessId])
+
   const adjustStock = useCallback(
     async (id: string, delta: number) => {
       const { error } = await supabase.rpc('adjust_stock', { p_product: id, p_delta: delta })
@@ -190,8 +199,8 @@ export function ProductsProvider({ children }: { children: ReactNode }) {
   )
 
   const value = useMemo(
-    () => ({ products, loading, addProduct, updateProduct, deleteProduct, adjustStock, setStock, refresh }),
-    [products, loading, addProduct, updateProduct, deleteProduct, adjustStock, setStock, refresh]
+    () => ({ products, loading, addProduct, updateProduct, deleteProduct, deleteAllProducts, adjustStock, setStock, refresh }),
+    [products, loading, addProduct, updateProduct, deleteProduct, deleteAllProducts, adjustStock, setStock, refresh]
   )
 
   return <ProductsContext.Provider value={value}>{children}</ProductsContext.Provider>

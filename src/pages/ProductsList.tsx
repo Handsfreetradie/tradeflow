@@ -205,6 +205,58 @@ function ProductDialog({
   )
 }
 
+function DeleteAllDialog({ open, count, onClose }: { open: boolean; count: number; onClose: () => void }) {
+  const { deleteAllProducts } = useProductsStore()
+  const [typed, setTyped] = useState('')
+  const [deleting, setDeleting] = useState(false)
+
+  const close = () => {
+    setTyped('')
+    onClose()
+  }
+
+  const run = async () => {
+    setDeleting(true)
+    try {
+      await deleteAllProducts()
+      toast.success('All products deleted')
+      close()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Failed to delete')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => !o && close()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete all {count} products?</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3 text-sm">
+          <p>This clears your whole products list, including stock counts and reorder settings. It can't be undone.</p>
+          <p className="text-muted-foreground">
+            Jobs, quotes and invoices that already used these products are not affected. Items waiting on the Stock orders list stay there as typed items.
+          </p>
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">Type DELETE to confirm</label>
+            <Input value={typed} onChange={(e) => setTyped(e.target.value)} className="mt-1" autoFocus />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="secondary" onClick={close}>
+            Cancel
+          </Button>
+          <Button variant="danger" disabled={typed.trim() !== 'DELETE' || deleting} onClick={run}>
+            {deleting ? 'Deleting…' : 'Delete all'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 function StockCountDialog({ product, onClose }: { product: Product | null; onClose: () => void }) {
   const { setStock } = useProductsStore()
   const [count, setCount] = useState('')
@@ -259,6 +311,7 @@ export default function ProductsList() {
   const [editing, setEditing] = useState<Product | null>(null)
   const [removeTarget, setRemoveTarget] = useState<Product | null>(null)
   const [countTarget, setCountTarget] = useState<Product | null>(null)
+  const [deleteAllOpen, setDeleteAllOpen] = useState(false)
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim()
@@ -287,6 +340,12 @@ export default function ProductsList() {
             <Upload />
             Import from supplier CSV
           </Button>
+          {products.length > 0 && (
+            <Button variant="secondary" onClick={() => setDeleteAllOpen(true)}>
+              <Trash2 />
+              Delete all
+            </Button>
+          )}
           <Button onClick={openNew}>
             <Plus />
             Add product
@@ -347,6 +406,7 @@ export default function ProductsList() {
       </Card>
 
       <ProductDialog key={editing?.id ?? 'new'} open={dialogOpen} onOpenChange={setDialogOpen} editing={editing} />
+      <DeleteAllDialog open={deleteAllOpen} count={products.length} onClose={() => setDeleteAllOpen(false)} />
       <StockCountDialog key={countTarget?.id ?? 'none'} product={countTarget} onClose={() => setCountTarget(null)} />
 
       <ConfirmDialog
