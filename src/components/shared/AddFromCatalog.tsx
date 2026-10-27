@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useBusinessSettings } from '@/lib/store/business-settings-store'
 import { useProductSearch } from '@/lib/useProductSearch'
+import { useProductSources } from '@/lib/useProductSources'
 import { noteProductUse, sectionCaption } from '@/lib/api/productSearch'
 import { formatMoney, withMarkup } from '@/lib/utils'
 
@@ -15,6 +16,7 @@ export function AddFromCatalog({ onAdd }: { onAdd: (item: { description: string;
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const { items, total, loading, error } = useProductSearch(query, { enabled: open })
+  const { label: sourceLabel } = useProductSources()
 
   return (
     <DropdownMenu
@@ -42,6 +44,7 @@ export function AddFromCatalog({ onAdd }: { onAdd: (item: { description: string;
             className="h-8 pl-8 text-xs"
           />
         </div>
+        {sourceLabel && <p className="px-2 pb-1.5 text-[11px] text-muted-foreground">From the {sourceLabel} price list · your cost + {markup}% markup</p>}
         <div className="max-h-72 overflow-y-auto">
           {error ? (
             <p className="px-2 py-3 text-center text-xs text-destructive">{error}</p>

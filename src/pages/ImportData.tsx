@@ -103,6 +103,7 @@ export default function ImportData() {
   const [result, setResult] = useState<{ imported: number; skipped: number } | null>(null)
   const [hasHeader, setHasHeader] = useState(true)
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null)
+  const [sourceName, setSourceName] = useState('')
 
   const fields = target === 'customers' ? CUSTOMER_FIELDS : target === 'expenses' ? EXPENSE_FIELDS : PRODUCT_FIELDS
 
@@ -145,6 +146,7 @@ export default function ImportData() {
     } else if (target === 'products' && headers.length >= 11 && /^\d+(\.\d+)?$/.test(headers[6]?.trim() ?? '')) {
       // The MM Electrical price list layout: code, description 1 & 2, …, your price per unit, vendor part, …, unit.
       Object.assign(guessed, { supplierCode: '0', name: '1', name2: '2', unitPrice: '6', vendorPart: '7', unit: '10' })
+      setSourceName((current) => current || 'MM Electrical')
     }
     return guessed
   }
@@ -165,6 +167,10 @@ export default function ImportData() {
   const importProducts = async () => {
     if (!activeBusinessId) {
       toast.error('Could not work out which business this is for')
+      return
+    }
+    if (!sourceName.trim()) {
+      toast.error('Say which supplier this price list is from')
       return
     }
     const records: Record<string, string | number>[] = []
@@ -192,7 +198,7 @@ export default function ImportData() {
     let failed = 0
     for (let i = 0; i < records.length; i += PRODUCT_BATCH) {
       const chunk = records.slice(i, i + PRODUCT_BATCH)
-      const { data, error } = await supabase.rpc('import_products', { p_business: activeBusinessId, p_rows: chunk })
+      const { data, error } = await supabase.rpc('import_products', { p_business: activeBusinessId, p_rows: chunk, p_source: sourceName.trim() })
       if (error) failed += chunk.length
       else imported += data ?? 0
       setProgress({ done: Math.min(i + PRODUCT_BATCH, records.length), total: records.length })
@@ -333,6 +339,19 @@ export default function ImportData() {
             </label>
             {!hasHeader && target === 'products' && Object.keys(mapping).length > 0 && (
               <p className="text-xs text-success">This looks like a supplier price list — I've matched the columns for you. Check them below.</p>
+            )}
+            {target === 'products' && (
+              <div className="flex items-center justify-between gap-4">
+                <label className="text-sm font-medium">
+                  Which supplier is this list from?<span className="text-destructive"> *</span>
+                </label>
+                <input
+                  value={sourceName}
+                  onChange={(e) => setSourceName(e.target.value)}
+                  placeholder="e.g. MM Electrical"
+                  className="h-10 w-64 rounded-lg border border-input bg-white px-3 text-sm shadow-subtle focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+              </div>
             )}
             {fields.map((field) => (
               <div key={field.key} className="flex items-center justify-between gap-4">

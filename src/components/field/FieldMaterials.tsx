@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { useFieldJobsStore, type JobMaterial, type NewMaterialItem } from '@/lib/store/field-jobs-store'
 import { useProductSearch } from '@/lib/useProductSearch'
+import { useProductSources } from '@/lib/useProductSources'
 import { sectionCaption, type ProductHit } from '@/lib/api/productSearch'
 import { formatDate } from '@/lib/utils'
 
@@ -22,6 +23,7 @@ function AddMaterialsDialog({ jobId, open, onOpenChange, onAdded }: { jobId: str
   const { addMaterials } = useFieldJobsStore()
   const [search, setSearch] = useState('')
   const { items: results, total, loading: loadingOptions } = useProductSearch(search, { enabled: open })
+  const { label: sourceLabel } = useProductSources()
   const [items, setItems] = useState<DraftItem[]>([])
   const [otherName, setOtherName] = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -82,6 +84,7 @@ function AddMaterialsDialog({ jobId, open, onOpenChange, onAdded }: { jobId: str
             <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search the materials list" className="pl-9" />
           </div>
 
+          {sourceLabel && <p className="-mt-1 text-[11px] text-muted-foreground">From the {sourceLabel} materials list</p>}
           <div className="max-h-48 divide-y divide-border overflow-y-auto rounded-lg border border-border">
             {loadingOptions && results.length === 0 ? (
               <p className="p-3 text-sm text-muted-foreground">Loading…</p>

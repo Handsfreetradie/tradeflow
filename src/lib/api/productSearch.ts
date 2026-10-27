@@ -97,3 +97,16 @@ export function sectionCaption(items: ProductHit[], index: number, searching: bo
   const prevUsed = items[index - 1].timesUsed > 0
   return prevUsed && !used ? 'All products' : null
 }
+
+export interface ProductSource {
+  source: string
+  products: number
+  lastPriceUpdate: string | null
+}
+
+/** Which supplier lists the products came from (and how many each) — so people know where prices come from. */
+export async function getProductSources(): Promise<ProductSource[]> {
+  const { data, error } = await supabase.rpc('product_sources', { p_business: requireApiBusinessId() })
+  if (error) throw new Error(error.message)
+  return (data ?? []).map((r) => ({ source: r.source, products: Number(r.products), lastPriceUpdate: r.last_price_update }))
+}

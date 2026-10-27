@@ -1799,9 +1799,11 @@ export type Database = {
           description: string
           id: string
           name: string
+          price_updated_at: string
           reorder_level: number
           reorder_qty: number
           search_text: string | null
+          source: string
           stock_qty: number
           supplier_code: string
           supplier_id: string | null
@@ -1819,9 +1821,11 @@ export type Database = {
           description?: string
           id?: string
           name: string
+          price_updated_at?: string
           reorder_level?: number
           reorder_qty?: number
           search_text?: string | null
+          source?: string
           stock_qty?: number
           supplier_code?: string
           supplier_id?: string | null
@@ -1839,9 +1843,11 @@ export type Database = {
           description?: string
           id?: string
           name?: string
+          price_updated_at?: string
           reorder_level?: number
           reorder_qty?: number
           search_text?: string | null
+          source?: string
           stock_qty?: number
           supplier_code?: string
           supplier_id?: string | null
@@ -2920,7 +2926,7 @@ export type Database = {
         }[]
       }
       import_products: {
-        Args: { p_business: string; p_rows: Json }
+        Args: { p_business: string; p_rows: Json; p_source?: string }
         Returns: number
       }
       mark_invoice_viewed: { Args: { p_token: string }; Returns: undefined }
@@ -2930,6 +2936,14 @@ export type Database = {
       next_po_number: { Args: never; Returns: string }
       next_quote_number: { Args: never; Returns: string }
       note_product_use: { Args: { p_product: string }; Returns: undefined }
+      product_sources: {
+        Args: { p_business: string }
+        Returns: {
+          last_price_update: string
+          products: number
+          source: string
+        }[]
+      }
       receive_stock_item: {
         Args: { p_item: string; p_qty?: number }
         Returns: undefined

@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useJobsStore } from '@/lib/store/jobs-store'
 import { useProductSearch } from '@/lib/useProductSearch'
+import { useProductSources } from '@/lib/useProductSources'
 import { sectionCaption, type ProductHit } from '@/lib/api/productSearch'
 import { formatMoney } from '@/lib/utils'
 
@@ -21,6 +22,7 @@ export function AddJobMaterialsDialog({ jobId, open, onClose }: { jobId: string;
   const [items, setItems] = useState<DraftItem[]>([])
   const [submitting, setSubmitting] = useState(false)
   const { items: results, total, loading } = useProductSearch(search, { enabled: open })
+  const { label: sourceLabel } = useProductSources()
 
   useEffect(() => {
     if (!open) return
@@ -71,6 +73,7 @@ export function AddJobMaterialsDialog({ jobId, open, onClose }: { jobId: string;
             <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search e.g. 2.5 cable, 2g gpo white" className="pl-9" autoFocus />
           </div>
 
+          {sourceLabel && <p className="-mt-1 text-[11px] text-muted-foreground">From the {sourceLabel} price list — prices shown are what you pay.</p>}
           <div className="max-h-56 divide-y divide-border overflow-y-auto rounded-lg border border-border">
             {loading && results.length === 0 ? (
               <p className="p-3 text-sm text-muted-foreground">Searching…</p>

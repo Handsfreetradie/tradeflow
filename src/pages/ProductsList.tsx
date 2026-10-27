@@ -15,6 +15,7 @@ import { useProductsStore, type Product } from '@/lib/store/products-store'
 import { useStockStore } from '@/lib/store/stock-store'
 import { useBusinessSettings } from '@/lib/store/business-settings-store'
 import { useProductSearch } from '@/lib/useProductSearch'
+import { useProductSources } from '@/lib/useProductSources'
 import { sectionCaption, type ProductHit } from '@/lib/api/productSearch'
 import { formatMoney, withMarkup } from '@/lib/utils'
 
@@ -316,6 +317,7 @@ export default function ProductsList() {
   const { deleteProduct, loadProduct } = useProductsStore()
   const { settings } = useBusinessSettings()
   const markup = settings.materialsMarkupPercent
+  const { label: sourceLabel, updated: pricesUpdated } = useProductSources()
   const [search, setSearch] = useState('')
   const { items, total, loading, loadingMore, error, hasMore, loadMore, reload } = useProductSearch(search)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -345,7 +347,8 @@ export default function ProductsList() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Products & Services</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Your supplier price list. Prices here are what you pay{markup > 0 ? `; ${markup}% markup is added when you quote` : ''}.
+            {sourceLabel ? `From the ${sourceLabel} price list${pricesUpdated ? ` · prices last updated ${pricesUpdated}` : ''}. ` : 'Your supplier price list. '}
+            Prices here are what you pay{markup > 0 ? `; ${markup}% markup is added when you quote` : ''}.
           </p>
         </div>
         <div className="flex items-center gap-2">
