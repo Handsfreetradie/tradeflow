@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { useFieldJobsStore, type JobMaterial, type NewMaterialItem } from '@/lib/store/field-jobs-store'
 import { useProductSearch } from '@/lib/useProductSearch'
-import type { ProductHit } from '@/lib/api/productSearch'
+import { sectionCaption, type ProductHit } from '@/lib/api/productSearch'
 import { formatDate } from '@/lib/utils'
 
 interface DraftItem {
@@ -90,14 +90,19 @@ function AddMaterialsDialog({ jobId, open, onOpenChange, onAdded }: { jobId: str
                 {search.trim() === '' ? 'No materials on the list yet — add your own below.' : 'Nothing matches — try fewer words, or add it below.'}
               </p>
             ) : (
-              results.map((o) => (
-                <button key={o.id} type="button" onClick={() => addFromList(o)} className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-secondary/60">
-                  <span className="min-w-0">
-                    <span className="block truncate font-medium">{o.name}</span>
-                    <span className="block truncate text-xs text-muted-foreground">{[o.supplierCode, o.unit && `per ${o.unit}`].filter(Boolean).join(' · ')}</span>
-                  </span>
-                  <Plus className="size-4 shrink-0 text-primary" />
-                </button>
+              results.map((o, i) => (
+                <div key={o.id}>
+                  {sectionCaption(results, i, search.trim() !== '') && (
+                    <p className="bg-secondary/50 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{sectionCaption(results, i, search.trim() !== '')}</p>
+                  )}
+                  <button type="button" onClick={() => addFromList(o)} className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left text-sm hover:bg-secondary/60">
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">{o.name}</span>
+                      <span className="block truncate text-xs text-muted-foreground">{[o.brand, o.supplierCode, o.unit && `per ${o.unit}`].filter(Boolean).join(' · ')}</span>
+                    </span>
+                    <Plus className="size-4 shrink-0 text-primary" />
+                  </button>
+                </div>
               ))
             )}
             {total > results.length && (

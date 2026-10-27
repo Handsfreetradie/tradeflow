@@ -5,6 +5,9 @@ import { buildSearchGroups } from '@/lib/productSearchTerms'
 export interface ProductHit {
   id: string
   name: string
+  brand: string
+  /** How often it's been used on jobs, quotes, invoices and orders — most-used products come first. */
+  timesUsed: number
   unit: string
   /** Your cost. Null for employees — they never see prices. */
   unitPrice: number | null
@@ -24,6 +27,8 @@ export interface ProductSearchResult {
 type Row = {
   id: string
   name: string
+  brand: string
+  times_used: number
   unit: string
   unit_price: number | null
   supplier_code: string
@@ -50,6 +55,8 @@ async function run(groups: string[][], limit: number, offset: number, relaxed: b
     items: rows.map((r) => ({
       id: r.id,
       name: r.name,
+      brand: r.brand,
+      timesUsed: r.times_used,
       unit: r.unit,
       unitPrice: r.unit_price === null ? null : Number(r.unit_price),
       supplierCode: r.supplier_code,
@@ -72,4 +79,21 @@ export async function searchProducts(query: string, opts: { limit?: number; offs
   const strict = await run(groups, limit, offset, false, onlyTracked)
   if (strict.total > 0 || groups.length < 2 || offset > 0) return strict
   return run(groups, limit, offset, true, onlyTracked)
+}
+
+/** Tells the list that a product was used (on a quote/invoice, which only copies its name and price). */
+export function noteProductUse(id: string): void {
+  void supabase.rpc('note_product_use', { p_product: id }).then(() => undefined)
+}
+
+/**
+ * Section captions for an empty search: "Frequently used" first, then the rest A–Z.
+ * Returns the caption to show above item `index`, or null.
+ */
+export function sectionCaption(items: ProductHit[], index: number, searching: boolean): string | null {
+  if (searching) return null
+  const used = items[index].timesUsed > 0
+  if (index === 0) return used ? 'Frequently used' : null
+  const prevUsed = items[index - 1].timesUsed > 0
+  return prevUsed && !used ? 'All products' : null
 }

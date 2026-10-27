@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useBusinessSettings } from '@/lib/store/business-settings-store'
 import { useProductSearch } from '@/lib/useProductSearch'
+import { noteProductUse, sectionCaption } from '@/lib/api/productSearch'
 import { formatMoney, withMarkup } from '@/lib/utils'
 
 /** Search your price list and add a product as a line — at your cost plus the markup set in Settings. */
@@ -49,18 +50,25 @@ export function AddFromCatalog({ onAdd }: { onAdd: (item: { description: string;
           ) : items.length === 0 ? (
             <p className="px-2 py-3 text-center text-xs text-muted-foreground">No matches</p>
           ) : (
-            items.map((p) => (
-              <DropdownMenuItem
-                key={p.id}
-                onSelect={() => onAdd({ description: p.name, qty: 1, unitPrice: withMarkup(p.unitPrice ?? 0, markup) })}
-                className="flex items-center justify-between gap-3"
-              >
-                <span className="min-w-0">
-                  <span className="block truncate">{p.name}</span>
-                  <span className="block truncate text-[11px] text-muted-foreground">{p.supplierCode}</span>
-                </span>
-                <span className="shrink-0 text-xs text-muted-foreground">{formatMoney(withMarkup(p.unitPrice ?? 0, markup))}</span>
-              </DropdownMenuItem>
+            items.map((p, i) => (
+              <div key={p.id}>
+                {sectionCaption(items, i, query.trim() !== '') && (
+                  <p className="px-2 pb-1 pt-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{sectionCaption(items, i, query.trim() !== '')}</p>
+                )}
+                <DropdownMenuItem
+                  onSelect={() => {
+                    noteProductUse(p.id)
+                    onAdd({ description: p.name, qty: 1, unitPrice: withMarkup(p.unitPrice ?? 0, markup) })
+                  }}
+                  className="flex items-center justify-between gap-3"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate">{p.name}</span>
+                    <span className="block truncate text-[11px] text-muted-foreground">{[p.brand, p.supplierCode].filter(Boolean).join(' · ')}</span>
+                  </span>
+                  <span className="shrink-0 text-xs text-muted-foreground">{formatMoney(withMarkup(p.unitPrice ?? 0, markup))}</span>
+                </DropdownMenuItem>
+              </div>
             ))
           )}
           {total > items.length && (

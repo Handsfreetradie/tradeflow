@@ -15,7 +15,7 @@ import { useProductsStore, type Product } from '@/lib/store/products-store'
 import { useStockStore } from '@/lib/store/stock-store'
 import { useBusinessSettings } from '@/lib/store/business-settings-store'
 import { useProductSearch } from '@/lib/useProductSearch'
-import type { ProductHit } from '@/lib/api/productSearch'
+import { sectionCaption, type ProductHit } from '@/lib/api/productSearch'
 import { formatMoney, withMarkup } from '@/lib/utils'
 
 const UNITS = ['each', 'hour', 'metre', 'sqm', 'day', 'kit']
@@ -399,12 +399,16 @@ export default function ProductsList() {
             />
           ) : (
             <div className="divide-y divide-border">
-              {items.map((p) => (
-                <div key={p.id} className="flex items-center gap-3 p-4">
+              {items.map((p, i) => (
+                <div key={p.id}>
+                  {sectionCaption(items, i, searching) && (
+                    <p className="bg-secondary/50 px-4 py-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{sectionCaption(items, i, searching)}</p>
+                  )}
+                  <div className="flex items-center gap-3 p-4">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium">{p.name}</p>
                     <p className="truncate text-xs text-muted-foreground">
-                      {[p.supplierCode, p.vendorPart && p.vendorPart !== p.supplierCode ? `Part ${p.vendorPart}` : '', `per ${p.unit}`].filter(Boolean).join(' · ')}
+                      {[p.brand, p.supplierCode, p.vendorPart && p.vendorPart !== p.supplierCode ? `Part ${p.vendorPart}` : '', `per ${p.unit}`].filter(Boolean).join(' · ')}
                     </p>
                   </div>
                   {p.trackStock && p.stockQty !== null && (
@@ -430,6 +434,7 @@ export default function ProductsList() {
                   <Button variant="ghost" size="icon" onClick={() => setRemoveTarget(p)}>
                     <Trash2 className="text-muted-foreground" />
                   </Button>
+                  </div>
                 </div>
               ))}
             </div>

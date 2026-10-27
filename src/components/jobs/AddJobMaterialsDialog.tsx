@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useJobsStore } from '@/lib/store/jobs-store'
 import { useProductSearch } from '@/lib/useProductSearch'
-import type { ProductHit } from '@/lib/api/productSearch'
+import { sectionCaption, type ProductHit } from '@/lib/api/productSearch'
 import { formatMoney } from '@/lib/utils'
 
 interface DraftItem {
@@ -77,14 +77,19 @@ export function AddJobMaterialsDialog({ jobId, open, onClose }: { jobId: string;
             ) : results.length === 0 ? (
               <p className="p-3 text-sm text-muted-foreground">Nothing matches — try fewer words, or log it as a cost instead.</p>
             ) : (
-              results.map((p) => (
-                <button key={p.id} type="button" onClick={() => add(p)} className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-secondary/60">
-                  <span className="min-w-0">
-                    <span className="block truncate font-medium">{p.name}</span>
-                    <span className="block truncate text-xs text-muted-foreground">{[p.supplierCode, `${formatMoney(p.unitPrice ?? 0)} per ${p.unit}`].filter(Boolean).join(' · ')}</span>
-                  </span>
-                  <Plus className="size-4 shrink-0 text-primary" />
-                </button>
+              results.map((p, i) => (
+                <div key={p.id}>
+                  {sectionCaption(results, i, search.trim() !== '') && (
+                    <p className="bg-secondary/50 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{sectionCaption(results, i, search.trim() !== '')}</p>
+                  )}
+                  <button type="button" onClick={() => add(p)} className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm hover:bg-secondary/60">
+                    <span className="min-w-0">
+                      <span className="block truncate font-medium">{p.name}</span>
+                      <span className="block truncate text-xs text-muted-foreground">{[p.brand, p.supplierCode, `${formatMoney(p.unitPrice ?? 0)} per ${p.unit}`].filter(Boolean).join(' · ')}</span>
+                    </span>
+                    <Plus className="size-4 shrink-0 text-primary" />
+                  </button>
+                </div>
               ))
             )}
             {total > results.length && (

@@ -102,6 +102,21 @@ export type Database = {
           },
         ]
       }
+      brand_prefixes: {
+        Row: {
+          brand: string
+          prefix: string
+        }
+        Insert: {
+          brand: string
+          prefix: string
+        }
+        Update: {
+          brand?: string
+          prefix?: string
+        }
+        Relationships: []
+      }
       business_email_connection: {
         Row: {
           access_token: string | null
@@ -1777,6 +1792,7 @@ export type Database = {
       }
       products: {
         Row: {
+          brand: string
           business_id: string | null
           category: string
           created_at: string
@@ -1789,12 +1805,14 @@ export type Database = {
           stock_qty: number
           supplier_code: string
           supplier_id: string | null
+          times_used: number
           track_stock: boolean
           unit: string
           unit_price: number
           vendor_part: string
         }
         Insert: {
+          brand?: string
           business_id?: string | null
           category?: string
           created_at?: string
@@ -1807,12 +1825,14 @@ export type Database = {
           stock_qty?: number
           supplier_code?: string
           supplier_id?: string | null
+          times_used?: number
           track_stock?: boolean
           unit?: string
           unit_price?: number
           vendor_part?: string
         }
         Update: {
+          brand?: string
           business_id?: string | null
           category?: string
           created_at?: string
@@ -1825,6 +1845,7 @@ export type Database = {
           stock_qty?: number
           supplier_code?: string
           supplier_id?: string | null
+          times_used?: number
           track_stock?: boolean
           unit?: string
           unit_price?: number
@@ -2908,6 +2929,7 @@ export type Database = {
       next_job_number: { Args: never; Returns: string }
       next_po_number: { Args: never; Returns: string }
       next_quote_number: { Args: never; Returns: string }
+      note_product_use: { Args: { p_product: string }; Returns: undefined }
       receive_stock_item: {
         Args: { p_item: string; p_qty?: number }
         Returns: undefined
@@ -2979,11 +3001,13 @@ export type Database = {
           p_relaxed?: boolean
         }
         Returns: {
+          brand: string
           id: string
           name: string
           reorder_level: number
           stock_qty: number
           supplier_code: string
+          times_used: number
           total: number
           track_stock: boolean
           unit: string
