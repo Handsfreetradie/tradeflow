@@ -62,6 +62,17 @@ export default function ExpenseNew() {
           setReceiptPath(claimed.path)
           setReceiptFilename(claimed.filename)
           if (claimed.isImage) setReceiptPreview(URL.createObjectURL(claimed.blob))
+
+          // The inbox scan couldn't read a total — have another go at the attachment itself.
+          if (candidate.amount == null) {
+            try {
+              const scanned = await scanReceipt(claimed.path)
+              if (scanned.amount) setAmount(String(scanned.amount))
+              if (!candidate.supplier && scanned.supplier) setSupplier(scanned.supplier)
+            } catch {
+              // Leave the amount blank for the owner to type in.
+            }
+          }
         }
 
         if (candidate.jobId) {
