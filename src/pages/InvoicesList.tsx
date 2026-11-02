@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
 import { StatusBadge } from '@/components/ui/badge'
+import { SentViewedInfo } from '@/components/shared/SentViewedInfo'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -74,6 +75,7 @@ export default function InvoicesList() {
                   <TableHead className="hidden md:table-cell">Customer</TableHead>
                   <TableHead className="hidden lg:table-cell">Due</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="hidden md:table-cell">Sent / opened</TableHead>
                   <TableHead>Amount</TableHead>
                 </TableRow>
               </TableHeader>
@@ -83,11 +85,21 @@ export default function InvoicesList() {
                     <TableCell>
                       <p className="font-medium">{invoice.number}</p>
                       <p className="text-xs text-muted-foreground md:hidden">{invoice.customer}</p>
+                      <SentViewedInfo
+                        status={invoice.status}
+                        sentAt={invoice.sentAt}
+                        firstViewedAt={invoice.firstViewedAt}
+                        viewCount={invoice.viewCount}
+                        className="mt-1 md:hidden"
+                      />
                     </TableCell>
                     <TableCell className="hidden text-muted-foreground md:table-cell">{invoice.customer}</TableCell>
                     <TableCell className="hidden text-muted-foreground lg:table-cell">{formatDate(invoice.dueDate)}</TableCell>
                     <TableCell>
                       <StatusBadge status={invoice.status} />
+                    </TableCell>
+                    <TableCell className="hidden md:table-cell">
+                      <SentViewedInfo status={invoice.status} sentAt={invoice.sentAt} firstViewedAt={invoice.firstViewedAt} viewCount={invoice.viewCount} />
                     </TableCell>
                     <TableCell className="font-medium">{formatCurrency(invoiceTotal(invoice))}</TableCell>
                   </TableRow>

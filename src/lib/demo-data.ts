@@ -177,6 +177,7 @@ export interface Invoice {
   payments: Payment[]
   jobId?: string
   shareToken: string
+  sentAt?: string
   firstViewedAt?: string
   lastViewedAt?: string
   viewCount: number

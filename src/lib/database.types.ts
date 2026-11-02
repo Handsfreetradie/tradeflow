@@ -826,6 +826,7 @@ export type Database = {
           notes: string
           number: string
           payment_terms: string
+          sent_at: string | null
           share_token: string
           status: string
           view_count: number
@@ -846,6 +847,7 @@ export type Database = {
           notes?: string
           number: string
           payment_terms?: string
+          sent_at?: string | null
           share_token?: string
           status?: string
           view_count?: number
@@ -866,6 +868,7 @@ export type Database = {
           notes?: string
           number?: string
           payment_terms?: string
+          sent_at?: string | null
           share_token?: string
           status?: string
           view_count?: number

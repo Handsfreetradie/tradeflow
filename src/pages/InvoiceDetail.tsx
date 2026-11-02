@@ -17,6 +17,7 @@ import {
 } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { LineItemsTable } from '@/components/shared/LineItemsTable'
+import { SentViewedInfo } from '@/components/shared/SentViewedInfo'
 import { SendDocumentDialog } from '@/components/shared/SendDocumentDialog'
 import { useInvoicesStore, invoiceTotal } from '@/lib/store/invoices-store'
 import { useCustomersStore } from '@/lib/store/customers-store'
@@ -300,13 +301,13 @@ export default function InvoiceDetail() {
         </div>
       </div>
 
-      {invoice.firstViewedAt && (
-        <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Eye className="size-3.5" />
-          Viewed by customer {formatDate(invoice.firstViewedAt, { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })}
-          {invoice.viewCount > 1 && ` · opened ${invoice.viewCount} times`}
-        </p>
-      )}
+      <SentViewedInfo
+        status={invoice.status}
+        sentAt={invoice.sentAt}
+        firstViewedAt={invoice.firstViewedAt}
+        viewCount={invoice.viewCount}
+        layout="row"
+      />
 
       <Card className="overflow-hidden">
         <InvoiceDocument invoice={invoice} customer={customer} business={business} />

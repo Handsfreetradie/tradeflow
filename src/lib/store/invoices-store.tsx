@@ -64,6 +64,7 @@ type InvoiceRow = {
   payment_terms: string
   job_id: string | null
   share_token: string
+  sent_at: string | null
   first_viewed_at: string | null
   last_viewed_at: string | null
   view_count: number
@@ -88,6 +89,7 @@ function fromRow(row: InvoiceRow): Invoice {
     payments: row.payments.map((p) => ({ id: p.id, amount: p.amount, method: p.method as PaymentMethod, date: p.date })),
     jobId: row.job_id ?? undefined,
     shareToken: row.share_token,
+    sentAt: row.sent_at ?? undefined,
     firstViewedAt: row.first_viewed_at ?? undefined,
     lastViewedAt: row.last_viewed_at ?? undefined,
     viewCount: row.view_count,
@@ -204,9 +206,10 @@ export function InvoicesProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const markSent = useCallback(async (id: string) => {
-    const { error } = await supabase.from('invoices').update({ status: 'Sent' }).eq('id', id)
+    const sentAt = new Date().toISOString()
+    const { error } = await supabase.from('invoices').update({ status: 'Sent', sent_at: sentAt }).eq('id', id)
     if (error) throw new Error(error.message)
-    setInvoices((prev) => prev.map((i) => (i.id === id ? { ...i, status: 'Sent' } : i)))
+    setInvoices((prev) => prev.map((i) => (i.id === id ? { ...i, status: 'Sent', sentAt } : i)))
   }, [])
 
   const recordPayment = useCallback(async (id: string, amount: number, method: PaymentMethod) => {
