@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
+import { insertNumbered } from '@/lib/api/docNumbers'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
 import type { PurchaseOrder, PurchaseOrderStatus } from '@/lib/demo-data'
@@ -77,10 +78,7 @@ export function PurchaseOrdersProvider({ children }: { children: ReactNode }) {
   }, [session, activeBusinessId])
 
   const addPurchaseOrder = useCallback(async (input: NewPurchaseOrderInput) => {
-    const { data: number, error: numberError } = await supabase.rpc('next_po_number')
-    if (numberError || !number) throw new Error(numberError?.message ?? 'Failed to generate a PO number')
-
-    const { data: row, error } = await supabase
+    const { data: row, error } = await insertNumbered('po', activeBusinessId, (number) => supabase
       .from('purchase_orders')
       .insert({
         business_id: activeBusinessId ?? undefined,
@@ -91,7 +89,7 @@ export function PurchaseOrdersProvider({ children }: { children: ReactNode }) {
         amount: input.amount ?? null,
       })
       .select('*')
-      .single()
+      .single())
     if (error || !row) throw new Error(error?.message ?? 'Failed to create purchase order')
     const created = fromRow(row as PurchaseOrderRow)
     setPurchaseOrders((prev) => [created, ...prev])

@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
+import { insertNumbered } from '@/lib/api/docNumbers'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
 import { toDateKey } from '@/lib/utils'
@@ -359,9 +360,6 @@ export function JobsProvider({ children }: { children: ReactNode }) {
 
   const addJob = useCallback(
     async (input: NewJobInput) => {
-      const { data: number, error: numberError } = await supabase.rpc('next_job_number')
-      if (numberError || !number) throw new Error(numberError?.message ?? 'Failed to allocate job number')
-
       const items = input.lineItems ?? []
       const value = items.reduce((sum, li) => sum + li.qty * li.unitPrice, 0)
       const pricingType: PricingType = input.pricingType ?? (items.length > 0 ? 'Fixed Price' : 'Time & Materials')
@@ -369,7 +367,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
       const { data: maxSortRow } = await supabase.from('jobs').select('sort_order').eq('business_id', activeBusinessId ?? '').order('sort_order', { ascending: false }).limit(1).maybeSingle()
       const nextSortOrder = (maxSortRow?.sort_order ?? 0) + 1
 
-      const { data: jobRow, error } = await supabase
+      const { data: jobRow, error } = await insertNumbered('job', activeBusinessId, (number) => supabase
         .from('jobs')
         .insert({
           business_id: activeBusinessId ?? undefined,
@@ -385,7 +383,7 @@ export function JobsProvider({ children }: { children: ReactNode }) {
           sort_order: nextSortOrder,
         })
         .select(JOB_SELECT)
-        .single()
+        .single())
       if (error || !jobRow) throw new Error(error?.message ?? 'Failed to create job')
 
       if (items.length > 0) {

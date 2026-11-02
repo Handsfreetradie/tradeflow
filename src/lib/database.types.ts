@@ -3028,6 +3028,10 @@ export type Database = {
       }
       mark_invoice_viewed: { Args: { p_token: string }; Returns: undefined }
       mark_quote_viewed: { Args: { p_token: string }; Returns: undefined }
+      next_doc_number: {
+        Args: { p_business: string; p_kind: string }
+        Returns: string
+      }
       next_invoice_number: { Args: never; Returns: string }
       next_job_number: { Args: never; Returns: string }
       next_po_number: { Args: never; Returns: string }

@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
+import { insertNumbered } from '@/lib/api/docNumbers'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
 import { gstInclusiveTotal } from '@/lib/bas'
@@ -122,11 +123,9 @@ export function QuotesProvider({ children }: { children: ReactNode }) {
   const getQuote = useCallback((id: string) => quotes.find((q) => q.id === id), [quotes])
 
   const addQuote = useCallback(async (input: NewQuoteInput) => {
-    const { data: number, error: numberError } = await supabase.rpc('next_quote_number')
-    if (numberError || !number) throw new Error(numberError?.message ?? 'Failed to allocate quote number')
     const amount = input.lineItems.reduce((sum, li) => sum + li.qty * li.unitPrice, 0)
 
-    const { data: row, error } = await supabase
+    const { data: row, error } = await insertNumbered('quote', activeBusinessId, (number) => supabase
       .from('quotes')
       .insert({
         business_id: activeBusinessId ?? undefined,
@@ -142,7 +141,7 @@ export function QuotesProvider({ children }: { children: ReactNode }) {
         notes: input.notes,
       })
       .select('*, customer:customers(name)')
-      .single()
+      .single())
     if (error || !row) throw new Error(error?.message ?? 'Failed to create quote')
 
     if (input.lineItems.length > 0) {

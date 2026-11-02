@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { supabase } from '@/lib/supabase'
+import { insertNumbered } from '@/lib/api/docNumbers'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
 import { gstInclusiveTotal } from '@/lib/bas'
@@ -129,11 +130,9 @@ export function InvoicesProvider({ children }: { children: ReactNode }) {
   const getInvoice = useCallback((id: string) => invoices.find((i) => i.id === id), [invoices])
 
   const addInvoice = useCallback(async (input: NewInvoiceInput) => {
-    const { data: number, error: numberError } = await supabase.rpc('next_invoice_number')
-    if (numberError || !number) throw new Error(numberError?.message ?? 'Failed to allocate invoice number')
     const amount = input.lineItems.reduce((sum, li) => sum + li.qty * li.unitPrice, 0)
 
-    const { data: row, error } = await supabase
+    const { data: row, error } = await insertNumbered('invoice', activeBusinessId, (number) => supabase
       .from('invoices')
       .insert({
         business_id: activeBusinessId ?? undefined,
@@ -149,7 +148,7 @@ export function InvoicesProvider({ children }: { children: ReactNode }) {
         job_id: input.jobId ?? null,
       })
       .select('*, customer:customers(name)')
-      .single()
+      .single())
     if (error || !row) throw new Error(error?.message ?? 'Failed to create invoice')
 
     if (input.lineItems.length > 0) {
