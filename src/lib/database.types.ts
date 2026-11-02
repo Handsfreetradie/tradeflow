@@ -2605,6 +2605,27 @@ export type Database = {
           },
         ]
       }
+      user_nav_prefs: {
+        Row: {
+          hidden: string[]
+          item_order: string[]
+          person_id: string
+          updated_at: string
+        }
+        Insert: {
+          hidden?: string[]
+          item_order?: string[]
+          person_id: string
+          updated_at?: string
+        }
+        Update: {
+          hidden?: string[]
+          item_order?: string[]
+          person_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       customers_field_view: {

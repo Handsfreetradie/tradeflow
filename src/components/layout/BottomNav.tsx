@@ -1,46 +1,12 @@
 import { useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import {
-  LayoutDashboard,
-  Briefcase,
-  FileText,
-  FileSpreadsheet,
-  Users,
-  Receipt,
-  Car,
-  Package,
-  ShoppingCart,
-  BarChart3,
-  Calculator,
-  Calendar,
-  Settings,
-  Menu,
-  X,
-} from 'lucide-react'
+import { Settings, Menu, SlidersHorizontal, X } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useJobsStore } from '@/lib/store/jobs-store'
-import { useQuotesStore } from '@/lib/store/quotes-store'
-import { useInvoicesStore } from '@/lib/store/invoices-store'
+import { useNavPrefs } from '@/lib/store/nav-prefs-store'
+import { useNavCounts } from '@/lib/useNavCounts'
 
-const primaryTabs: { to: string; icon: LucideIcon; label: string }[] = [
-  { to: '/', icon: LayoutDashboard, label: 'Home' },
-  { to: '/jobs', icon: Briefcase, label: 'Jobs' },
-  { to: '/invoices', icon: FileText, label: 'Invoices' },
-  { to: '/quotes', icon: FileSpreadsheet, label: 'Quotes' },
-]
-
-const moreItems: { to: string; icon: LucideIcon; label: string }[] = [
-  { to: '/customers', icon: Users, label: 'Customers' },
-  { to: '/expenses', icon: Receipt, label: 'Expenses' },
-  { to: '/trips', icon: Car, label: 'Kilometre log' },
-  { to: '/products', icon: Package, label: 'Products & Services' },
-  { to: '/orders', icon: ShoppingCart, label: 'Stock orders' },
-  { to: '/reports', icon: BarChart3, label: 'Reports' },
-  { to: '/break-even', icon: Calculator, label: 'Break-even rate' },
-  { to: '/calendar', icon: Calendar, label: 'Calendar' },
-  { to: '/settings', icon: Settings, label: 'Settings' },
-]
+const TAB_COUNT = 4
 
 function TabLink({ to, icon: Icon, label, count }: { to: string; icon: LucideIcon; label: string; count?: number }) {
   return (
@@ -74,13 +40,12 @@ function TabLink({ to, icon: Icon, label, count }: { to: string; icon: LucideIco
 export function BottomNav() {
   const [moreOpen, setMoreOpen] = useState(false)
   const navigate = useNavigate()
-  const { jobs } = useJobsStore()
-  const { quotes } = useQuotesStore()
-  const { invoices } = useInvoicesStore()
+  const { visibleItems, openCustomise } = useNavPrefs()
+  const counts = useNavCounts()
 
-  const openJobs = jobs.filter((j) => j.status === 'In Progress' || j.status === 'Scheduled').length
-  const unpaidInvoices = invoices.filter((i) => i.status === 'Sent' || i.status === 'Partial' || i.status === 'Overdue').length
-  const openQuotes = quotes.filter((q) => q.status === 'Draft' || q.status === 'Sent').length
+  // The first few items in the person's own order become the tabs; the rest live under More.
+  const tabs = visibleItems.slice(0, TAB_COUNT)
+  const moreItems = [...visibleItems.slice(TAB_COUNT), { key: 'settings', to: '/settings', icon: Settings, label: 'Settings' }]
 
   return (
     <>
@@ -100,7 +65,7 @@ export function BottomNav() {
             <div className="grid grid-cols-3 gap-3">
               {moreItems.map((item) => (
                 <button
-                  key={item.to}
+                  key={item.key}
                   onClick={() => {
                     setMoreOpen(false)
                     navigate(item.to)
@@ -111,18 +76,24 @@ export function BottomNav() {
                   {item.label}
                 </button>
               ))}
+              <button
+                onClick={() => {
+                  setMoreOpen(false)
+                  openCustomise()
+                }}
+                className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-border p-4 text-center text-xs font-medium text-muted-foreground transition-colors hover:bg-secondary"
+              >
+                <SlidersHorizontal className="size-5" />
+                Customise menu
+              </button>
             </div>
           </div>
         </div>
       )}
 
       <nav className="fixed inset-x-0 bottom-0 z-30 flex border-t border-border bg-card pb-[env(safe-area-inset-bottom)] lg:hidden">
-        {primaryTabs.map((tab) => (
-          <TabLink
-            key={tab.to}
-            {...tab}
-            count={tab.to === '/jobs' ? openJobs : tab.to === '/invoices' ? unpaidInvoices : tab.to === '/quotes' ? openQuotes : undefined}
-          />
+        {tabs.map((tab) => (
+          <TabLink key={tab.key} to={tab.to} icon={tab.icon} label={tab.shortLabel ?? tab.label} count={counts[tab.key]} />
         ))}
         <button
           onClick={() => setMoreOpen(true)}

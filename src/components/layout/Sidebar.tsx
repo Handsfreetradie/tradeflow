@@ -1,66 +1,19 @@
-import {
-  LayoutDashboard,
-  Briefcase,
-  FileText,
-  FileSpreadsheet,
-  Users,
-  Receipt,
-  Car,
-  Package,
-  ShoppingCart,
-  BarChart3,
-  Calculator,
-  Calendar,
-  CalendarDays,
-  Phone,
-  Settings,
-  ChevronsUpDown,
-  ArrowLeftRight,
-} from 'lucide-react'
+import { Settings, ChevronsUpDown, ArrowLeftRight, SlidersHorizontal } from 'lucide-react'
 import { NavItem } from '@/components/ui/nav-item'
 import { LogoMark } from '@/components/shared/Logo'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import { useJobsStore } from '@/lib/store/jobs-store'
-import { useQuotesStore } from '@/lib/store/quotes-store'
-import { useInvoicesStore } from '@/lib/store/invoices-store'
-import { useLeaveStore } from '@/lib/store/leave-store'
-import { useStockStore } from '@/lib/store/stock-store'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
 import { useBusinessSettings } from '@/lib/store/business-settings-store'
+import { useNavPrefs } from '@/lib/store/nav-prefs-store'
+import { useNavCounts } from '@/lib/useNavCounts'
 
 export function Sidebar() {
-  const { jobs } = useJobsStore()
-  const { quotes } = useQuotesStore()
-  const { invoices } = useInvoicesStore()
-  const { requests: leaveRequests } = useLeaveStore()
-  const { items: orderItems } = useStockStore()
   const { fullName, signOut } = useAuth()
   const { settings } = useBusinessSettings()
   const { memberships, openChooser } = useActiveBusiness()
-
-  const openJobs = jobs.filter((j) => j.status === 'In Progress' || j.status === 'Scheduled').length
-  const unpaidInvoices = invoices.filter((i) => i.status === 'Sent' || i.status === 'Partial' || i.status === 'Overdue').length
-  const openQuotes = quotes.filter((q) => q.status === 'Draft' || q.status === 'Sent').length
-  const waitingOrders = orderItems.filter((i) => i.status === 'pending').length
-  const pendingLeave = leaveRequests.filter((r) => r.status === 'pending').length
-
-  const primaryNav = [
-    { to: '/', icon: LayoutDashboard, label: 'Dashboard' },
-    { to: '/jobs', icon: Briefcase, label: 'Jobs', count: openJobs },
-    { to: '/invoices', icon: FileText, label: 'Invoices', count: unpaidInvoices },
-    { to: '/quotes', icon: FileSpreadsheet, label: 'Quotes', count: openQuotes },
-    { to: '/customers', icon: Users, label: 'Customers' },
-    { to: '/expenses', icon: Receipt, label: 'Expenses' },
-    { to: '/trips', icon: Car, label: 'Kilometre log' },
-    { to: '/products', icon: Package, label: 'Products & Services' },
-    { to: '/orders', icon: ShoppingCart, label: 'Stock orders', count: waitingOrders },
-    { to: '/leave', icon: CalendarDays, label: 'Leave', count: pendingLeave },
-    { to: '/on-call', icon: Phone, label: 'On-call roster' },
-    { to: '/reports', icon: BarChart3, label: 'Reports' },
-    { to: '/break-even', icon: Calculator, label: 'Break-even rate' },
-    { to: '/calendar', icon: Calendar, label: 'Calendar' },
-  ]
+  const { visibleItems, openCustomise } = useNavPrefs()
+  const counts = useNavCounts()
 
   const displayName = fullName ?? 'Owner'
   const initials = displayName
@@ -80,13 +33,20 @@ export function Sidebar() {
       </div>
 
       <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 scrollbar-thin">
-        {primaryNav.map((item) => (
-          <NavItem key={item.to} {...item} />
+        {visibleItems.map((item) => (
+          <NavItem key={item.key} to={item.to} icon={item.icon} label={item.label} count={counts[item.key]} />
         ))}
       </nav>
 
       <div className="space-y-0.5 border-t border-sidebar-border px-3 py-3">
         <NavItem to="/settings" icon={Settings} label="Settings" />
+        <button
+          onClick={openCustomise}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-muted transition-colors hover:bg-white/5 hover:text-white"
+        >
+          <SlidersHorizontal className="size-[18px] shrink-0" />
+          Customise menu
+        </button>
       </div>
 
       {memberships.length > 1 && (
