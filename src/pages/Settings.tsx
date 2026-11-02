@@ -14,7 +14,7 @@ import { useTeamStore, type TeamMember } from '@/lib/store/team-store'
 import { useBusinessSettings } from '@/lib/store/business-settings-store'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { useActiveBusiness } from '@/lib/auth/ActiveBusinessProvider'
-import { formatMoney, withMarkup } from '@/lib/utils'
+import { formatMoney, gpToMarkup, markupToGp, withMarkup } from '@/lib/utils'
 import { createUser } from '@/lib/api/createUser'
 import { deleteUser } from '@/lib/api/deleteUser'
 import { connectGmail, disconnectGmail, EMAIL_CHECK_INTERVAL_OPTIONS, getEmailConnectionStatus, setEmailCheckInterval, type EmailConnectionStatus } from '@/lib/api/email'
@@ -244,22 +244,37 @@ function QuoteDefaultsCard() {
 
 function MaterialsMarkupCard() {
   const { settings, loading, updateSettings } = useBusinessSettings()
-  const [markup, setMarkup] = useState(String(settings.materialsMarkupPercent))
+  const round2 = (n: number) => String(Math.round(n * 100) / 100)
+  const [markup, setMarkup] = useState(round2(settings.materialsMarkupPercent))
+  const [gp, setGp] = useState(round2(markupToGp(settings.materialsMarkupPercent)))
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    setMarkup(String(settings.materialsMarkupPercent))
+    setMarkup(round2(settings.materialsMarkupPercent))
+    setGp(round2(markupToGp(settings.materialsMarkupPercent)))
   }, [settings.materialsMarkupPercent])
+
+  // GP% and markup are two ways of saying the same margin — edit either and the other follows.
+  const editMarkup = (v: string) => {
+    setMarkup(v)
+    const n = Number(v)
+    if (v.trim() !== '' && Number.isFinite(n) && n >= 0) setGp(round2(markupToGp(n)))
+  }
+  const editGp = (v: string) => {
+    setGp(v)
+    const n = Number(v)
+    if (v.trim() !== '' && Number.isFinite(n) && n >= 0 && n < 100) setMarkup(round2(gpToMarkup(n)))
+  }
 
   const value = Number(markup)
   const valid = markup.trim() !== '' && Number.isFinite(value) && value >= 0 && value <= 1000
-  const dirty = valid && value !== settings.materialsMarkupPercent
+  const dirty = valid && Math.round(value * 100) / 100 !== Math.round(settings.materialsMarkupPercent * 100) / 100
 
   const save = async () => {
     setSaving(true)
     try {
-      await updateSettings({ materialsMarkupPercent: value })
-      toast.success('Markup updated')
+      await updateSettings({ materialsMarkupPercent: Math.round(value * 100) / 100 })
+      toast.success('Margin updated')
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'Failed to save')
     } finally {
@@ -274,18 +289,22 @@ function MaterialsMarkupCard() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Package className="size-4 text-muted-foreground" />
-          Materials markup
+          Materials margin
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-xs text-muted-foreground">
-          Your products list holds what <span className="font-medium text-foreground">you pay</span>. This markup is added on top when you put a product on a quote or invoice.
-          Your employees never see prices or markup.
+          Your products list holds what <span className="font-medium text-foreground">you pay</span>. This margin is added on top when you put a product on a quote or invoice.
+          Your employees never see prices or margin.
         </p>
-        <div className="flex items-end gap-3">
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <label className="text-xs font-medium text-muted-foreground">GP (%)</label>
+            <Input type="number" min="0" max="99" step="0.5" value={gp} onChange={(e) => editGp(e.target.value)} className="mt-1 w-28" />
+          </div>
           <div>
             <label className="text-xs font-medium text-muted-foreground">Markup (%)</label>
-            <Input type="number" min="0" max="1000" step="0.5" value={markup} onChange={(e) => setMarkup(e.target.value)} className="mt-1 w-28" />
+            <Input type="number" min="0" max="1000" step="0.5" value={markup} onChange={(e) => editMarkup(e.target.value)} className="mt-1 w-28" />
           </div>
           {dirty && (
             <Button size="sm" disabled={saving} onClick={save}>
@@ -293,9 +312,13 @@ function MaterialsMarkupCard() {
             </Button>
           )}
         </div>
+        <p className="text-xs text-muted-foreground">
+          GP is the share of the sell price you keep; markup is the amount added to your cost. A 30% markup is only a 23% GP.
+        </p>
         {valid && (
           <p className="text-xs text-muted-foreground">
-            Example: a $10.00 part is sold at <span className="font-medium text-foreground">{formatMoney(withMarkup(10, value))}</span>.
+            Example: a $10.00 part is sold at <span className="font-medium text-foreground">{formatMoney(withMarkup(10, value))}</span>,
+            so you keep <span className="font-medium text-foreground">{formatMoney(withMarkup(10, value) - 10)}</span>.
           </p>
         )}
       </CardContent>

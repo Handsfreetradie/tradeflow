@@ -17,7 +17,7 @@ import { useBusinessSettings } from '@/lib/store/business-settings-store'
 import { useProductSearch } from '@/lib/useProductSearch'
 import { useProductSources } from '@/lib/useProductSources'
 import { sectionCaption, type ProductHit } from '@/lib/api/productSearch'
-import { formatMoney, withMarkup } from '@/lib/utils'
+import { formatMoney, markupToGp, withMarkup } from '@/lib/utils'
 
 const UNITS = ['each', 'hour', 'metre', 'sqm', 'day', 'kit']
 
@@ -348,7 +348,7 @@ export default function ProductsList() {
           <h1 className="text-2xl font-semibold tracking-tight">Products & Services</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {sourceLabel ? `From the ${sourceLabel} price list${pricesUpdated ? ` · prices last updated ${pricesUpdated}` : ''}. ` : 'Your supplier price list. '}
-            Prices here are what you pay{markup > 0 ? `; ${markup}% markup is added when you quote` : ''}.
+            Prices here are what you pay{markup > 0 ? `; ${markup}% markup (${Math.round(markupToGp(markup) * 10) / 10}% GP) is added when you quote` : ''}.
           </p>
         </div>
         <div className="flex items-center gap-2">

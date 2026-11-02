@@ -44,6 +44,7 @@ import ExpenseNew from '@/pages/ExpenseNew'
 import TripsList from '@/pages/TripsList'
 import CalendarPage from '@/pages/Calendar'
 import Reports from '@/pages/Reports'
+import BreakEven from '@/pages/BreakEven'
 import Settings from '@/pages/Settings'
 import ProductsList from '@/pages/ProductsList'
 import StockOrders from '@/pages/StockOrders'
@@ -94,6 +95,7 @@ function OwnerApp() {
                     <Route path="products" element={<ProductsList />} />
                     <Route path="orders" element={<StockOrders />} />
                     <Route path="reports" element={<Reports />} />
+                    <Route path="break-even" element={<BreakEven />} />
                     <Route path="calendar" element={<CalendarPage />} />
                     <Route path="leave" element={<Leave />} />
                     <Route path="on-call" element={<OnCallRoster />} />

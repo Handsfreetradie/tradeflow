@@ -9,6 +9,7 @@ import {
   Package,
   ShoppingCart,
   BarChart3,
+  Calculator,
   Calendar,
   CalendarDays,
   Phone,
@@ -57,6 +58,7 @@ export function Sidebar() {
     { to: '/leave', icon: CalendarDays, label: 'Leave', count: pendingLeave },
     { to: '/on-call', icon: Phone, label: 'On-call roster' },
     { to: '/reports', icon: BarChart3, label: 'Reports' },
+    { to: '/break-even', icon: Calculator, label: 'Break-even rate' },
     { to: '/calendar', icon: Calendar, label: 'Calendar' },
   ]
 

@@ -45,3 +45,13 @@ export function toDateKey(date: Date) {
 export function withMarkup(cost: number, markupPercent: number): number {
   return Math.round(cost * (1 + markupPercent / 100) * 100) / 100
 }
+
+/** GP% (margin on the sell price) as the markup that gives it — 30% GP is a 42.86% markup. */
+export function gpToMarkup(gpPercent: number): number {
+  return (gpPercent / (100 - gpPercent)) * 100
+}
+
+/** Markup as the GP% it really delivers — a 30% markup is only a 23.08% GP. */
+export function markupToGp(markupPercent: number): number {
+  return (markupPercent / (100 + markupPercent)) * 100
+}

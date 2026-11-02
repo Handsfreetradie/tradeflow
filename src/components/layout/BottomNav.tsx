@@ -11,6 +11,7 @@ import {
   Package,
   ShoppingCart,
   BarChart3,
+  Calculator,
   Calendar,
   Settings,
   Menu,
@@ -36,6 +37,7 @@ const moreItems: { to: string; icon: LucideIcon; label: string }[] = [
   { to: '/products', icon: Package, label: 'Products & Services' },
   { to: '/orders', icon: ShoppingCart, label: 'Stock orders' },
   { to: '/reports', icon: BarChart3, label: 'Reports' },
+  { to: '/break-even', icon: Calculator, label: 'Break-even rate' },
   { to: '/calendar', icon: Calendar, label: 'Calendar' },
   { to: '/settings', icon: Settings, label: 'Settings' },
 ]
