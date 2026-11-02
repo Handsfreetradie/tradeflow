@@ -6,6 +6,8 @@ export interface EmailInvoiceCandidate {
   id: string
   supplier: string | null
   amount: number | null
+  /** 3-letter code the document is priced in, e.g. "USD". Null when the scan couldn't tell. */
+  currency: string | null
   date: string | null
   description: string
   gstType: GstType
@@ -23,6 +25,7 @@ type CandidateRow = {
   id: string
   supplier: string | null
   amount: number | null
+  currency: string | null
   date: string | null
   description: string
   gst_type: string
@@ -40,6 +43,7 @@ function fromRow(row: CandidateRow): EmailInvoiceCandidate {
     id: row.id,
     supplier: row.supplier,
     amount: row.amount,
+    currency: row.currency,
     date: row.date,
     description: row.description,
     gstType: row.gst_type as GstType,

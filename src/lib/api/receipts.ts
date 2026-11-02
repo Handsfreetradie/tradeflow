@@ -5,6 +5,7 @@ import type { ExpenseCategory } from '@/lib/demo-data'
 export interface ScannedReceipt {
   supplier: string | null
   amount: number | null
+  currency: string | null
   date: string | null
   description: string | null
   includesGst: boolean | null
@@ -32,10 +33,19 @@ export async function uploadJobCostReceipt(jobId: string, file: File): Promise<s
   return path
 }
 
-export async function scanReceipt(storagePath: string): Promise<ScannedReceipt> {
-  const { data, error } = await supabase.functions.invoke('scan-receipt', { body: { storagePath, businessId: requireApiBusinessId() } })
+/** Pass `jobId` for a photo uploaded with uploadJobCostReceipt (employees scan under the job they're assigned to). */
+export async function scanReceipt(storagePath: string, jobId?: string): Promise<ScannedReceipt> {
+  const body = jobId ? { storagePath, jobId } : { storagePath, businessId: requireApiBusinessId() }
+  const { data, error } = await supabase.functions.invoke('scan-receipt', { body })
   if (error) throw new Error(error.message)
   return data as ScannedReceipt
+}
+
+/** Job costs only have Materials / Labour / Subcontractor / Other, so the wider expense categories fold down. */
+export function jobCostCategoryFor(category: ExpenseCategory | null): 'Materials' | 'Subcontractor' | 'Other' {
+  if (category === 'Materials') return 'Materials'
+  if (category === 'Subcontractor') return 'Subcontractor'
+  return 'Other'
 }
 
 export async function getReceiptUrl(storagePath: string): Promise<string | null> {

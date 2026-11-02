@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Link2, Mail, X } from 'lucide-react'
+import { AlertTriangle, Link2, Mail, X } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -53,6 +53,12 @@ export function EmailInvoiceCandidatesCard() {
                   {c.amount != null ? formatCurrency(c.amount) : 'Amount unclear'} · {c.date ? formatDate(c.date) : formatDate(c.receivedAt)}
                 </p>
                 {c.description && <p className="mt-1 truncate text-xs text-muted-foreground">{c.description}</p>}
+                {c.currency && c.currency !== 'AUD' && (
+                  <Badge variant="warning" className="mt-1.5">
+                    <AlertTriangle className="size-3" />
+                    Priced in {c.currency}, not AUD
+                  </Badge>
+                )}
                 {c.jobId && (
                   <Badge variant="info" className="mt-1.5">
                     <Link2 className="size-3" />

@@ -552,6 +552,7 @@ export type Database = {
           category: string | null
           created_at: string
           created_expense_id: string | null
+          currency: string | null
           date: string | null
           description: string
           from_address: string
@@ -573,6 +574,7 @@ export type Database = {
           category?: string | null
           created_at?: string
           created_expense_id?: string | null
+          currency?: string | null
           date?: string | null
           description?: string
           from_address?: string
@@ -594,6 +596,7 @@ export type Database = {
           category?: string | null
           created_at?: string
           created_expense_id?: string | null
+          currency?: string | null
           date?: string | null
           description?: string
           from_address?: string

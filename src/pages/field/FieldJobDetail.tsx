@@ -14,7 +14,7 @@ import { FieldMaterialsCard } from '@/components/field/FieldMaterials'
 import { JobDocumentsCard } from '@/components/jobs/JobDocumentsCard'
 import { useAuth } from '@/lib/auth/AuthProvider'
 import { useFieldJobsStore, type NewFieldJobCostInput } from '@/lib/store/field-jobs-store'
-import { uploadJobCostReceipt } from '@/lib/api/receipts'
+import { jobCostCategoryFor, scanReceipt, uploadJobCostReceipt } from '@/lib/api/receipts'
 import { formatDate } from '@/lib/utils'
 import type { JobCheckIn, JobStage } from '@/lib/demo-data'
 
@@ -103,7 +103,19 @@ function FieldLogExpenseDialog({
     setReceiptPreview(URL.createObjectURL(file))
     setUploading(true)
     try {
-      setReceiptPath(await uploadJobCostReceipt(jobId, file))
+      const path = await uploadJobCostReceipt(jobId, file)
+      setReceiptPath(path)
+      // Fill in whatever hasn't been typed yet from the photo; a failed read just leaves the form as it is.
+      try {
+        const scanned = await scanReceipt(path, jobId)
+        if (scanned.supplier) setSupplier((prev) => prev || scanned.supplier!)
+        if (scanned.amount) setAmount((prev) => prev || String(scanned.amount))
+        if (scanned.description) setDescription((prev) => prev || scanned.description!)
+        setCategory(jobCostCategoryFor(scanned.category))
+        toast.success('Receipt read — check the details below')
+      } catch {
+        toast.info("Photo attached — couldn't read it, so fill in the details yourself")
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't upload that photo")
       setReceiptPreview(null)
@@ -195,7 +207,7 @@ function FieldLogExpenseDialog({
             {receiptPreview ? (
               <div className="mt-1 flex items-center gap-3">
                 <img src={receiptPreview} alt="Receipt preview" className="h-14 w-14 rounded-lg border border-border object-cover" />
-                <p className="flex-1 text-sm text-muted-foreground">{uploading ? 'Uploading...' : 'Photo attached'}</p>
+                <p className="flex-1 text-sm text-muted-foreground">{uploading ? 'Reading receipt...' : 'Photo attached'}</p>
                 <Button variant="ghost" size="icon" onClick={removeReceipt} disabled={uploading}>
                   <X />
                 </Button>

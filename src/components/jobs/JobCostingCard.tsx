@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { cn, formatCurrency, formatDate, toDateKey } from '@/lib/utils'
 import { useJobsStore } from '@/lib/store/jobs-store'
 import { AddJobMaterialsDialog } from '@/components/jobs/AddJobMaterialsDialog'
-import { deleteReceipt, getReceiptUrl, uploadReceipt } from '@/lib/api/receipts'
+import { deleteReceipt, getReceiptUrl, jobCostCategoryFor, scanReceipt, uploadReceipt } from '@/lib/api/receipts'
 import type { Job, JobCost } from '@/lib/demo-data'
 
 const categoryTone: Record<JobCost['category'], string> = {
@@ -101,7 +101,19 @@ export function JobCostingCard({ job }: { job: Job }) {
     setReceiptPreview(URL.createObjectURL(file))
     setUploading(true)
     try {
-      setReceiptPath(await uploadReceipt(file))
+      const path = await uploadReceipt(file)
+      setReceiptPath(path)
+      // Fill in whatever the owner hasn't typed yet from the photo; a failed read just leaves the form as it is.
+      try {
+        const scanned = await scanReceipt(path)
+        if (scanned.supplier) setSupplier((prev) => prev || scanned.supplier!)
+        if (scanned.amount) setAmount((prev) => prev || String(scanned.amount))
+        if (scanned.description) setDescription((prev) => prev || scanned.description!)
+        setCategory(jobCostCategoryFor(scanned.category))
+        toast.success('Receipt read — check the details below')
+      } catch {
+        toast.info("Photo attached — couldn't read it, so fill in the details yourself")
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't upload that photo")
       setReceiptPreview(null)
@@ -335,7 +347,7 @@ export function JobCostingCard({ job }: { job: Job }) {
                     {uploading ? (
                       <span className="flex items-center gap-1.5">
                         <Loader2 className="size-3.5 animate-spin" />
-                        Uploading...
+                        Reading receipt...
                       </span>
                     ) : (
                       'Photo attached'

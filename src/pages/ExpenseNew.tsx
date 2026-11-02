@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { ArrowLeft, FileText, Loader2, Receipt, X } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, FileText, Loader2, Receipt, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -40,6 +40,8 @@ export default function ExpenseNew() {
   const [receiptPreview, setReceiptPreview] = useState<string | null>(null)
   const [receiptFilename, setReceiptFilename] = useState<string | null>(null)
   const [matchedPoNumber, setMatchedPoNumber] = useState<string | null>(null)
+  /** Currency the scanned document is priced in — anything other than AUD gets a warning. */
+  const [currency, setCurrency] = useState<string | null>(null)
 
   useEffect(() => {
     if (!emailCandidateId) return
@@ -56,6 +58,7 @@ export default function ExpenseNew() {
         if (candidate.description) setDescription(candidate.description)
         if (candidate.category) setCategory(candidate.category)
         setGstType(candidate.gstType)
+        setCurrency(candidate.currency)
 
         if (candidate.receiptStoragePath) {
           const claimed = await claimEmailInvoiceReceipt(candidate.receiptStoragePath)
@@ -64,10 +67,11 @@ export default function ExpenseNew() {
           if (claimed.isImage) setReceiptPreview(URL.createObjectURL(claimed.blob))
 
           // The inbox scan couldn't read a total — have another go at the attachment itself.
-          if (candidate.amount == null) {
+          if (candidate.amount == null || candidate.currency == null) {
             try {
               const scanned = await scanReceipt(claimed.path)
-              if (scanned.amount) setAmount(String(scanned.amount))
+              if (candidate.amount == null && scanned.amount) setAmount(String(scanned.amount))
+              if (candidate.currency == null) setCurrency(scanned.currency)
               if (!candidate.supplier && scanned.supplier) setSupplier(scanned.supplier)
             } catch {
               // Leave the amount blank for the owner to type in.
@@ -103,6 +107,7 @@ export default function ExpenseNew() {
       const scanned = await scanReceipt(path)
       if (scanned.supplier) setSupplier(scanned.supplier)
       if (scanned.amount) setAmount(String(scanned.amount))
+      setCurrency(scanned.currency)
       if (scanned.date) setDate(scanned.date)
       if (scanned.description) setDescription(scanned.description)
       if (scanned.category) setCategory(scanned.category)
@@ -237,6 +242,15 @@ export default function ExpenseNew() {
               <Input type="number" min="0" value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="0.00" className="mt-1" />
             </div>
           </div>
+
+          {currency && currency !== 'AUD' && (
+            <div className="flex items-start gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm">
+              <AlertTriangle className="mt-0.5 size-4 shrink-0 text-warning" />
+              <p>
+                This receipt is priced in <span className="font-medium">{currency}</span>, so the amount above is in {currency}, not Australian dollars. Change it to the AUD amount that came off your card or bank statement before saving.
+              </p>
+            </div>
+          )}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
