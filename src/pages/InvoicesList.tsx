@@ -75,7 +75,7 @@ export default function InvoicesList() {
                   <TableHead className="hidden md:table-cell">Customer</TableHead>
                   <TableHead className="hidden lg:table-cell">Due</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="hidden md:table-cell">Sent / opened</TableHead>
+                  <TableHead className="hidden md:table-cell">Sent</TableHead>
                   <TableHead>Amount</TableHead>
                 </TableRow>
               </TableHeader>
@@ -90,6 +90,7 @@ export default function InvoicesList() {
                         sentAt={invoice.sentAt}
                         firstViewedAt={invoice.firstViewedAt}
                         viewCount={invoice.viewCount}
+                        compact
                         className="mt-1 md:hidden"
                       />
                     </TableCell>
@@ -99,7 +100,7 @@ export default function InvoicesList() {
                       <StatusBadge status={invoice.status} />
                     </TableCell>
                     <TableCell className="hidden md:table-cell">
-                      <SentViewedInfo status={invoice.status} sentAt={invoice.sentAt} firstViewedAt={invoice.firstViewedAt} viewCount={invoice.viewCount} />
+                      <SentViewedInfo status={invoice.status} sentAt={invoice.sentAt} firstViewedAt={invoice.firstViewedAt} viewCount={invoice.viewCount} compact />
                     </TableCell>
                     <TableCell className="font-medium">{formatCurrency(invoiceTotal(invoice))}</TableCell>
                   </TableRow>

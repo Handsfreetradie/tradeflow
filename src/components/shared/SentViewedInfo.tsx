@@ -2,14 +2,19 @@ import { Eye, EyeOff, Send } from 'lucide-react'
 import { cn, formatDate } from '@/lib/utils'
 
 const stamp: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' }
+const dayOnly: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' }
 
-/** "Sent 28 Oct, 2:15 pm" and "Opened 29 Oct, 8:02 am" for an invoice, as two small lines (or one row). */
+/**
+ * When an invoice was sent and whether the customer opened it. `compact` is for lists that already
+ * have a Status column: just the sent date, plus a small "Opened" line only once they've looked.
+ */
 export function SentViewedInfo({
   status,
   sentAt,
   firstViewedAt,
   viewCount,
   layout = 'stack',
+  compact = false,
   className,
 }: {
   status: string
@@ -17,10 +22,25 @@ export function SentViewedInfo({
   firstViewedAt?: string
   viewCount: number
   layout?: 'stack' | 'row'
+  compact?: boolean
   className?: string
 }) {
   const wasSent = status !== 'Draft' || !!sentAt
-  if (!wasSent) return <p className={cn('text-xs text-muted-foreground', className)}>Not sent yet</p>
+  if (!wasSent) return <p className={cn('text-xs text-muted-foreground', className)}>{compact ? '—' : 'Not sent yet'}</p>
+
+  if (compact) {
+    return (
+      <div className={cn('space-y-0.5', className)}>
+        <p className="text-sm text-muted-foreground">{sentAt ? formatDate(sentAt, dayOnly) : '—'}</p>
+        {firstViewedAt && (
+          <p className="flex items-center gap-1 text-xs font-medium text-success">
+            <Eye className="size-3.5 shrink-0" />
+            Opened {formatDate(firstViewedAt, { day: 'numeric', month: 'short' })}
+          </p>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className={cn('text-xs', layout === 'row' ? 'flex flex-wrap items-center gap-x-4 gap-y-1' : 'space-y-1', className)}>
