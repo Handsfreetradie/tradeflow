@@ -41,6 +41,7 @@ import InvoiceNew from '@/pages/InvoiceNew'
 import InvoiceEdit from '@/pages/InvoiceEdit'
 import ExpensesList from '@/pages/ExpensesList'
 import ExpenseNew from '@/pages/ExpenseNew'
+import BankStatement from '@/pages/BankStatement'
 import TripsList from '@/pages/TripsList'
 import CalendarPage from '@/pages/Calendar'
 import Reports from '@/pages/Reports'
@@ -91,6 +92,7 @@ function OwnerApp() {
                     <Route path="customers/:id" element={<CustomerDetail />} />
                     <Route path="expenses" element={<ExpensesList />} />
                     <Route path="expenses/new" element={<ExpenseNew />} />
+                    <Route path="expenses/bank" element={<BankStatement />} />
                     <Route path="trips" element={<TripsList />} />
                     <Route path="products" element={<ProductsList />} />
                     <Route path="orders" element={<StockOrders />} />

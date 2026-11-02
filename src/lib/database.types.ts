@@ -61,6 +61,76 @@ export type Database = {
           },
         ]
       }
+      bank_statement_flags: {
+        Row: {
+          amount: number
+          business_id: string
+          created_at: string
+          created_expense_id: string | null
+          description: string
+          expense_id: string | null
+          id: string
+          kind: string
+          reason: string
+          status: string
+          suggested_category: string | null
+          suggested_supplier: string | null
+          txn_date: string
+        }
+        Insert: {
+          amount: number
+          business_id: string
+          created_at?: string
+          created_expense_id?: string | null
+          description: string
+          expense_id?: string | null
+          id?: string
+          kind: string
+          reason?: string
+          status?: string
+          suggested_category?: string | null
+          suggested_supplier?: string | null
+          txn_date: string
+        }
+        Update: {
+          amount?: number
+          business_id?: string
+          created_at?: string
+          created_expense_id?: string | null
+          description?: string
+          expense_id?: string | null
+          id?: string
+          kind?: string
+          reason?: string
+          status?: string
+          suggested_category?: string | null
+          suggested_supplier?: string | null
+          txn_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bank_statement_flags_business_id_fkey"
+            columns: ["business_id"]
+            isOneToOne: false
+            referencedRelation: "businesses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_statement_flags_created_expense_id_fkey"
+            columns: ["created_expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bank_statement_flags_expense_id_fkey"
+            columns: ["expense_id"]
+            isOneToOne: false
+            referencedRelation: "expenses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bas_periods: {
         Row: {
           business_id: string

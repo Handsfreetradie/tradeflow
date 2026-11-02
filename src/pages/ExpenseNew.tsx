@@ -15,6 +15,7 @@ import type { ExpenseCategory, GstType } from '@/lib/demo-data'
 import { toDateKey } from '@/lib/utils'
 import { deleteReceipt, scanReceipt, uploadReceipt } from '@/lib/api/receipts'
 import { claimEmailInvoiceReceipt, getEmailInvoiceCandidate, markEmailInvoiceCandidateAdded } from '@/lib/api/emailInvoices'
+import { getBankFlag, markBankFlagAdded } from '@/lib/api/bankStatement'
 
 const categories: ExpenseCategory[] = ['Materials', 'Fuel', 'Tools & Equipment', 'Subcontractor', 'Vehicle', 'Insurance', 'Office', 'Other']
 const MAX_RECEIPT_BYTES = 8 * 1024 * 1024
@@ -23,6 +24,7 @@ export default function ExpenseNew() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
   const emailCandidateId = searchParams.get('emailCandidateId')
+  const bankFlagId = searchParams.get('bankFlagId')
   const { addExpense } = useExpensesStore()
   const { jobs } = useJobsStore()
   const { isLocked } = useBasPeriodsStore()
@@ -91,6 +93,25 @@ export default function ExpenseNew() {
       .finally(() => setScanning(false))
   }, [emailCandidateId])
 
+  // Pre-fills the form from a flagged bank-statement line; the receipt still has to be attached by hand.
+  useEffect(() => {
+    if (!bankFlagId) return
+    getBankFlag(bankFlagId)
+      .then((flag) => {
+        if (!flag) {
+          toast.error('That bank line is no longer available')
+          return
+        }
+        setDescription(flag.suggestedSupplier ?? flag.description)
+        if (flag.suggestedSupplier) setSupplier(flag.suggestedSupplier)
+        setAmount(String(flag.amount))
+        setDate(flag.date)
+        if (flag.suggestedCategory) setCategory(flag.suggestedCategory)
+        toast.success('Filled in from your bank statement — attach the receipt if you have it')
+      })
+      .catch((e) => toast.error(e instanceof Error ? e.message : "Couldn't load that bank line"))
+  }, [bankFlagId])
+
   const canSubmit = description.trim() && Number(amount) > 0
 
   const handleReceiptSelected = async (file: File | undefined) => {
@@ -149,6 +170,7 @@ export default function ExpenseNew() {
       receiptStoragePath: receiptPath ?? undefined,
     })
     if (emailCandidateId) await markEmailInvoiceCandidateAdded(emailCandidateId, expense.id, matchedPoNumber)
+    if (bankFlagId) await markBankFlagAdded(bankFlagId, expense.id)
     navigate('/expenses')
   }
 

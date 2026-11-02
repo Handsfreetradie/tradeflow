@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import { AlertTriangle, Paperclip, Plus, Receipt, Search, Trash2 } from 'lucide-react'
+import { AlertTriangle, Landmark, Paperclip, Plus, Receipt, Search, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EmailInvoiceCandidatesCard } from '@/components/expenses/EmailInvoiceCandidatesCard'
+import { BankFlagsCard } from '@/components/expenses/BankFlagsCard'
 import { useExpensesStore } from '@/lib/store/expenses-store'
 import { useJobsStore } from '@/lib/store/jobs-store'
 import type { ExpenseCategory } from '@/lib/demo-data'
@@ -75,13 +76,20 @@ export default function ExpensesList() {
             {expenses.length} expenses · {formatCurrency(total)} {category !== 'All' ? `in ${category}` : 'total'}
           </p>
         </div>
-        <Button onClick={() => navigate('/expenses/new')}>
-          <Plus />
-          Log Expense
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" onClick={() => navigate('/expenses/bank')}>
+            <Landmark />
+            Check bank statement
+          </Button>
+          <Button onClick={() => navigate('/expenses/new')}>
+            <Plus />
+            Log Expense
+          </Button>
+        </div>
       </div>
 
       <EmailInvoiceCandidatesCard />
+      <BankFlagsCard />
 
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[220px]">
