@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { toast } from 'sonner'
-import { Copy, Mail, PackageCheck, Plus, ShoppingCart, X } from 'lucide-react'
+import { Copy, Mail, Mic, PackageCheck, Plus, ShoppingCart, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -14,6 +14,7 @@ import { useProductSearch } from '@/lib/useProductSearch'
 import type { ProductHit } from '@/lib/api/productSearch'
 import { useStockStore, type OrderItem, type Supplier } from '@/lib/store/stock-store'
 import { previewOrder, sendOrder, type OrderPreview } from '@/lib/api/stockOrders'
+import { VoiceOrderDialog } from '@/components/stock/VoiceOrderDialog'
 
 const NO_SUPPLIER = 'none'
 
@@ -336,6 +337,7 @@ export default function StockOrders() {
   const { refresh: refreshProducts } = useProductsStore()
   const [reviewSupplier, setReviewSupplier] = useState<Supplier | null>(null)
   const [adding, setAdding] = useState(false)
+  const [speaking, setSpeaking] = useState(false)
   const [receiving, setReceiving] = useState<OrderItem | null>(null)
 
   // Stock moves when the team logs materials on jobs, so pick up the latest when this page opens.
@@ -382,10 +384,16 @@ export default function StockOrders() {
             Items that have run low land here by themselves. Check them, then send the order to the supplier.
           </p>
         </div>
-        <Button onClick={() => setAdding(true)}>
-          <Plus />
-          Add item
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button variant="secondary" onClick={() => setSpeaking(true)}>
+            <Mic />
+            Say what you need
+          </Button>
+          <Button onClick={() => setAdding(true)}>
+            <Plus />
+            Add item
+          </Button>
+        </div>
       </div>
 
       {loading && items.length === 0 ? (
@@ -496,6 +504,7 @@ export default function StockOrders() {
 
       <ReviewDialog supplier={reviewSupplier} onClose={() => setReviewSupplier(null)} />
       {adding && <AddItemDialog open onClose={() => setAdding(false)} />}
+      <VoiceOrderDialog open={speaking} onClose={() => setSpeaking(false)} />
       {receiving && <ReceiveDialog key={receiving.id} item={receiving} onClose={() => setReceiving(null)} />}
     </div>
   )
