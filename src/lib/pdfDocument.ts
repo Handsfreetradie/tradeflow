@@ -1,6 +1,7 @@
 import { jsPDF } from 'jspdf'
 import { gstComponent, gstInclusiveTotal } from '@/lib/bas'
 import { formatMoney, formatDate } from '@/lib/utils'
+import { downscaleForPdf } from '@/lib/image'
 import type { BusinessSettings } from '@/lib/store/business-settings-store'
 import type { Customer, GstType, Invoice, LineItem, Payment, Quote } from '@/lib/demo-data'
 
@@ -72,7 +73,7 @@ async function fetchImageDataUrl(url: string): Promise<{ dataUrl: string; format
   try {
     const res = await fetch(url)
     if (!res.ok) return null
-    const blob = await res.blob()
+    const blob = await downscaleForPdf(await res.blob())
     const format = blob.type === 'image/png' ? 'PNG' : blob.type === 'image/webp' ? 'WEBP' : blob.type === 'image/jpeg' ? 'JPEG' : null
     if (!format) return null
     const dataUrl = await new Promise<string>((resolve, reject) => {

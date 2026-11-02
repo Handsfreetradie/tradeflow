@@ -192,7 +192,7 @@ export default function InvoiceDetail() {
   const mailtoFallbackUrl = `mailto:${customer?.email ?? ''}?subject=${encodeURIComponent(
     `Invoice ${invoice.number} from ${business.businessName}`
   )}&body=${encodeURIComponent(
-    `Hi ${customer?.contact ?? invoice.customer},\n\nHere's your invoice ${invoice.number} for ${formatMoney(total)}.\n\nView and pay: ${shareUrl}\n\nThanks,\n${business.businessName}`
+    `Hi ${customer?.contact ?? invoice.customer},\n\nHere's your invoice ${invoice.number} for ${formatMoney(total)}.\n\nView your invoice online: ${shareUrl}\n\nThanks,\n${business.businessName}`
   )}`
 
   const handleSent = async () => {
@@ -319,10 +319,10 @@ export default function InvoiceDetail() {
         to={customer?.email ?? ''}
         fromName={business.businessName}
         defaultSubject={`Invoice ${invoice.number} from ${business.businessName}`}
-        defaultMessage={`Hi ${customer?.contact ?? invoice.customer},\n\nHere's your invoice ${invoice.number} for ${formatMoney(total)} — see the attached PDF.\n\nYou can also view and pay it online:\n{{link}}\n\nThanks,\n${business.businessName}`}
+        defaultMessage={`Hi ${customer?.contact ?? invoice.customer},\n\nHere's your invoice ${invoice.number} for ${formatMoney(total)} — see the attached PDF.\n\nYou can also view it online:\n{{link}}\n\nThanks,\n${business.businessName}`}
         mailtoFallbackUrl={mailtoFallbackUrl}
         linkUrl={shareUrl}
-        linkText="Click here to view your invoice"
+        linkText="Click here"
         filename={`Invoice-${invoice.number}.pdf`}
         documentPreview={<InvoiceDocument invoice={invoice} customer={customer} business={business} />}
         buildPdf={() => buildInvoicePdf({ invoice, customer, business })}

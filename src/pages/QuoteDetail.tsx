@@ -417,7 +417,7 @@ function QuoteDetailLoaded({
         defaultMessage={`Hi ${customer?.contact ?? quote.customer},\n\nHere's your quote ${quote.number} for ${formatMoney(quoteTotal)} — see the attached PDF.\n\nYou can also view and respond online:\n{{link}}\n\nThanks,\n${business.businessName}`}
         mailtoFallbackUrl={mailtoFallbackUrl}
         linkUrl={shareUrl}
-        linkText="Click here to view your quote"
+        linkText="Click here"
         filename={`Quote-${quote.number}.pdf`}
         documentPreview={<QuoteDocument quote={currentQuote} customer={customer} business={business} />}
         buildPdf={() => buildQuotePdf({ quote: currentQuote, customer, business })}
