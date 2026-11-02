@@ -1,13 +1,14 @@
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 import { ArrowLeft, CheckCircle2, FileUp, Loader2, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { BankFlagsCard } from '@/components/expenses/BankFlagsCard'
 import { extractStatementLines, reviewStatementLines, type ReviewSummary } from '@/lib/api/bankStatement'
 import { parseStatementCsv, type StatementLine } from '@/lib/bankStatement'
-import { formatCurrency } from '@/lib/utils'
+import { formatCurrency, formatDate, toDateKey } from '@/lib/utils'
 
 const MAX_FILE_BYTES = 12 * 1024 * 1024
 const REVIEW_CHUNK = 200
@@ -21,6 +22,23 @@ function readBase64(file: File): Promise<string> {
   })
 }
 
+function presetRanges(): Array<{ label: string; from: string; to: string }> {
+  const now = new Date()
+  const y = now.getFullYear()
+  const m = now.getMonth()
+  const q = Math.floor(m / 3)
+  const day = (d: Date) => toDateKey(d)
+  const thirtyAgo = new Date(now)
+  thirtyAgo.setDate(now.getDate() - 30)
+  return [
+    { label: 'Last 30 days', from: day(thirtyAgo), to: day(now) },
+    { label: 'This month', from: day(new Date(y, m, 1)), to: day(new Date(y, m + 1, 0)) },
+    { label: 'Last month', from: day(new Date(y, m - 1, 1)), to: day(new Date(y, m, 0)) },
+    { label: 'This quarter', from: day(new Date(y, q * 3, 1)), to: day(new Date(y, q * 3 + 3, 0)) },
+    { label: 'Last quarter', from: day(new Date(y, (q - 1) * 3, 1)), to: day(new Date(y, q * 3, 0)) },
+  ]
+}
+
 export default function BankStatement() {
   const navigate = useNavigate()
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -28,6 +46,13 @@ export default function BankStatement() {
   const [stage, setStage] = useState('')
   const [summary, setSummary] = useState<(ReviewSummary & { totalValue: number }) | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
+  // The payments read from the file, held in memory only until the owner picks a date range and runs the check.
+  const [read, setRead] = useState<StatementLine[] | null>(null)
+  const [from, setFrom] = useState('')
+  const [to, setTo] = useState('')
+
+  const inRange = useMemo(() => (read ?? []).filter((l) => (!from || l.date >= from) && (!to || l.date <= to)), [read, from, to])
+  const presets = useMemo(() => presetRanges(), [])
 
   const handleFile = async (file: File | undefined) => {
     if (!file) return
@@ -37,6 +62,7 @@ export default function BankStatement() {
     }
     setBusy(true)
     setSummary(null)
+    setRead(null)
     try {
       const name = file.name.toLowerCase()
       const isPdf = file.type === 'application/pdf' || name.endsWith('.pdf')
@@ -63,24 +89,41 @@ export default function BankStatement() {
       }
 
       lines.sort((a, b) => a.date.localeCompare(b.date))
-      const total: ReviewSummary = { total: 0, matched: 0, personal: 0, flagged: 0, newFlags: 0 }
-      for (let i = 0; i < lines.length; i += REVIEW_CHUNK) {
-        setStage(`Checking payments ${Math.min(i + REVIEW_CHUNK, lines.length)} of ${lines.length}...`)
-        const part = await reviewStatementLines(lines.slice(i, i + REVIEW_CHUNK))
-        total.total += part.total
-        total.matched += part.matched
-        total.personal += part.personal
-        total.flagged += part.flagged
-        total.newFlags += part.newFlags
-      }
-      setSummary({ ...total, totalValue: lines.reduce((sum, l) => sum + l.amount, 0) })
-      setRefreshKey((k) => k + 1)
+      setRead(lines)
+      setFrom(lines[0].date)
+      setTo(lines[lines.length - 1].date)
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Couldn't check that statement")
     } finally {
       setBusy(false)
       setStage('')
       if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
+  const runCheck = async () => {
+    if (inRange.length === 0) return
+    setBusy(true)
+    setSummary(null)
+    try {
+      const total: ReviewSummary = { total: 0, matched: 0, personal: 0, flagged: 0, newFlags: 0 }
+      for (let i = 0; i < inRange.length; i += REVIEW_CHUNK) {
+        setStage(`Checking payments ${Math.min(i + REVIEW_CHUNK, inRange.length)} of ${inRange.length}...`)
+        const part = await reviewStatementLines(inRange.slice(i, i + REVIEW_CHUNK))
+        total.total += part.total
+        total.matched += part.matched
+        total.personal += part.personal
+        total.flagged += part.flagged
+        total.newFlags += part.newFlags
+      }
+      setSummary({ ...total, totalValue: inRange.reduce((sum, l) => sum + l.amount, 0) })
+      setRead(null)
+      setRefreshKey((k) => k + 1)
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Couldn't check that statement")
+    } finally {
+      setBusy(false)
+      setStage('')
     }
   }
 
@@ -117,6 +160,48 @@ export default function BankStatement() {
           </p>
         </CardContent>
       </Card>
+
+      {read && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Pick the dates to check</CardTitle>
+            <p className="text-sm text-muted-foreground">
+              Found {read.length} payments from {formatDate(read[0].date)} to {formatDate(read[read.length - 1].date)}. Narrow it down to a quarter or month if you like.
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex flex-wrap gap-2">
+              {presets.map((p) => (
+                <Button key={p.label} variant="secondary" size="sm" onClick={() => { setFrom(p.from); setTo(p.to) }} disabled={busy}>
+                  {p.label}
+                </Button>
+              ))}
+              <Button variant="ghost" size="sm" onClick={() => { setFrom(read[0].date); setTo(read[read.length - 1].date) }} disabled={busy}>
+                Whole statement
+              </Button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">From</label>
+                <Input type="date" value={from} onChange={(e) => setFrom(e.target.value)} className="mt-1" />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground">To</label>
+                <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} className="mt-1" />
+              </div>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground">
+                {inRange.length} payments in range ({formatCurrency(inRange.reduce((sum, l) => sum + l.amount, 0))})
+              </p>
+              <Button onClick={runCheck} disabled={busy || inRange.length === 0}>
+                {busy ? <Loader2 className="animate-spin" /> : null}
+                {busy ? stage || 'Checking...' : 'Check these payments'}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {summary && (
         <Card>
